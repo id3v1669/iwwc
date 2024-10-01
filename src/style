@@ -1,0 +1,22 @@
+
+            .style(move |_| {
+
+                iced::widget::container::Style {
+                    //border: borders.border.rounded(iced::border::radius(10)),
+                    text_color: Some(iced::Color::parse("#ff0000").unwrap()),
+                    border: iced::Border{
+                        color: iced::Color::parse("#ff00ff").unwrap(),
+                        width: 2.0,
+                        radius: iced::border::radius(10),
+                    },
+                    shadow: iced::Shadow {
+                        color: iced::Color::parse("#ff0000").unwrap(),
+                        offset: iced::Vector {
+                            x: 10.0,
+                            y: 10.0,
+                        },
+                        blur_radius: 15.0,
+                    },
+                    background: Some(iced::Background::Color(iced::Color::parse("#000000").unwrap()))
+                }
+            })

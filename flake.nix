@@ -21,6 +21,12 @@
     });
   in 
   {
+    packages = eachSystem (system: {
+      default = nixpkgs.legacyPackages.${system}.callPackage ./nix/package.nix{ };
+    });
+
+    defaultPackage = eachSystem (system: self.packages.${system}.default);
+    
     devShells = eachSystem (system: {
       default = (pkgsFor system).callPackage ./nix/shell.nix { };
     });

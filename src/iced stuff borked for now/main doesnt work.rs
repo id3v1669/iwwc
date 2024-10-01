@@ -15,29 +15,13 @@ use iced_layershell::MultiApplication;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let settings = Settings {
-        layer_settings: LayerShellSettings {
-            anchor: Anchor::Top | Anchor::Right,
-            layer: Layer::Overlay,
-            exclusive_zone: 0,
-            size: Some((400, 100)),
-            margin: (10, 10, 10, 10),
-            keyboard_interactivity: KeyboardInteractivity::None,
-            binded_output_name: Some("test".to_string()),
-            ..Default::default()
-        },
-        ..Default::default()
-    };
+
     println!("start");
-    let runner = tokio::spawn(async move {
-        Counter::run(settings)
-        //genUi(400, 100).await.unwrap();
+    tokio::spawn(async move {
+        genUi(400, 100).await.unwrap();
     });
     println!("after genUi");
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-    println!("after sleep");
-    runner.abort();
-    println!("after abort");
+    
     //print all data in ct
     //println!("ss {:?}", ct);
     std::future::pending::<()>().await;
@@ -59,14 +43,12 @@ pub async fn genUi(width: u32, height: u32) -> Result<(), iced_layershell::Error
         ..Default::default()
     };
     println!("before run");
-    // let taskts = tokio::spawn(async move {
-    //     Counter::run(settings)
-    // });
-    let runner = Counter::run(settings);
+    tokio::spawn(async move {
+        Counter::run(settings)
+    });
     println!("after run");
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-
-
+    //let window_id = Counter::window_id(&WindowInfo::Counter).unwrap();
+    //println!("window_id {:?}", window_id);
     std::future::pending::<()>().await;
     Ok(())
 }
@@ -119,17 +101,17 @@ impl MultiApplication for Counter {
         )
     }
 
-    fn id_info(&self, id: iced::window::Id) -> Option<Self::WindowInfo> {
-        self.ids.get(&id).cloned()
-    }
+    // fn id_info(&self, id: iced::window::Id) -> Option<Self::WindowInfo> {
+    //     self.ids.get(&id).cloned()
+    // }
 
-    fn set_id_info(&mut self, id: iced::window::Id, info: Self::WindowInfo) {
-        self.ids.insert(id, info);
-    }
+    // fn set_id_info(&mut self, id: iced::window::Id, info: Self::WindowInfo) {
+    //     self.ids.insert(id, info);
+    // }
 
-    fn remove_id(&mut self, id: iced::window::Id) {
-        self.ids.remove(&id);
-    }
+    // fn remove_id(&mut self, id: iced::window::Id) {
+    //     self.ids.remove(&id);
+    // }
 
     fn namespace(&self) -> String {
         String::from("Counter - Iced")
@@ -148,12 +130,7 @@ impl MultiApplication for Counter {
                 match event {
                     iced::Event::Mouse(iced::mouse::Event::ButtonReleased(iced::mouse::Button::Right)) => {
                         println!("Right mouse button pressed");
-                        //printl info from window_id 
-                        let id = self.window_id(&WindowInfo::Counter);
-                        let id2 = Counter::window_id(self, &WindowInfo::Counter);
-                        println!("id: {:?}", id);
-                        println!("id2: {:?}", id2);
-                        //task::effect(Action::Window(WindowAction::Close(iced::window::Id::new(0))))
+                        task::effect(Action::Window(WindowAction::Close(Id::MAIN)));
                     }
                     iced::Event::Mouse(iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left)) => {
                         println!("Left mouse button pressed");
@@ -167,12 +144,7 @@ impl MultiApplication for Counter {
         }
     }
 
-    fn view(&self, id: iced::window::Id) -> Element<Message> {
-        //let idloc = id.to_;
-        let idstr = "Container idloc:".to_string() + &id.to_string();
-        println!("idstr: {:?}", idstr);
-        //let id2 = self.window_id(&WindowInfo::Counter).unwrap().to_string();
-        //iced::widget::container("Container id: ".to_string() + &id + " " + &id2)
+    fn view(&self, id: Id) -> Element<Message> {
         iced::widget::container("text container")
             .padding(10)
             .center(800)
