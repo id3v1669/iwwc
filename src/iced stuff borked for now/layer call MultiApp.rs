@@ -13,34 +13,27 @@ use iced_layershell::to_layer_message;
 use iced_layershell::MultiApplication;
 
 
+
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let settings = Settings {
-        layer_settings: LayerShellSettings {
-            anchor: Anchor::Top | Anchor::Right,
-            layer: Layer::Overlay,
-            exclusive_zone: 0,
-            size: Some((400, 100)),
-            margin: (10, 10, 10, 10),
-            keyboard_interactivity: KeyboardInteractivity::None,
-            binded_output_name: Some("test".to_string()),
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-    println!("start");
-    let runner = tokio::spawn(async move {
-        Counter::run(settings)
-        //genUi(400, 100).await.unwrap();
-    });
-    println!("after genUi");
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-    println!("after sleep");
-    runner.abort();
-    println!("after abort");
-    //print all data in ct
-    //println!("ss {:?}", ct);
-    std::future::pending::<()>().await;
+async fn main() -> Result<(), iced_layershell::Error> {
+
+    loop {
+        println!("Please input height of the window");
+        let mut heightin = String::new();
+        std::io::stdin().read_line(&mut heightin).unwrap();
+        println!("You typed: {}", heightin);
+        let height: u32 = heightin.trim().parse().unwrap();
+        let mut widthin = String::new();
+        println!("Please input width of the window");
+        std::io::stdin().read_line(&mut widthin).unwrap();
+        println!("You typed: {}", widthin);
+        let width: u32 = widthin.trim().parse().unwrap();
+        // call genUi function without waiting for response
+        tokio::spawn(async move {
+            genUi(width, height).await.unwrap();
+        });
+    }
+
     Ok(())
 }
 
@@ -59,14 +52,12 @@ pub async fn genUi(width: u32, height: u32) -> Result<(), iced_layershell::Error
         ..Default::default()
     };
     println!("before run");
-    // let taskts = tokio::spawn(async move {
-    //     Counter::run(settings)
-    // });
-    let runner = Counter::run(settings);
+    tokio::spawn(async move {
+        Counter::run(settings)
+    });
     println!("after run");
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-
-
+    //let window_id = Counter::window_id(&WindowInfo::Counter).unwrap();
+    //println!("window_id {:?}", window_id);
     std::future::pending::<()>().await;
     Ok(())
 }
@@ -79,14 +70,13 @@ struct Counter {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum WindowInfo {
-    Counter,
+    Counterc,
 }
 
 #[to_layer_message(multi, info_name = "WindowInfo")]
 #[derive(Debug, Clone)]
 enum Message {
     Close(Id),
-    TextInput(String),
     IcedEvent(Event),
 }
 
@@ -148,15 +138,27 @@ impl MultiApplication for Counter {
                 match event {
                     iced::Event::Mouse(iced::mouse::Event::ButtonReleased(iced::mouse::Button::Right)) => {
                         println!("Right mouse button pressed");
-                        //printl info from window_id 
-                        let id = self.window_id(&WindowInfo::Counter);
-                        let id2 = Counter::window_id(self, &WindowInfo::Counter);
-                        println!("id: {:?}", id);
-                        println!("id2: {:?}", id2);
-                        //task::effect(Action::Window(WindowAction::Close(iced::window::Id::new(0))))
+                        //print ids info from hash map
+                        println!("ids {:?}", self.ids.len());
+                        for (k, v) in self.ids.iter() {
+                            println!("k {:?} v {:?}", k, v);
+                        }
                     }
                     iced::Event::Mouse(iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left)) => {
                         println!("Left mouse button pressed");
+                        
+                        iced::Task::done(Message::NewLayerShell {
+                            settings: NewLayerShellSettings {
+                                size: Some((500, 700)),
+                                exclusive_zone: None,
+                                anchor: Anchor::Left | Anchor::Bottom,
+                                layer: Layer::Top,
+                                margin: None,
+                                keyboard_interactivity: KeyboardInteractivity::None,
+                                use_last_output: false,
+                            },
+                            info: WindowInfo::Counterc,
+                        });
                     }
                     _ => {}
                 }
@@ -167,12 +169,8 @@ impl MultiApplication for Counter {
         }
     }
 
-    fn view(&self, id: iced::window::Id) -> Element<Message> {
-        //let idloc = id.to_;
-        let idstr = "Container idloc:".to_string() + &id.to_string();
-        println!("idstr: {:?}", idstr);
-        //let id2 = self.window_id(&WindowInfo::Counter).unwrap().to_string();
-        //iced::widget::container("Container id: ".to_string() + &id + " " + &id2)
+    fn view(&self, id: Id) -> Element<Message> {
+        
         iced::widget::container("text container")
             .padding(10)
             .center(800)

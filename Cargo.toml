@@ -1,6 +1,35 @@
 [package]
-name = "rs-nc"
-version = "0.1.0"
+description = "notifications center and daemon"
 edition = "2021"
+name = "rs-nc"
+version = "0.0.1"
 
 [dependencies]
+# base deps
+clap = { version = "4.5.17", features = ["derive"] }
+env_logger = "0.11.5"
+log = "0.4.22"
+tokio = { version = "1.40.0", features = ["full"] }
+tokio-stream = "0.1.16"
+
+# backend deps
+zbus = "4.4.0"
+
+# frontend deps
+iced = { version = "0.13.1", features = [
+	"tokio",
+	"debug",
+	"image",
+	"advanced",
+	"image",
+	"svg",
+	"wgpu",
+] }
+iced_wgpu = "0.13.5"
+iced_native = "0.10"
+iced_runtime = "0.13.2"
+iced_renderer = "0.13.0"
+iced_graphics = "0.13.0"
+iced_layershell = "0.8.0"
+
+
