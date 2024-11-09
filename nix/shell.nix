@@ -3,6 +3,7 @@ let
   runDeps = with pkgs; [
     wayland
     libGL
+    libxkbcommon
 
     # needed for layershell single Application
     # for unknow reason works without it with MultiApplication
@@ -19,7 +20,10 @@ pkgs.mkShell {
 
     # build Deps
     pkg-config
-    libxkbcommon
+    gtk3
+    librsvg
+    gdb
+    
 
     # Tools
     cargo-audit

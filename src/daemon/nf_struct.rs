@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Notification {
     pub app_name: String,
     pub app_icon: String,
