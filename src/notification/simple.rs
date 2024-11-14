@@ -14,39 +14,35 @@ use std::path::PathBuf;
 //use gtk::prelude::*;
 //use gtk::{IconTheme, IconLookupFlags};
 
-use crate::shared_data::{GLOBAL_DATA_MAP, ID_QUEUE, ACTIVE_NOTIFICATIONS};
+use crate::data::shared_data::{GLOBAL_DATA_MAP, ID_QUEUE, ACTIVE_NOTIFICATIONS};
 
-pub async fn gen_ui(width: u32, height: u32, id: Option<String>) -> Result<(), iced_layershell::Error> {
+pub async fn gen_ui(id: Option<String>) -> Result<(), iced_layershell::Error> {
   println!("id: {:?}", id);
   {
     let mut id_queue = ID_QUEUE.lock().unwrap();
     id_queue.push_back(id.clone());
   }
-  let mut offset = {
-    let mut active_notifications = ACTIVE_NOTIFICATIONS.lock().unwrap();
-    *active_notifications += 1;
-    (height * (*active_notifications - 1))+(10 * (*active_notifications - 1)) + 10
-  };
-//   println!("before active_notifications");
-//   let mut active_notifications = ACTIVE_NOTIFICATIONS.lock().unwrap();
-//     println!("after active_notifications");
-//   let offset = (height * *active_notifications)+(10 * *active_notifications) + 10;
-  println!("offset: {:?}", offset);
-  
-  //*active_notifications += 1;
 
-  let settings = Settings {
-    layer_settings: LayerShellSettings {
-      anchor: Anchor::Top | Anchor::Right,
-      layer: Layer::Overlay,
-      exclusive_zone: 400,
-      size: Some((width, height)),
-      margin: (offset.try_into().unwrap(), 10, 10, 10),
-      keyboard_interactivity: KeyboardInteractivity::None,
+  let settings = {
+    let config = crate::data::shared_data::CONFIG.lock().unwrap();
+    let offset: i32 = {
+      let mut active_notifications = ACTIVE_NOTIFICATIONS.lock().unwrap();
+      *active_notifications += 1;
+      (config.height as i32 * (*active_notifications - 1))+(config.vertical_margin * (*active_notifications - 1)) + config.vertical_margin
+    };
+    Settings {
+      layer_settings: LayerShellSettings {
+        anchor: Anchor::Top | Anchor::Right,
+        layer: Layer::Overlay,
+        exclusive_zone: 0,
+        size: Some((config.width, config.height)),
+        margin: (offset, config.horizontal_margin, config.vertical_margin, config.horizontal_margin),
+        keyboard_interactivity: KeyboardInteractivity::None,
+        ..Default::default()
+      },
+      id: id.clone(),
       ..Default::default()
-    },
-    id: id.clone(),
-    ..Default::default()
+    }
   };
     
   let _ = SimpleNotification::run(settings);
@@ -60,13 +56,30 @@ pub async fn gen_ui(width: u32, height: u32, id: Option<String>) -> Result<(), i
 
 struct SimpleNotification {
     id: Option<String>,
-    notification: crate::daemon::nf_struct::Notification,
+    notification: crate::data::nf_struct::Notification,
     icon_path: Option<PathBuf>,
 }
 
 impl SimpleNotification {
   async fn sleep_timer(sleep_time: u64) {
     tokio::time::sleep(std::time::Duration::from_secs(sleep_time)).await;
+  }
+  fn iced_container_style() -> iced::widget::container::Style {
+    let config = crate::data::shared_data::CONFIG.lock().unwrap();
+    return iced::widget::container::Style {
+      text_color: Some(config.primary_text_color),
+      border: iced::Border{
+          color: config.border_color,
+          width: config.border_width,
+          radius: config.border_radius,
+      },
+      shadow: iced::Shadow{ //has to be here as empty shadow is not allowed and not paddings yet to make it visible
+          color: iced::Color::parse("#00000000").unwrap(),
+          offset: iced::Vector { x: 0.0, y: 0.0, },
+          blur_radius: 0.0,
+      },
+      background: Some(iced::Background::Color(config.background_color)),
+    };
   }
 }
 
@@ -88,11 +101,20 @@ impl Application for SimpleNotification {
       let mut id_queue = ID_QUEUE.lock().unwrap();
       id_queue.pop_front().flatten()
     };
-    let notification: crate::daemon::nf_struct::Notification = {
+    let notification: crate::data::nf_struct::Notification = {
       let data_map = GLOBAL_DATA_MAP.lock().unwrap();
       data_map.get(&id).unwrap().clone()
     };
     let icon_path: Option<PathBuf> = None;
+
+    let expire_timeout = {
+      let config = crate::data::shared_data::CONFIG.lock().unwrap();
+      if config.respect_notification_timeout && notification.expire_timeout > 0 {
+        notification.expire_timeout as u64
+      } else {
+        config.local_expire_timeout as u64 //TODO: enshure that in config read fn value verified to exist and to be > 0
+      }
+    };
     // let icon_path: Option<PathBuf> = {
     //     let mut gtk_active = crate::shared_data::GTK_ACTIVE.lock().unwrap();
     //     if *gtk_active {
@@ -107,7 +129,7 @@ impl Application for SimpleNotification {
         notification,
         icon_path,
       },
-      Command::perform(Self::sleep_timer(5 as u64), |_| Message::Exit),
+      Command::perform(Self::sleep_timer(expire_timeout), |_| Message::Exit),
     )
   }
 
@@ -159,7 +181,7 @@ impl Application for SimpleNotification {
     fn view(&self) -> Element<Message> {
         
         log::debug!("view");
-        
+
         iced::widget::container(
             iced::widget::row![
                 // take system icon name from notification and take icon from system
@@ -182,30 +204,10 @@ impl Application for SimpleNotification {
             .center(800)
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
-            .style(move |_| {
-
-                iced::widget::container::Style {
-                    //border: borders.border.rounded(iced::border::radius(10)),
-                    //background_color: iced::Color::TRANSPARENT,
-                    text_color: Some(iced::Color::parse("#ff0000").unwrap()),
-                    border: iced::Border{
-                        color: iced::Color::parse("#ff00ff").unwrap(),
-                        width: 2.0,
-                        radius: iced::border::radius(10),
-                    },
-                    shadow: iced::Shadow {
-                        color: iced::Color::parse("#ff0000").unwrap(),
-                        offset: iced::Vector {
-                            x: 10.0,
-                            y: 10.0,
-                        },
-                        blur_radius: 15.0,
-                    },
-                    background: Some(iced::Background::Color(iced::Color::parse("#000000").unwrap()))
-                }
-            })
+            .style(move |_| SimpleNotification::iced_container_style())
             .into()
     }
+
     fn style(&self, theme: &Self::Theme) -> iced_layershell::Appearance {
         use iced_layershell::Appearance;
         Appearance {

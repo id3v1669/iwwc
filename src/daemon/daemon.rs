@@ -1,6 +1,6 @@
 //func to launch the daemon
 
-use crate::shared_data::GLOBAL_DATA_MAP;
+use crate::data::shared_data::GLOBAL_DATA_MAP;
 
 pub async fn launch() -> Result<(), Box<dyn std::error::Error>> {
     let (sender, mut receiver) = tokio::sync::mpsc::channel(5);
@@ -12,7 +12,7 @@ pub async fn launch() -> Result<(), Box<dyn std::error::Error>> {
 
         while let Some(action) = receiver.recv().await {
             match action {
-                crate::daemon::nf_struct::NotificationAction::ActionInvoked { notification_id } => {
+                crate::data::nf_struct::NotificationAction::ActionInvoked { notification_id } => {
                     log::debug!("NotificationAction::ActionInvoked: {}", notification_id);
                     // for debug purposes run command
                     let _ = tokio::process::Command::new("eww")
@@ -21,7 +21,7 @@ pub async fn launch() -> Result<(), Box<dyn std::error::Error>> {
                         .output()
                         .await;
                 }
-                crate::daemon::nf_struct::NotificationAction::ActionClose {
+                crate::data::nf_struct::NotificationAction::ActionClose {
                     notification_id,
                     reason,
                 } => {
@@ -37,7 +37,7 @@ pub async fn launch() -> Result<(), Box<dyn std::error::Error>> {
                         .output()
                         .await;
                 }
-                crate::daemon::nf_struct::NotificationAction::Notify { notification } => {
+                crate::data::nf_struct::NotificationAction::Notify { notification } => {
                     log::debug!(
                         "NotificationAction::Notify all options of notification: {:?}", notification
                     );
@@ -83,12 +83,12 @@ pub async fn launch() -> Result<(), Box<dyn std::error::Error>> {
                     log::debug!("NotificationAction::Notify before gen_ui");
         
                     tokio::spawn(async move {
-                        crate::notification::simple::gen_ui(400, 100, id.clone()).await.unwrap();
+                        crate::notification::simple::gen_ui(id.clone()).await.unwrap();
                     });
                     log::debug!("NotificationAction::Notify after gen_ui");
 
                 }
-                crate::daemon::nf_struct::NotificationAction::Close { notification_id } => {
+                crate::data::nf_struct::NotificationAction::Close { notification_id } => {
                     log::debug!("NotificationAction::Close: {}", notification_id);
                     // for debug purposes run command
                     let _ = tokio::process::Command::new("eww")
@@ -105,7 +105,7 @@ pub async fn launch() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub async fn connect_dbus(
-    sender: tokio::sync::mpsc::Sender<crate::daemon::nf_struct::NotificationAction>,
+    sender: tokio::sync::mpsc::Sender<crate::data::nf_struct::NotificationAction>,
 ) -> Result<zbus::Connection, Box<dyn std::error::Error>> {
     let handler = crate::daemon::nf_handler::NotificationHandler::new(sender);
     let conn = zbus::connection::Builder::session()?
