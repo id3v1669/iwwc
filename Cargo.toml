@@ -2,7 +2,7 @@
 description = "notifications center and daemon"
 edition = "2021"
 name = "rs-nc"
-version = "0.0.1"
+version = "0.0.0"
 
 [dependencies]
 # base deps
@@ -34,7 +34,7 @@ iced_native = "0.10"
 iced_runtime = "0.13"
 iced_renderer = "0.13"
 iced_graphics = "0.13"
-iced_layershell = "0.9"
+iced_layershell = "0.9.6"
 
 futures = "0.3.30"
 

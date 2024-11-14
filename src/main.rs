@@ -5,7 +5,7 @@ use clap::Parser;
 
 mod daemon;
 mod notification;
-mod shared_data;
+mod data;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if gtk::init().is_err() {
         log::warn!("Failed to initialize GTK, icons would not be used.");
-        let mut gtk_active = shared_data::GTK_ACTIVE.lock().unwrap();
+        let mut gtk_active = crate::data::shared_data::GTK_ACTIVE.lock().unwrap();
         *gtk_active = false;
     }
 

@@ -2,12 +2,12 @@ use zbus::interface;
 
 pub struct NotificationHandler {
     count: u32,
-    sender: tokio::sync::mpsc::Sender<crate::daemon::nf_struct::NotificationAction>,
+    sender: tokio::sync::mpsc::Sender<crate::data::nf_struct::NotificationAction>,
 }
 
 impl NotificationHandler {
     pub fn new(
-        sender: tokio::sync::mpsc::Sender<crate::daemon::nf_struct::NotificationAction>,
+        sender: tokio::sync::mpsc::Sender<crate::data::nf_struct::NotificationAction>,
     ) -> Self {
         NotificationHandler { count: 0, sender }
     }
@@ -18,7 +18,7 @@ impl NotificationHandler {
     #[dbus_interface(name = "CloseNotification")]
     async fn close_notification(&mut self, notification_id: u32) -> zbus::fdo::Result<()> {
         self.sender
-            .send(crate::daemon::nf_struct::NotificationAction::Close { notification_id })
+            .send(crate::data::nf_struct::NotificationAction::Close { notification_id })
             .await
             .map_err(crate::daemon::err_handler::ErrorHandler::from)?;
         Ok(())
@@ -49,7 +49,7 @@ impl NotificationHandler {
             String::new()
         };
 
-        let notification = crate::daemon::nf_struct::Notification {
+        let notification = crate::data::nf_struct::Notification {
             app_name,
             replaces_id,
             app_icon,
@@ -62,7 +62,7 @@ impl NotificationHandler {
         };
 
         self.sender
-            .send(crate::daemon::nf_struct::NotificationAction::Notify { notification })
+            .send(crate::data::nf_struct::NotificationAction::Notify { notification })
             .await
             .map_err(crate::daemon::err_handler::ErrorHandler::from)?;
 
