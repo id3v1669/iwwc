@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Notification {
     pub app_name: String,
     pub app_icon: String,
@@ -11,7 +11,7 @@ pub struct Notification {
     pub desktop_entry: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum NotificationAction {
     ActionClose { notification_id: u32, reason: u32 },
     ActionInvoked { notification_id: u32 },

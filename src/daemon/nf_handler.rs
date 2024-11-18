@@ -1,13 +1,15 @@
 use zbus::interface;
+use crate::notification::simple::Message;
+
 
 pub struct NotificationHandler {
     count: u32,
-    sender: tokio::sync::mpsc::Sender<crate::data::nf_struct::NotificationAction>,
+    sender: futures::channel::mpsc::Sender<Message>,
 }
 
 impl NotificationHandler {
     pub fn new(
-        sender: tokio::sync::mpsc::Sender<crate::data::nf_struct::NotificationAction>,
+        sender: futures::channel::mpsc::Sender<Message>,
     ) -> Self {
         NotificationHandler { count: 0, sender }
     }
@@ -17,10 +19,7 @@ impl NotificationHandler {
 impl NotificationHandler {
     #[dbus_interface(name = "CloseNotification")]
     async fn close_notification(&mut self, notification_id: u32) -> zbus::fdo::Result<()> {
-        self.sender
-            .send(crate::data::nf_struct::NotificationAction::Close { notification_id })
-            .await
-            .map_err(crate::daemon::err_handler::ErrorHandler::from)?;
+        self.sender.try_send(Message::TestMessage).ok();
         Ok(())
     }
 
@@ -61,10 +60,7 @@ impl NotificationHandler {
             desktop_entry,
         };
 
-        self.sender
-            .send(crate::data::nf_struct::NotificationAction::Notify { notification })
-            .await
-            .map_err(crate::daemon::err_handler::ErrorHandler::from)?;
+        self.sender.try_send(Message::Notify(notification)).ok();
 
         Ok(notification_id)
     }
