@@ -19,18 +19,18 @@ impl Config {
     pub fn default() -> Self {
         Config {
             respect_notification_timeout: true,
-            local_expire_timeout: 4,
+            local_expire_timeout: 7,
             max_notifications: 5,
             height: 100,
             width: 400,
             vertical_margin: 10,
             horizontal_margin: 10,
             border_radius: iced::border::radius(10),
-            border_color: iced::Color::parse("#ff0000").unwrap(),
+            border_color: iced::Color::parse("#BA5816").unwrap(),
             border_width: 2.0,
-            primary_text_color: iced::Color::parse("#ffffff").unwrap(),
-            secondary_text_color: iced::Color::parse("#ff00ff").unwrap(),
-            background_color: iced::Color::parse("#000000").unwrap(),
+            primary_text_color: iced::Color::parse("#e7d4a2").unwrap(),
+            secondary_text_color: iced::Color::parse("#e7d4a2").unwrap(),
+            background_color: iced::Color::parse("#282828").unwrap(),
         }
     }
 }

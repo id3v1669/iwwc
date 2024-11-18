@@ -1,15 +1,4 @@
 {pkgs}:
-let
-  runDeps = with pkgs; [
-    wayland
-    libGL
-    libxkbcommon
-
-    # needed for layershell single Application
-    # for unknow reason works without it with MultiApplication
-    vulkan-loader
-  ];
-in
 pkgs.mkShell {
   name = "rs-nc devShell";
   nativeBuildInputs = with pkgs; [
@@ -20,9 +9,16 @@ pkgs.mkShell {
 
     # build Deps
     pkg-config
-    gtk3
-    librsvg
-    gdb
+    pango
+    glib
+    gdk-pixbuf
+    atkmm
+
+    # other
+    xorg.libX11
+    xorg.libXcursor
+    xorg.libXi
+    xorg.libXrandr
     
 
     # Tools
@@ -31,7 +27,7 @@ pkgs.mkShell {
     clippy
     rust-analyzer
     rustfmt
-  ] ++ runDeps;
+  ];
 
-  LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath runDeps}";
+  LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (with pkgs; [ vulkan-loader xorg.libX11 libxkbcommon wayland ])}";
 }
