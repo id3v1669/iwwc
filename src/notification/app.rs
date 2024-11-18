@@ -37,10 +37,21 @@ struct NotificationCenter {
     ids: HashMap<iced::window::Id, WindowInfo>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+struct PreCalc {
+    font_size_name: u16,
+    font_size_summary: u16,
+    font_size_body: u16,
+    image_size: f32,
+    text_summary_paddings: iced::Padding,
+    text_body_paddings: iced::Padding,
+    text_paddings_block: iced::Padding,
+}
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 struct WindowInfo {
     notification: crate::data::nf_struct::Notification,
+    precalc: PreCalc,
 }
 
 #[to_layer_message(multi, info_name = "WindowInfo")]
@@ -48,7 +59,6 @@ struct WindowInfo {
 pub enum Message {
     Close(Id),
     CloseByContentId(u32),
-    IcedEvent(Event),
     TestMessage,
     MoveNotifications,
     Notify(crate::data::nf_struct::Notification)
@@ -151,15 +161,6 @@ impl MultiApplication for NotificationCenter {
     fn update(&mut self, message: Message) -> Command<Message> {
         use iced::Event;
         match message {
-            Message::IcedEvent(ref event) => {
-                match event {
-                    iced::Event::Mouse(iced::mouse::Event::ButtonReleased(iced::mouse::Button::Left)) => {
-                        println!("Left mouse button pressed");
-                    }
-                    _ => {}
-                }
-                Command::none()
-            }
             Message::Close(id) => {
                 let config = crate::data::shared_data::CONFIG.lock().unwrap();
                 let mut active_notifications = crate::data::shared_data::ACTIVE_NOTIFICATIONS.lock().unwrap();
@@ -230,6 +231,32 @@ impl MultiApplication for NotificationCenter {
                 } else {
                     config.local_expire_timeout
                 };
+                // precalculation of font sizes to avoid recalculating them every frame(view) update
+                // TODO: add formulas here after figuring out propper grid layout and proportions
+                let precalc = PreCalc {
+                    font_size_name: 10,
+                    font_size_summary: (config.height as f32 * 0.24) as u16,
+                    font_size_body: (config.height as f32 * 0.17) as u16,
+                    image_size: (config.height as f32)*0.75,
+                    text_summary_paddings: iced::Padding {
+                        top: 0.0,
+                        bottom: 0.0,
+                        left: (config.height as f32 * 0.05) + (config.height as f32 * 0.01),
+                        right: 0.0,
+                    },
+                    text_body_paddings: iced::Padding {
+                        top: 0.0,
+                        bottom: 0.0,
+                        left: config.height as f32 * 0.05,
+                        right: 0.0,
+                    },
+                    text_paddings_block: iced::Padding {
+                        top: 10.0,
+                        bottom: 10.0,
+                        left: config.height as f32 * 0.15,
+                        right: 0.0,
+                    },
+                };
 
                 Command::batch([
                     Command::done(Message::MoveNotifications),
@@ -243,7 +270,7 @@ impl MultiApplication for NotificationCenter {
                             keyboard_interactivity: KeyboardInteractivity::None,
                             ..Default::default()
                         },
-                        info: WindowInfo { notification: notification },
+                        info: WindowInfo { notification: notification, precalc: precalc },
                     }),
                     Command::perform(Self::sleep_timer(timeout.try_into().unwrap()), move |_| Message::CloseByContentId(id)),
                 ])
@@ -257,13 +284,23 @@ impl MultiApplication for NotificationCenter {
         {
             return iced::widget::container(
             iced::widget::row![
+                iced::widget::svg(std::path::PathBuf::from("./assets/testing/linux.svg")) // home/user/myrepos/rs-nc/assets/testing/linux.svg
+                    .width(iced::Length::Fixed(window_info.precalc.image_size as f32))
+                    .height(iced::Length::Fixed(window_info.precalc.image_size as f32)),
                 iced::widget::column![
-                    iced::widget::text(window_info.notification.app_name.clone()).size(10),
-                    iced::widget::text(window_info.notification.summary.clone()).size(10),
-                    iced::widget::text(window_info.notification.body.clone()).size(10),
+                    iced::widget::column![
+                        iced::widget::text(window_info.notification.summary.clone()).size(window_info.precalc.font_size_summary)
+                            .align_x(iced::alignment::Horizontal::Left),
+                        ]
+                        .padding(window_info.precalc.text_summary_paddings),
+                    iced::widget::column![
+                        iced::widget::text(window_info.notification.body.clone()).size(window_info.precalc.font_size_body),
+                        ]
+                        .padding(window_info.precalc.text_body_paddings),
                     ]
+                    .padding(window_info.precalc.text_paddings_block)
                 ]
-                .padding(10)
+                .align_y(iced::alignment::Vertical::Center)
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fill)
             
@@ -288,7 +325,7 @@ impl MultiApplication for NotificationCenter {
 
     fn style(&self, _theme: &Self::Theme) -> iced_layershell::Appearance {
         iced_layershell::Appearance {
-            background_color: iced::Color::parse("#000000").unwrap(), // right now visible for debugging
+            background_color: iced::Color::TRANSPARENT,
             text_color: iced::Color::TRANSPARENT,
         }
     }
