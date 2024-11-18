@@ -13,14 +13,14 @@ use iced_layershell::to_layer_message;
 use iced_layershell::MultiApplication;
 
 use crate::data::nf_struct::NotificationAction;
-use crate::daemon::nf_handler::NotificationHandler;
+use crate::notification::nf_handler::NotificationHandler;
 
 pub async fn gen_ui() -> Result<(), iced_layershell::Error> {
     let settings = Settings {
         layer_settings: LayerShellSettings {
-            size: Some((100, 100)),
+            size: Some((50, 50)),
                             exclusive_zone: 0,
-                            anchor: Anchor::Top | Anchor::Left,
+                            anchor: Anchor::Bottom | Anchor::Left,
                             layer: Layer::Overlay,
                             margin: (10, 10, 10, 10),
                             keyboard_interactivity: KeyboardInteractivity::None,
