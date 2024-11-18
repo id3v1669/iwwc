@@ -4,8 +4,8 @@ use zbus::{connection, interface, zvariant::Value};
 use clap::Parser;
 
 mod daemon;
-mod notification;
 mod data;
+mod notification;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -42,11 +42,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if args.daemon {
-        crate::daemon::daemon::launch().await?;
+        tokio::spawn(async move {
+            crate::notification::simple::gen_ui()
+                .await
+                .unwrap();
+        });
     }
 
-    
-    
-
+    println!("After daemon launch");
+    std::future::pending::<()>().await;
     Ok(())
 }
