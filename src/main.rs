@@ -3,7 +3,6 @@ use zbus::{connection, interface, zvariant::Value};
 
 use clap::Parser;
 
-mod daemon;
 mod data;
 mod notification;
 
@@ -43,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if args.daemon {
         tokio::spawn(async move {
-            crate::notification::simple::gen_ui()
+            crate::notification::app::gen_ui()
                 .await
                 .unwrap();
         });

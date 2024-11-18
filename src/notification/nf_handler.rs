@@ -1,5 +1,5 @@
 use zbus::interface;
-use crate::notification::simple::Message;
+use crate::notification::app::Message;
 
 
 pub struct NotificationHandler {
