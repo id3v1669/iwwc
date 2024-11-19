@@ -15,6 +15,8 @@ pkgs.mkShell {
     atkmm
 
     # other
+    gtk3
+    dbus
     xorg.libX11
     xorg.libXcursor
     xorg.libXi

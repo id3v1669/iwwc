@@ -19,7 +19,7 @@ impl NotificationHandler {
 impl NotificationHandler {
     #[dbus_interface(name = "CloseNotification")]
     async fn close_notification(&mut self, notification_id: u32) -> zbus::fdo::Result<()> {
-        self.sender.try_send(Message::TestMessage).ok();
+        self.sender.try_send(Message::CloseByContentId(notification_id)).ok();
         Ok(())
     }
 
