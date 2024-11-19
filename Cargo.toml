@@ -6,21 +6,18 @@ version = "0.0.0"
 
 [dependencies]
 # base deps
-clap = { version = "4.5.17", features = ["derive"] }
+clap = { version = "4.5.21", features = ["derive"] }
 env_logger = "0.11.5"
 log = "0.4.22"
-tokio = { version = "1.40.0", features = ["full"] }
+tokio = { version = "1.41.1", features = ["full"] }
 tokio-stream = "0.1.16"
 once_cell = "1.20.2"
-
-
-# gtk = "0.18.1"
 
 # backend deps
 zbus = "4.4.0"
 
 # frontend deps
-iced = { version = "0.13", features = [
+iced = { git = "https://github.com/iced-rs/iced.git", rev = "2a2e20b0a35bcf4da9ac34ab2f664485c4e1dbe3", features = [
 	"tokio",
 	"debug",
 	"image",
@@ -29,12 +26,7 @@ iced = { version = "0.13", features = [
 	"svg",
 	"wgpu",
 ] }
-iced_wgpu = "0.13"
-iced_native = "0.10"
-iced_runtime = "0.13"
-iced_renderer = "0.13"
-iced_graphics = "0.13"
-iced_layershell = "0.9"
+iced_layershell = { git = "https://github.com/id3v1669/exwlshelleventloop.git", rev = "7f70409a14e2a9d13a07e06c04982993f965f7c0" }
 
 futures = "0.3.30"
 

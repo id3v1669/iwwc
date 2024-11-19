@@ -34,7 +34,3 @@ impl Config {
         }
     }
 }
-
-pub struct NfCenter {
-    pub test: String,
-}

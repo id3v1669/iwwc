@@ -12,4 +12,10 @@ TODO:
 7) variable to choose screen for notifications
 8) adjust Notification struct to support hints.
 9) animations?
-10) ...
+10) kill the app on unsuccessfull 
+11) ...
+
+
+# Notes
+
+* nvidia moment - use WGPU_BACKEND=opengl to avoid crashes with vulkan. Transparent bg won't work, so behind rounded corners black bg ((

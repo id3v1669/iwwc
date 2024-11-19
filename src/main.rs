@@ -1,6 +1,3 @@
-use std::io::Write;
-use zbus::{connection, interface, zvariant::Value};
-
 use clap::Parser;
 
 mod data;
@@ -34,21 +31,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     log::debug!("Logger initialized");
 
-    // if gtk::init().is_err() {
-    //     log::warn!("Failed to initialize GTK, icons would not be used.");
-    //     let mut gtk_active = crate::data::shared_data::GTK_ACTIVE.lock().unwrap();
-    //     *gtk_active = false;
-    // }
-
     if args.daemon {
-        tokio::spawn(async move {
-            crate::notification::app::gen_ui()
-                .await
-                .unwrap();
-        });
+        crate::notification::app::gen_ui().await.unwrap();
     }
 
     println!("After daemon launch");
-    std::future::pending::<()>().await;
+    
     Ok(())
 }
