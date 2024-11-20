@@ -14,6 +14,10 @@ struct Args {
     #[arg(short = 'D')]
     daemon: bool,
 
+    /// Nvidia moment flag
+    #[arg(short = 'n')]
+    nvidia: bool,
+
     /// Enable Debug Mode
     #[arg(short, long)]
     debug: bool,
@@ -28,14 +32,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.debug {
         std::env::set_var("RUST_LOG", "debug");
     }
+    if args.nvidia {
+        let mut nvidia_sucks = data::shared_data::NVIDIA_SUCKS.lock().unwrap();
+        *nvidia_sucks = true;
+        std::env::set_var("WGPU_BACKEND", "gl");
+    }
     env_logger::init();
     log::debug!("Logger initialized");
 
+    // read config file beforechecking image
+
+    crate::data::image::check_image();
+
     if args.daemon {
-        crate::notification::app::gen_ui().await.unwrap();
+        crate::notification::app::gen_ui().expect("REASON");
     }
 
-    println!("After daemon launch");
-    
     Ok(())
 }
