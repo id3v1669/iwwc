@@ -2,7 +2,7 @@
 pub struct Config {
     pub respect_notification_timeout: bool,
     pub local_expire_timeout: i32, //in seconds
-    pub max_notifications: i32,     //0 for unlimited
+    pub max_notifications: i32,    //0 for unlimited
     pub height: u32,
     pub width: u32,
     pub vertical_margin: i32,
@@ -35,7 +35,9 @@ impl Config {
             secondary_text_color: iced::Color::parse("#e7d4a2").unwrap(),
             background_color: iced::Color::parse("#282828").unwrap(),
             respect_notification_icon: false,
-            default_icon_dir: std::path::PathBuf::from(std::env::var("HOME").unwrap() + "/.config/rs-nc"),
+            default_icon_dir: std::path::PathBuf::from(
+                std::env::var("HOME").unwrap() + "/.config/rs-nc",
+            ),
         }
     }
 }

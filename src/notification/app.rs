@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use iced::{Element, Task as Command, Theme, Color};
+use iced::{Color, Element, Task as Command, Theme};
 use iced_layershell::reexport::{Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings};
 use iced_layershell::settings::{LayerShellSettings, Settings};
 use iced_layershell::to_layer_message;
@@ -12,14 +12,14 @@ pub fn gen_ui() -> Result<(), iced_layershell::Error> {
     let settings = Settings {
         layer_settings: LayerShellSettings {
             size: Some((50, 50)),
-                            exclusive_zone: 0,
-                            anchor: Anchor::Bottom | Anchor::Left,
-                            layer: Layer::Overlay,
-                            margin: (10, 10, 10, 10),
-                            keyboard_interactivity: KeyboardInteractivity::None,
+            exclusive_zone: 0,
+            anchor: Anchor::Bottom | Anchor::Left,
+            layer: Layer::Overlay,
+            margin: (10, 10, 10, 10),
+            keyboard_interactivity: KeyboardInteractivity::None,
             ..Default::default()
         },
-        antialiasing: false, 
+        antialiasing: false,
         ..Default::default()
     };
     let _ = NotificationCenter::run(settings);
@@ -55,9 +55,8 @@ pub enum Message {
     CloseByContentId(u32),
     TestMessage,
     MoveNotifications,
-    Notify(crate::data::nf_struct::Notification)
+    Notify(crate::data::nf_struct::Notification),
 }
-
 
 impl NotificationCenter {
     async fn sleep_timer(sleep_time: u64) {
@@ -131,7 +130,10 @@ impl MultiApplication for NotificationCenter {
                         .unwrap()
                         .name("org.freedesktop.Notifications")
                         .unwrap()
-                        .serve_at("/org/freedesktop/Notifications", NotificationHandler::new(sender))
+                        .serve_at(
+                            "/org/freedesktop/Notifications",
+                            NotificationHandler::new(sender),
+                        )
                         .unwrap();
                     let _connection = match builder.build().await {
                         Ok(connection) => connection,
@@ -143,36 +145,38 @@ impl MultiApplication for NotificationCenter {
                     futures::future::pending::<()>().await;
                     unreachable!()
                 })
-                
             }),
-            iced::event::listen_with(
-                |event, _status, id| match event {
-                    iced::Event::Mouse(iced::mouse::Event::ButtonReleased(iced::mouse::Button::Right)) => {
-                        Some(Message::Close(id))
-                    }
-                    _ => None,
-                },
-            ),
+            iced::event::listen_with(|event, _status, id| match event {
+                iced::Event::Mouse(iced::mouse::Event::ButtonReleased(
+                    iced::mouse::Button::Right,
+                )) => Some(Message::Close(id)),
+                _ => None,
+            }),
         ])
     }
 
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Close(id) => {
-                let mut active_notifications = crate::data::shared_data::ACTIVE_NOTIFICATIONS.lock().unwrap();
+                let mut active_notifications = crate::data::shared_data::ACTIVE_NOTIFICATIONS
+                    .lock()
+                    .unwrap();
                 let info = self.id_info(id).unwrap();
 
                 //TODO rework this method to reverce cycle, to eliminate use of find
-                if let Some((&key, _)) = active_notifications.iter().find(|(_, &value)| value == info.notification.notification_id) {
-                    let pre_last = (active_notifications.len()-1) as i32;
-                    for i in key..=pre_last { 
-                        if let Some(&next_value) = active_notifications.get(&(i+1)) {
+                if let Some((&key, _)) = active_notifications
+                    .iter()
+                    .find(|(_, &value)| value == info.notification.notification_id)
+                {
+                    let pre_last = (active_notifications.len() - 1) as i32;
+                    for i in key..=pre_last {
+                        if let Some(&next_value) = active_notifications.get(&(i + 1)) {
                             active_notifications.insert(i, next_value);
                         }
                     }
-                    active_notifications.remove(&(pre_last+1));
+                    active_notifications.remove(&(pre_last + 1));
                 }
-                
+
                 Command::batch([
                     Command::done(Message::RemoveWindow(id)),
                     Command::done(Message::MoveNotifications),
@@ -180,33 +184,41 @@ impl MultiApplication for NotificationCenter {
             }
             Message::CloseByContentId(notification_id) => {
                 if let Some(id) = self.window_id(notification_id) {
-                    return Command::done(Message::Close(*id))
+                    return Command::done(Message::Close(*id));
                 }
                 Command::none()
             }
             Message::MoveNotifications => {
                 let config = crate::data::shared_data::CONFIG.lock().unwrap();
-                
-                let active_notifications = crate::data::shared_data::ACTIVE_NOTIFICATIONS.lock().unwrap();
+
+                let active_notifications = crate::data::shared_data::ACTIVE_NOTIFICATIONS
+                    .lock()
+                    .unwrap();
                 let mut move_notifications: Vec<Command<Message>> = Vec::new();
 
                 for (position_in_q, id_in_q) in active_notifications.clone() {
                     if let Some(id) = self.window_id(id_in_q) {
                         let offset: i32 = {
-                            (config.height as i32 * (position_in_q-1))+(config.vertical_margin * (position_in_q-1)) + config.vertical_margin
+                            (config.height as i32 * (position_in_q - 1))
+                                + (config.vertical_margin * (position_in_q - 1))
+                                + config.vertical_margin
                         };
                         move_notifications.push(Command::done(Message::MarginChange {
                             id: *id,
-                            margin: (offset, config.horizontal_margin, config.vertical_margin, config.horizontal_margin),
+                            margin: (
+                                offset,
+                                config.horizontal_margin,
+                                config.vertical_margin,
+                                config.horizontal_margin,
+                            ),
                         }));
                     }
                 }
 
                 if move_notifications.len() > 0 {
-                    return Command::batch(move_notifications)
+                    return Command::batch(move_notifications);
                 }
                 Command::none()
-                
             }
             Message::TestMessage => {
                 println!("TestMessage");
@@ -216,29 +228,44 @@ impl MultiApplication for NotificationCenter {
                 let mut overflow = Command::none();
                 let id = notification.notification_id.clone();
                 let config = crate::data::shared_data::CONFIG.lock().unwrap();
-                let mut active_notifications = crate::data::shared_data::ACTIVE_NOTIFICATIONS.lock().unwrap();
+                let mut active_notifications = crate::data::shared_data::ACTIVE_NOTIFICATIONS
+                    .lock()
+                    .unwrap();
                 let active_notifications_count = active_notifications.len() as i32;
                 if let Some(id_last) = active_notifications.get(&config.max_notifications) {
                     overflow = Command::done(Message::CloseByContentId(*id_last));
                 }
-                for i in (1..=std::cmp::min(active_notifications_count, config.max_notifications-1)).rev() {
+                for i in
+                    (1..=std::cmp::min(active_notifications_count, config.max_notifications - 1))
+                        .rev()
+                {
                     if let Some(&prev_value) = active_notifications.get(&i) {
-                        active_notifications.insert(i+1, prev_value);
+                        active_notifications.insert(i + 1, prev_value);
                     }
                 }
-                active_notifications.entry(1).and_modify(|value| *value = id).or_insert(id);
-                let timeout = if config.respect_notification_timeout && notification.expire_timeout > 0 {
-                    notification.expire_timeout
-                } else {
-                    config.local_expire_timeout
-                };
+                active_notifications
+                    .entry(1)
+                    .and_modify(|value| *value = id)
+                    .or_insert(id);
+                let timeout =
+                    if config.respect_notification_timeout && notification.expire_timeout > 0 {
+                        notification.expire_timeout
+                    } else {
+                        config.local_expire_timeout
+                    };
 
                 // precalculation of font sizes to avoid recalculating them every frame(view) update
                 // TODO: ajust formulas here after figuring out propper grid layout and proportions
                 let precalc = PreCalc {
-                    font_size_summary: std::cmp::min((config.height as f32 * 0.24) as u16, (config.width as f32 * 0.053) as u16),
-                    font_size_body: std::cmp::min((config.height as f32 * 0.17) as u16, (config.width as f32 * 0.037) as u16),
-                    image_size: (config.height as f32)*0.75,
+                    font_size_summary: std::cmp::min(
+                        (config.height as f32 * 0.24) as u16,
+                        (config.width as f32 * 0.053) as u16,
+                    ),
+                    font_size_body: std::cmp::min(
+                        (config.height as f32 * 0.17) as u16,
+                        (config.width as f32 * 0.037) as u16,
+                    ),
+                    image_size: (config.height as f32) * 0.75,
                     image_path: config.default_icon_dir.join("default.svg"),
                     text_summary_paddings: iced::Padding {
                         top: 0.0,
@@ -269,13 +296,23 @@ impl MultiApplication for NotificationCenter {
                             exclusive_zone: None,
                             anchor: Anchor::Top | Anchor::Right,
                             layer: Layer::Overlay,
-                            margin: Some((config.vertical_margin, config.horizontal_margin, config.vertical_margin, config.horizontal_margin)),
+                            margin: Some((
+                                config.vertical_margin,
+                                config.horizontal_margin,
+                                config.vertical_margin,
+                                config.horizontal_margin,
+                            )),
                             keyboard_interactivity: KeyboardInteractivity::None,
                             ..Default::default()
                         },
-                        info: WindowInfo { notification: notification, precalc: precalc },
+                        info: WindowInfo {
+                            notification: notification,
+                            precalc: precalc,
+                        },
                     }),
-                    Command::perform(Self::sleep_timer(timeout.try_into().unwrap()), move |_| Message::CloseByContentId(id)),
+                    Command::perform(Self::sleep_timer(timeout.try_into().unwrap()), move |_| {
+                        Message::CloseByContentId(id)
+                    }),
                 ])
             }
             _ => unreachable!(),
@@ -283,46 +320,45 @@ impl MultiApplication for NotificationCenter {
     }
 
     fn view(&self, id: iced::window::Id) -> Element<Message> {
-        if let Some(window_info) = self.id_info(id)
-        {
+        if let Some(window_info) = self.id_info(id) {
             return iced::widget::container(
-            iced::widget::row![
-                iced::widget::svg(window_info.precalc.image_path)
-                    .width(iced::Length::Fixed(window_info.precalc.image_size as f32))
-                    .height(iced::Length::Fixed(window_info.precalc.image_size as f32)),
-                iced::widget::column![
+                iced::widget::row![
+                    iced::widget::svg(window_info.precalc.image_path)
+                        .width(iced::Length::Fixed(window_info.precalc.image_size as f32))
+                        .height(iced::Length::Fixed(window_info.precalc.image_size as f32)),
                     iced::widget::column![
-                        iced::widget::text(window_info.notification.summary.clone()).size(window_info.precalc.font_size_summary)
-                            .align_x(iced::alignment::Horizontal::Left),
-                        ]
+                        iced::widget::column![iced::widget::text(
+                            window_info.notification.summary.clone()
+                        )
+                        .size(window_info.precalc.font_size_summary)
+                        .align_x(iced::alignment::Horizontal::Left),]
                         .padding(window_info.precalc.text_summary_paddings),
-                    iced::widget::column![
-                        iced::widget::text(window_info.notification.body.clone()).size(window_info.precalc.font_size_body),
-                        ]
+                        iced::widget::column![iced::widget::text(
+                            window_info.notification.body.clone()
+                        )
+                        .size(window_info.precalc.font_size_body),]
                         .padding(window_info.precalc.text_body_paddings),
                     ]
                     .padding(window_info.precalc.text_paddings_block)
                 ]
                 .align_y(iced::alignment::Vertical::Center)
                 .width(iced::Length::Fill)
-                .height(iced::Length::Fill)
-            
+                .height(iced::Length::Fill),
             )
             .padding(10)
             .center(800)
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
             .style(move |_| NotificationCenter::iced_container_style())
-            .into()
-        }
-        else {
+            .into();
+        } else {
             return iced::widget::container("ss")
-            .padding(10)
-            .center(800)
-            .width(iced::Length::Fill)
-            .height(iced::Length::Fill)
-            .style(move |_| NotificationCenter::iced_container_style())
-            .into()
+                .padding(10)
+                .center(800)
+                .width(iced::Length::Fill)
+                .height(iced::Length::Fill)
+                .style(move |_| NotificationCenter::iced_container_style())
+                .into();
         }
     }
 
