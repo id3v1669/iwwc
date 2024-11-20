@@ -40,11 +40,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     log::debug!("Logger initialized");
 
-    // read config file beforechecking image
-
-    crate::data::image::check_image();
-
     if args.daemon {
+        crate::data::image::check_image();
         crate::notification::app::gen_ui().expect("REASON");
     }
 

@@ -12,11 +12,10 @@ pub fn check_image() {
     }
     if !std::path::Path::new(&path.join("default.svg")).exists() {
         if let Err(e) = std::fs::write(&path.join("default.svg"), DEFAULT_ICON) {
-                log::error!("Failed to create a default icon: {}", e);
-                std::process::exit(1);
+            log::error!("Failed to create a default icon: {}", e);
+            std::process::exit(1);
         }
-    }
-    else {
+    } else {
         log::info!("Default icon already exists");
     }
 }
