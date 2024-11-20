@@ -8,7 +8,7 @@ use iced_layershell::MultiApplication;
 
 use crate::notification::nf_handler::NotificationHandler;
 
-pub async fn gen_ui() -> Result<(), iced_layershell::Error> {
+pub fn gen_ui() -> Result<(), iced_layershell::Error> {
     let settings = Settings {
         layer_settings: LayerShellSettings {
             size: Some((50, 50)),
@@ -33,7 +33,6 @@ struct NotificationCenter {
 
 #[derive(Debug, Clone, PartialEq)]
 struct PreCalc {
-    font_size_name: u16,
     font_size_summary: u16,
     font_size_body: u16,
     image_size: f32,
@@ -128,38 +127,19 @@ impl MultiApplication for NotificationCenter {
         iced::Subscription::batch([
             iced::Subscription::run(|| {
                 iced::stream::channel(100, |sender| async move {
-                    // let builder = match zbus::connection::Builder::session() {
-                    //     Ok(builder) => builder,
-                    //     Err(e) => {
-                    //         log::error!("Failed to create zbus session connection: {}", e);
-                    //         std::process::exit(1);
-                    //     }
-                    // };
-                    // let builder = match builder.name("org.freedesktop.Notifications") {
-                    //     Ok(builder) => builder,
-                    //     Err(e) => {
-                    //         log::error!("Failed to set name org.freedesktop.Notifications: {}", e);
-                    //         std::process::exit(1);
-                    //     }
-                    // };
-                    // let builder = match builder.serve_at("/org/freedesktop/Notifications", NotificationHandler::new(sender)) {
-                    //     Ok(builder) => builder,
-                    //     Err(e) => {
-                    //         log::error!("Failed to serve at /org/freedesktop/Notifications: {}", e);
-                    //         std::process::exit(1);
-                    //     }
-                    // };
-                    // let _connection = builder.build().await.unwrap();
-                    let _connection = zbus::connection::Builder::session()
+                    let builder = zbus::connection::Builder::session()
                         .unwrap()
                         .name("org.freedesktop.Notifications")
                         .unwrap()
                         .serve_at("/org/freedesktop/Notifications", NotificationHandler::new(sender))
-                        .unwrap()
-                        .build()
-                        .await
                         .unwrap();
-
+                    let _connection = match builder.build().await {
+                        Ok(connection) => connection,
+                        Err(e) => {
+                            log::error!("Failed to build the connection: {}", e);
+                            std::process::exit(1);
+                        }
+                    };
                     futures::future::pending::<()>().await;
                     unreachable!()
                 })
@@ -179,18 +159,20 @@ impl MultiApplication for NotificationCenter {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Close(id) => {
-                let config = crate::data::shared_data::CONFIG.lock().unwrap();
                 let mut active_notifications = crate::data::shared_data::ACTIVE_NOTIFICATIONS.lock().unwrap();
                 let info = self.id_info(id).unwrap();
+
+                //TODO rework this method to reverce cycle, to eliminate use of find
                 if let Some((&key, _)) = active_notifications.iter().find(|(_, &value)| value == info.notification.notification_id) {
-                    let last = std::cmp::min(active_notifications.len() as i32, config.max_notifications-1);
-                    for i in key..=last { 
+                    let pre_last = (active_notifications.len()-1) as i32;
+                    for i in key..=pre_last { 
                         if let Some(&next_value) = active_notifications.get(&(i+1)) {
                             active_notifications.insert(i, next_value);
                         }
                     }
-                    active_notifications.remove(&last);
+                    active_notifications.remove(&(pre_last+1));
                 }
+                
                 Command::batch([
                     Command::done(Message::RemoveWindow(id)),
                     Command::done(Message::MoveNotifications),
@@ -231,10 +213,14 @@ impl MultiApplication for NotificationCenter {
                 Command::none()
             }
             Message::Notify(notification) => {
+                let mut overflow = Command::none();
                 let id = notification.notification_id.clone();
                 let config = crate::data::shared_data::CONFIG.lock().unwrap();
                 let mut active_notifications = crate::data::shared_data::ACTIVE_NOTIFICATIONS.lock().unwrap();
                 let active_notifications_count = active_notifications.len() as i32;
+                if let Some(id_last) = active_notifications.get(&config.max_notifications) {
+                    overflow = Command::done(Message::CloseByContentId(*id_last));
+                }
                 for i in (1..=std::cmp::min(active_notifications_count, config.max_notifications-1)).rev() {
                     if let Some(&prev_value) = active_notifications.get(&i) {
                         active_notifications.insert(i+1, prev_value);
@@ -248,13 +234,12 @@ impl MultiApplication for NotificationCenter {
                 };
 
                 // precalculation of font sizes to avoid recalculating them every frame(view) update
-                // TODO: add formulas here after figuring out propper grid layout and proportions
+                // TODO: ajust formulas here after figuring out propper grid layout and proportions
                 let precalc = PreCalc {
-                    font_size_name: 10,
-                    font_size_summary: (config.height as f32 * 0.24) as u16,
-                    font_size_body: (config.height as f32 * 0.17) as u16,
+                    font_size_summary: std::cmp::min((config.height as f32 * 0.24) as u16, (config.width as f32 * 0.053) as u16),
+                    font_size_body: std::cmp::min((config.height as f32 * 0.17) as u16, (config.width as f32 * 0.037) as u16),
                     image_size: (config.height as f32)*0.75,
-                    image_path: std::path::PathBuf::from("./assets/testing/linux.svg"),
+                    image_path: config.default_icon_dir.join("default.svg"),
                     text_summary_paddings: iced::Padding {
                         top: 0.0,
                         bottom: 0.0,
@@ -276,10 +261,11 @@ impl MultiApplication for NotificationCenter {
                 };
 
                 Command::batch([
+                    overflow,
                     Command::done(Message::MoveNotifications),
                     Command::done(Message::NewLayerShell {
                         settings: NewLayerShellSettings {
-                            size: Some((400, 100)),
+                            size: Some((config.width, config.height)),
                             exclusive_zone: None,
                             anchor: Anchor::Top | Anchor::Right,
                             layer: Layer::Overlay,
@@ -301,7 +287,7 @@ impl MultiApplication for NotificationCenter {
         {
             return iced::widget::container(
             iced::widget::row![
-                iced::widget::svg(std::path::PathBuf::from("./assets/testing/linux.svg")) // home/user/myrepos/rs-nc/assets/testing/linux.svg
+                iced::widget::svg(window_info.precalc.image_path)
                     .width(iced::Length::Fixed(window_info.precalc.image_size as f32))
                     .height(iced::Length::Fixed(window_info.precalc.image_size as f32)),
                 iced::widget::column![
