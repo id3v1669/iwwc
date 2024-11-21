@@ -82,11 +82,14 @@ fn find_folders_recursively(
     init_path: &std::path::PathBuf,
     folder_name: &str,
 ) -> Option<Vec<std::path::PathBuf>> {
-    let mut folders = vec![];
+    let mut folders: Vec<std::path::PathBuf> = vec![];
     for entry in std::fs::read_dir(init_path).unwrap() {
         let entry = entry.unwrap();
-        if entry.file_type().unwrap().is_dir() {
-            let path = entry.path();
+        let mut path = entry.path();
+        if path.is_symlink() {
+            path = std::fs::canonicalize(path).unwrap();
+        }
+        if path.is_dir() {
             if path.file_name().unwrap().to_str().unwrap() == folder_name {
                 folders.push(path);
             } else {
