@@ -14,7 +14,6 @@ pub struct Config {
     pub secondary_text_color: iced::Color,
     pub background_color: iced::Color,
     pub respect_notification_icon: bool,
-    pub default_icon_dir: std::path::PathBuf,
     // nfcenter stuff ...
 }
 impl Config {
@@ -35,9 +34,6 @@ impl Config {
             secondary_text_color: iced::Color::parse("#e7d4a2").unwrap(),
             background_color: iced::Color::parse("#282828").unwrap(),
             respect_notification_icon: false,
-            default_icon_dir: std::path::PathBuf::from(
-                std::env::var("HOME").unwrap() + "/.config/rs-nc",
-            ),
         }
     }
 }

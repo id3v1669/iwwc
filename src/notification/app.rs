@@ -29,6 +29,7 @@ pub fn gen_ui() -> Result<(), iced_layershell::Error> {
 
 struct NotificationCenter {
     ids: HashMap<iced::window::Id, WindowInfo>,
+    precalc: PreCalc,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,7 +37,6 @@ struct PreCalc {
     font_size_summary: u16,
     font_size_body: u16,
     image_size: f32,
-    image_path: std::path::PathBuf,
     text_summary_paddings: iced::Padding,
     text_body_paddings: iced::Padding,
     text_paddings_block: iced::Padding,
@@ -45,7 +45,7 @@ struct PreCalc {
 #[derive(Debug, Clone, PartialEq)]
 struct WindowInfo {
     notification: crate::data::nf_struct::Notification,
-    precalc: PreCalc,
+    icon: std::path::PathBuf,
 }
 
 #[to_layer_message(multi, info_name = "WindowInfo")]
@@ -98,9 +98,41 @@ impl MultiApplication for NotificationCenter {
     type WindowInfo = WindowInfo;
 
     fn new(_flags: ()) -> (Self, Command<Message>) {
+        let config = crate::data::shared_data::CONFIG.lock().unwrap();
         (
             Self {
                 ids: HashMap::new(),
+                // precalculation of font sizes to avoid recalculating them every frame(view) update
+                // TODO: ajust formulas here after figuring out propper grid layout and proportions
+                precalc: PreCalc {
+                    font_size_summary: std::cmp::min(
+                        (config.height as f32 * 0.24) as u16,
+                        (config.width as f32 * 0.053) as u16,
+                    ),
+                    font_size_body: std::cmp::min(
+                        (config.height as f32 * 0.17) as u16,
+                        (config.width as f32 * 0.037) as u16,
+                    ),
+                    image_size: (config.height as f32) * 0.65,
+                    text_summary_paddings: iced::Padding {
+                        top: 0.0,
+                        bottom: 0.0,
+                        left: (config.height as f32 * 0.05) + (config.height as f32 * 0.01),
+                        right: 0.0,
+                    },
+                    text_body_paddings: iced::Padding {
+                        top: 0.0,
+                        bottom: 0.0,
+                        left: config.height as f32 * 0.05,
+                        right: 0.0,
+                    },
+                    text_paddings_block: iced::Padding {
+                        top: config.height as f32 * 0.1,
+                        bottom: config.height as f32 * 0.1,
+                        left: config.height as f32 * 0.15,
+                        right: 0.0,
+                    },
+                },
             },
             Command::none(),
         )
@@ -254,38 +286,16 @@ impl MultiApplication for NotificationCenter {
                         config.local_expire_timeout
                     };
 
-                // precalculation of font sizes to avoid recalculating them every frame(view) update
-                // TODO: ajust formulas here after figuring out propper grid layout and proportions
-                let precalc = PreCalc {
-                    font_size_summary: std::cmp::min(
-                        (config.height as f32 * 0.24) as u16,
-                        (config.width as f32 * 0.053) as u16,
-                    ),
-                    font_size_body: std::cmp::min(
-                        (config.height as f32 * 0.17) as u16,
-                        (config.width as f32 * 0.037) as u16,
-                    ),
-                    image_size: (config.height as f32) * 0.75,
-                    image_path: config.default_icon_dir.join("default.svg"),
-                    text_summary_paddings: iced::Padding {
-                        top: 0.0,
-                        bottom: 0.0,
-                        left: (config.height as f32 * 0.05) + (config.height as f32 * 0.01),
-                        right: 0.0,
-                    },
-                    text_body_paddings: iced::Padding {
-                        top: 0.0,
-                        bottom: 0.0,
-                        left: config.height as f32 * 0.05,
-                        right: 0.0,
-                    },
-                    text_paddings_block: iced::Padding {
-                        top: config.height as f32 * 0.1,
-                        bottom: config.height as f32 * 0.1,
-                        left: config.height as f32 * 0.15,
-                        right: 0.0,
-                    },
+                let icons = crate::data::shared_data::ICONS.lock().unwrap();
+                //find icon by key
+                let icon_name = if !notification.app_icon.is_empty() {
+                    notification.app_icon.clone()
+                } else if !notification.app_name.is_empty() {
+                    notification.app_name.clone().to_lowercase()
+                } else {
+                    "default".to_string()
                 };
+                let icon = icons.get(&icon_name);
 
                 Command::batch([
                     overflow,
@@ -307,7 +317,13 @@ impl MultiApplication for NotificationCenter {
                         },
                         info: WindowInfo {
                             notification: notification,
-                            precalc: precalc,
+                            icon: if let Some(icon) = icon {
+                                icon.clone()
+                            } else {
+                                std::path::PathBuf::from(
+                                    std::env::var("HOME").unwrap() + "/.config/rs-nc/default.svg",
+                                )
+                            },
                         },
                     }),
                     Command::perform(Self::sleep_timer(timeout.try_into().unwrap()), move |_| {
@@ -323,23 +339,23 @@ impl MultiApplication for NotificationCenter {
         if let Some(window_info) = self.id_info(id) {
             return iced::widget::container(
                 iced::widget::row![
-                    iced::widget::svg(window_info.precalc.image_path)
-                        .width(iced::Length::Fixed(window_info.precalc.image_size as f32))
-                        .height(iced::Length::Fixed(window_info.precalc.image_size as f32)),
+                    iced::widget::svg(window_info.icon.clone())
+                        .width(iced::Length::Fixed(self.precalc.image_size as f32))
+                        .height(iced::Length::Fixed(self.precalc.image_size as f32)),
                     iced::widget::column![
                         iced::widget::column![iced::widget::text(
                             window_info.notification.summary.clone()
                         )
-                        .size(window_info.precalc.font_size_summary)
+                        .size(self.precalc.font_size_summary)
                         .align_x(iced::alignment::Horizontal::Left),]
-                        .padding(window_info.precalc.text_summary_paddings),
+                        .padding(self.precalc.text_summary_paddings),
                         iced::widget::column![iced::widget::text(
                             window_info.notification.body.clone()
                         )
-                        .size(window_info.precalc.font_size_body),]
-                        .padding(window_info.precalc.text_body_paddings),
+                        .size(self.precalc.font_size_body),]
+                        .padding(self.precalc.text_body_paddings),
                     ]
-                    .padding(window_info.precalc.text_paddings_block)
+                    .padding(self.precalc.text_paddings_block)
                 ]
                 .align_y(iced::alignment::Vertical::Center)
                 .width(iced::Length::Fill)
