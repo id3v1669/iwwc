@@ -17,6 +17,7 @@ pub fn gen_ui() -> Result<(), iced_layershell::Error> {
             layer: Layer::Overlay,
             margin: (10, 10, 10, 10),
             keyboard_interactivity: KeyboardInteractivity::None,
+            start_mode: iced_layershell::settings::StartMode::Background,
             ..Default::default()
         },
         antialiasing: false,
@@ -285,9 +286,8 @@ impl MultiApplication for NotificationCenter {
                     } else {
                         config.local_expire_timeout
                     };
-
                 let icons = crate::data::shared_data::ICONS.lock().unwrap();
-                //find icon by key
+
                 let icon_name = if !notification.app_icon.is_empty() {
                     notification.app_icon.clone()
                 } else if !notification.app_name.is_empty() {
@@ -295,7 +295,13 @@ impl MultiApplication for NotificationCenter {
                 } else {
                     "default".to_string()
                 };
-                let icon = icons.get(&icon_name);
+                let icon = if let Some(icon) = icons.get(&icon_name) {
+                    icon.clone()
+                } else {
+                    std::path::PathBuf::from(
+                        std::env::var("HOME").unwrap() + "/.config/rs-nc/default.svg",
+                    )
+                };
 
                 Command::batch([
                     overflow,
@@ -317,13 +323,7 @@ impl MultiApplication for NotificationCenter {
                         },
                         info: WindowInfo {
                             notification: notification,
-                            icon: if let Some(icon) = icon {
-                                icon.clone()
-                            } else {
-                                std::path::PathBuf::from(
-                                    std::env::var("HOME").unwrap() + "/.config/rs-nc/default.svg",
-                                )
-                            },
+                            icon: icon,
                         },
                     }),
                     Command::perform(Self::sleep_timer(timeout.try_into().unwrap()), move |_| {
