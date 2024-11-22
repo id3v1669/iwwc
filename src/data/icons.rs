@@ -71,11 +71,10 @@ pub fn get_system_icons_paths() -> std::collections::HashMap<String, std::path::
 
     if let Some(folders) = find_folders_recursively(&icons_dir.unwrap().into(), "apps") {
         for folder in folders {
-            find_icons_recursively(&folder.into()).map(|mut i| icons.extend(i));
+            find_icons_recursively(&folder.into()).map(|i| icons.extend(i));
         }
     }
-
-    return icons;
+    icons
 }
 
 fn find_folders_recursively(
@@ -123,7 +122,7 @@ fn find_icons_recursively(
                 }
             }
         } else if entry.file_type().unwrap().is_dir() {
-            if let Some(mut sub_icons) = find_icons_recursively(&entry.path()) {
+            if let Some(sub_icons) = find_icons_recursively(&entry.path()) {
                 icons.extend(sub_icons);
             }
         }

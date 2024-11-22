@@ -5,17 +5,18 @@ WIP
 
 TODO:
 1) rework folder structure and filenames
-2) add icons(get path with gtk)
-3) add config for styles(json?)
+2) optimise way of retrieving icons
+3) add config file(json?)
 5) create notification center
-6) adjust max ammount of notifications logic to handle limit per screen
-7) variable to choose screen for notifications
-8) adjust Notification struct to support hints.
-9) animations?
-10) kill the app on unsuccessfull
-11) create a default logo for the app(for testing borrowed random linux svg)
-12) nix module
-13) ...
+6) adjust max ammount of notifications logic to handle limit from screen size
+7) adjust Notification struct to support hints.
+8) animations?
+9) create a default logo for the app(for testing borrowed random linux svg)
+10) nix module
+11) figure out why intel+nvidia/amd+amd 450/170 ram usage
+12) fix handling notifications on multiple screens(either separate margines for each screen or pick single screen for notifications)
+13) optimise memory usage for iced itself?
+14) ...
 
 
 # Notes
