@@ -73,7 +73,7 @@ impl NotificationCenter {
     }
     fn iced_container_style() -> iced::widget::container::Style {
         let config = crate::data::shared_data::CONFIG.lock().unwrap();
-        return iced::widget::container::Style {
+        iced::widget::container::Style {
             text_color: Some(config.primary_text_color),
             border: iced::Border {
                 color: config.border_color,
@@ -87,7 +87,7 @@ impl NotificationCenter {
                 blur_radius: 0.0,
             },
             background: Some(iced::Background::Color(config.background_color)),
-        };
+        }
     }
 }
 
@@ -367,15 +367,14 @@ impl MultiApplication for NotificationCenter {
             .height(iced::Length::Fill)
             .style(move |_| NotificationCenter::iced_container_style())
             .into();
-        } else {
-            return iced::widget::container("ss")
-                .padding(10)
-                .center(800)
-                .width(iced::Length::Fill)
-                .height(iced::Length::Fill)
-                .style(move |_| NotificationCenter::iced_container_style())
-                .into();
         }
+        iced::widget::container("ss")
+            .padding(10)
+            .center(800)
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill)
+            .style(move |_| NotificationCenter::iced_container_style())
+            .into()
     }
 
     fn style(&self, _theme: &Self::Theme) -> iced_layershell::Appearance {
