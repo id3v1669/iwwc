@@ -1,0 +1,11 @@
+[Install]
+WantedBy=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/rs-nc -D
+Restart=on-failure
+
+[Unit]
+After=graphical-session-pre.target
+PartOf=graphical-session.target
+Description=Notification Daemon
