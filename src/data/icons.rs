@@ -1,5 +1,3 @@
-use std::io::Write;
-
 fn default_icon() {
     const DEFAULT_ICON: &[u8] = include_bytes!("../../assets/testing/default.svg");
 

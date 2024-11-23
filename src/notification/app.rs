@@ -35,6 +35,7 @@ struct NotificationCenter {
 
 #[derive(Debug, Clone, PartialEq)]
 struct PreCalc {
+    general_padding: u16,
     font_size_summary: u16,
     font_size_body: u16,
     image_size: f32,
@@ -106,13 +107,17 @@ impl MultiApplication for NotificationCenter {
                 // precalculation of font sizes to avoid recalculating them every frame(view) update
                 // TODO: ajust formulas here after figuring out propper grid layout and proportions
                 precalc: PreCalc {
+                    general_padding: std::cmp::min(
+                        (config.height as f32 * 0.15) as u16,
+                        (config.width as f32 * 0.03) as u16,
+                    ),
                     font_size_summary: std::cmp::min(
                         (config.height as f32 * 0.24) as u16,
-                        (config.width as f32 * 0.053) as u16,
+                        (((config.width as f32) - ((config.height as f32) * 0.65)) * 0.06) as u16,
                     ),
                     font_size_body: std::cmp::min(
                         (config.height as f32 * 0.17) as u16,
-                        (config.width as f32 * 0.037) as u16,
+                        (((config.width as f32) - ((config.height as f32) * 0.65)) * 0.042) as u16,
                     ),
                     image_size: (config.height as f32) * 0.65,
                     text_summary_paddings: iced::Padding {
@@ -361,8 +366,7 @@ impl MultiApplication for NotificationCenter {
                 .width(iced::Length::Fill)
                 .height(iced::Length::Fill),
             )
-            .padding(10)
-            .center(800)
+            .padding(self.precalc.general_padding)
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
             .style(move |_| NotificationCenter::iced_container_style())
