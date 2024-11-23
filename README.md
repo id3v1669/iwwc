@@ -6,19 +6,16 @@ WIP
 TODO:
 1) rework folder structure and filenames
 2) optimise way of retrieving icons
-3) add config file(json?)
-4) create notification center
-5) adjust max ammount of notifications logic to handle limit from screen size
-6) adjust Notification struct to support hints.
-7) animations?
-8) create a default logo for the app(for testing borrowed random linux svg)
-9) nix module
-10) figure out why intel+nvidia/amd+amd 450/170 ram usage
-11) fix handling notifications on multiple screens(either separate margines for each screen or pick single screen for notifications)
-12) optimise memory usage for iced itself?
-13) ...
+3) create notification center
+4) adjust max ammount of notifications logic to handle limit from screen size
+5) adjust Notification struct to support hints.
+6) create a default logo for the app(for testing borrowed random linux svg)
+7) nix module
+8) fix handling notifications on multiple screens(either separate margins for each screen or pick single screen for notifications)
+9) ...
 
 
 # Notes
 
-* nvidia moment - use flag -n to avoid crashing on vulkan (corners will not be round)
+* Nvidia moment - use flag -n to avoid crashing on vulkan (corners will not be round)
+* Ram usage depends on hardware. For example intel+nvidia 450-500mb, amd+amd 150-200mb. As far as I know cannot be fixed as it is something with iced itself and wgpu backend.

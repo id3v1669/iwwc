@@ -195,7 +195,7 @@ impl Config {
                 "border_radius" => {
                     let nvidia_sucks = crate::data::shared_data::NVIDIA_SUCKS.lock().unwrap();
                     if *nvidia_sucks {
-                        log::warn!("Nvidia moment, gl backend is used, border_radius is ignored");
+                        log::warn!("Nvidia moment, gl backend is used, border_radius is ignored and set to 0");
                         continue;
                     }
                     config.border_radius = iced::border::radius(match value.parse() {
