@@ -200,7 +200,6 @@ impl Config {
                     }
                     config.border_radius = iced::border::radius(match value.parse() {
                         Ok(value) => {
-                            println!("value: {}", value);
                             value
                         }
                         Err(e) => {

@@ -14,8 +14,11 @@ pkgs.mkShell {
     gdk-pixbuf
     atkmm
 
+    libxkbcommon
+
     # other
-    gtk3
+    wayland
+    wayland-protocols
     dbus
     xorg.libX11
     xorg.libXcursor
@@ -31,5 +34,11 @@ pkgs.mkShell {
     rustfmt
   ];
 
-  LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (with pkgs; [ vulkan-loader xorg.libX11 libxkbcommon wayland ])}";
+  LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (with pkgs; [
+    vulkan-loader
+    xorg.libX11
+    libxkbcommon
+    wayland
+    wayland-protocols
+  ])}";
 }

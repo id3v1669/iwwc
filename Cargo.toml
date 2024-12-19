@@ -19,12 +19,11 @@ serde = { version = "1.0", features = ["derive"] }
 zbus = "4.4.0"
 
 # frontend deps
-iced = { git = "https://github.com/iced-rs/iced.git", rev = "2a2e20b0a35bcf4da9ac34ab2f664485c4e1dbe3" , features = [
+iced = { git = "https://github.com/iced-rs/iced.git", rev = "f2c9b6b2ffc50d67d9789e77cb55eeb2a0ebe470" , features = [
 	"tokio",
 	"svg",
 ]}
-iced_layershell = { git = "https://github.com/id3v1669/exwlshelleventloop.git", rev = "7f70409a14e2a9d13a07e06c04982993f965f7c0" }
-
+iced_layershell = { git = "https://github.com/id3v1669/exwlshelleventloop.git", rev = "44644c14d02ff39c70c13a93c5f272094a55b1e5" }
 futures = "0.3.30"
 
 

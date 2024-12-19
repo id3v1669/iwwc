@@ -11,12 +11,13 @@ use crate::notification::nf_handler::NotificationHandler;
 pub fn gen_ui() -> Result<(), iced_layershell::Error> {
     let settings = Settings {
         layer_settings: LayerShellSettings {
-            size: Some((50, 50)),
-            exclusive_zone: 0,
-            anchor: Anchor::Bottom | Anchor::Left,
+            anchor: Anchor::Top | Anchor::Right,
             layer: Layer::Overlay,
+            exclusive_zone: 0,
+            size: Some((50, 50)),
             margin: (10, 10, 10, 10),
             keyboard_interactivity: KeyboardInteractivity::None,
+            //start_mode: iced_layershell::settings::StartMode::TargetScreen("DP-3".to_string()), 
             start_mode: iced_layershell::settings::StartMode::Background,
             ..Default::default()
         },
@@ -50,7 +51,7 @@ struct WindowInfo {
     icon: std::path::PathBuf,
 }
 
-#[to_layer_message(multi, info_name = "WindowInfo")]
+#[to_layer_message(multi)]
 #[derive(Debug, Clone)]
 pub enum Message {
     Close(iced::window::Id),
@@ -90,6 +91,13 @@ impl NotificationCenter {
             background: Some(iced::Background::Color(config.background_color)),
         }
     }
+    fn id_info(&self, id: iced::window::Id) -> Option<WindowInfo> {
+        self.ids.get(&id).cloned()
+    }
+
+    fn set_id_info(&mut self, id: iced::window::Id, info: WindowInfo) {
+        self.ids.insert(id, info);
+    }
 }
 
 impl MultiApplication for NotificationCenter {
@@ -97,7 +105,6 @@ impl MultiApplication for NotificationCenter {
     type Flags = ();
     type Theme = Theme;
     type Executor = iced::executor::Default;
-    type WindowInfo = WindowInfo;
 
     fn new(_flags: ()) -> (Self, Command<Message>) {
         let config = crate::data::shared_data::CONFIG.lock().unwrap();
@@ -142,14 +149,6 @@ impl MultiApplication for NotificationCenter {
             },
             Command::none(),
         )
-    }
-
-    fn id_info(&self, id: iced::window::Id) -> Option<Self::WindowInfo> {
-        self.ids.get(&id).cloned()
-    }
-
-    fn set_id_info(&mut self, id: iced::window::Id, info: Self::WindowInfo) {
-        self.ids.insert(id, info);
     }
 
     fn remove_id(&mut self, id: iced::window::Id) {
@@ -324,11 +323,16 @@ impl MultiApplication for NotificationCenter {
                                 config.horizontal_margin,
                             )),
                             keyboard_interactivity: KeyboardInteractivity::None,
+                            // would've used flag if it wasnt broken
+                            // Message::ForgetLastOutput was used for this, but issue seems to be with implementation itself as 
+                            // notifications allways appear on second screen instead of last used
+                            use_last_output: false,
                             ..Default::default()
                         },
-                        info: WindowInfo {
-                            notification: notification,
-                            icon: icon,
+                        id: {
+                            let id = iced::window::Id::unique();
+                            self.set_id_info(id, WindowInfo { notification, icon });
+                            id
                         },
                     }),
                     Command::perform(Self::sleep_timer(timeout.try_into().unwrap()), move |_| {
