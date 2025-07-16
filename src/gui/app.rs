@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
-use iced::{Color, Element, Task as Command, Theme};
+use iced::{Color, Element, Task};
+use iced_layershell::build_pattern::daemon;
 use iced_layershell::reexport::{Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings};
 use iced_layershell::settings::{LayerShellSettings, Settings};
 use iced_layershell::to_layer_message;
-use iced_layershell::MultiApplication;
 
-use crate::notification::nf_handler::NotificationHandler;
+use crate::handler::notification::NotificationHandler;
 
-pub fn gen_ui() -> Result<(), iced_layershell::Error> {
+pub fn start() -> Result<(), iced_layershell::Error> {
     let settings = Settings {
         layer_settings: LayerShellSettings {
             anchor: Anchor::Top | Anchor::Right,
@@ -17,37 +17,36 @@ pub fn gen_ui() -> Result<(), iced_layershell::Error> {
             size: Some((50, 50)),
             margin: (10, 10, 10, 10),
             keyboard_interactivity: KeyboardInteractivity::None,
-            //start_mode: iced_layershell::settings::StartMode::TargetScreen("DP-3".to_string()), 
+            //start_mode: iced_layershell::settings::StartMode::TargetScreen("DP-3".to_string()),
             start_mode: iced_layershell::settings::StartMode::Background,
             ..Default::default()
         },
-        antialiasing: false,
+        //antialiasing: false,
         ..Default::default()
     };
-    let _ = NotificationCenter::run(settings);
-
-    Ok(())
+    daemon(
+        IcedWaylandWidgetCenter::new,
+        "IcedWaylandWidgetCenter",
+        IcedWaylandWidgetCenter::update,
+        IcedWaylandWidgetCenter::view,
+    )
+    .subscription(IcedWaylandWidgetCenter::subscription)
+    .style(|_state, _theme| iced::theme::Style {
+        background_color: Color::TRANSPARENT,
+        text_color: Color::TRANSPARENT,
+    })
+    .settings(settings)
+    .run()
 }
 
-struct NotificationCenter {
+struct IcedWaylandWidgetCenter {
     ids: HashMap<iced::window::Id, WindowInfo>,
-    precalc: PreCalc,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct PreCalc {
-    general_padding: u16,
-    font_size_summary: u16,
-    font_size_body: u16,
-    image_size: f32,
-    text_summary_paddings: iced::Padding,
-    text_body_paddings: iced::Padding,
-    text_paddings_block: iced::Padding,
+    precalc: crate::data::notification::PreCalc,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 struct WindowInfo {
-    notification: crate::data::nf_struct::Notification,
+    notification: crate::data::notification::Notification,
     icon: std::path::PathBuf,
 }
 
@@ -58,108 +57,21 @@ pub enum Message {
     CloseByContentId(u32),
     TestMessage,
     MoveNotifications,
-    Notify(crate::data::nf_struct::Notification),
+    Notify(crate::data::notification::Notification),
 }
 
-impl NotificationCenter {
-    async fn sleep_timer(sleep_time: u64) {
-        tokio::time::sleep(std::time::Duration::from_secs(sleep_time)).await;
-    }
-    fn window_id(&self, notification_id: u32) -> Option<&iced::window::Id> {
-        for (k, v) in self.ids.iter() {
-            if notification_id == v.notification.notification_id {
-                return Some(k);
-            }
-        }
-        None
-    }
-    fn iced_container_style() -> iced::widget::container::Style {
-        let config = crate::data::shared_data::CONFIG.lock().unwrap();
-        iced::widget::container::Style {
-            text_color: Some(config.primary_text_color),
-            border: iced::Border {
-                color: config.border_color,
-                width: config.border_width,
-                radius: config.border_radius,
-            },
-            shadow: iced::Shadow {
-                //has to be here as empty shadow is not allowed and no paddings yet to make it visible
-                color: Color::TRANSPARENT,
-                offset: iced::Vector { x: 0.0, y: 0.0 },
-                blur_radius: 0.0,
-            },
-            background: Some(iced::Background::Color(config.background_color)),
-        }
-    }
-    fn id_info(&self, id: iced::window::Id) -> Option<WindowInfo> {
-        self.ids.get(&id).cloned()
-    }
-
-    fn set_id_info(&mut self, id: iced::window::Id, info: WindowInfo) {
-        self.ids.insert(id, info);
-    }
-}
-
-impl MultiApplication for NotificationCenter {
-    type Message = Message;
-    type Flags = ();
-    type Theme = Theme;
-    type Executor = iced::executor::Default;
-
-    fn new(_flags: ()) -> (Self, Command<Message>) {
-        let config = crate::data::shared_data::CONFIG.lock().unwrap();
+impl IcedWaylandWidgetCenter {
+    fn new() -> (Self, Task<Message>) {
         (
             Self {
                 ids: HashMap::new(),
-                // precalculation of font sizes to avoid recalculating them every frame(view) update
-                // TODO: ajust formulas here after figuring out propper grid layout and proportions
-                precalc: PreCalc {
-                    general_padding: std::cmp::min(
-                        (config.height as f32 * 0.15) as u16,
-                        (config.width as f32 * 0.03) as u16,
-                    ),
-                    font_size_summary: std::cmp::min(
-                        (config.height as f32 * 0.24) as u16,
-                        (((config.width as f32) - ((config.height as f32) * 0.65)) * 0.06) as u16,
-                    ),
-                    font_size_body: std::cmp::min(
-                        (config.height as f32 * 0.17) as u16,
-                        (((config.width as f32) - ((config.height as f32) * 0.65)) * 0.042) as u16,
-                    ),
-                    image_size: (config.height as f32) * 0.65,
-                    text_summary_paddings: iced::Padding {
-                        top: 0.0,
-                        bottom: 0.0,
-                        left: (config.height as f32 * 0.05) + (config.height as f32 * 0.01),
-                        right: 0.0,
-                    },
-                    text_body_paddings: iced::Padding {
-                        top: 0.0,
-                        bottom: 0.0,
-                        left: config.height as f32 * 0.05,
-                        right: 0.0,
-                    },
-                    text_paddings_block: iced::Padding {
-                        top: config.height as f32 * 0.1,
-                        bottom: config.height as f32 * 0.1,
-                        left: config.height as f32 * 0.15,
-                        right: 0.0,
-                    },
-                },
+                precalc: crate::data::notification::PreCalc::generate(),
             },
-            Command::none(),
+            Task::none(),
         )
     }
 
-    fn remove_id(&mut self, id: iced::window::Id) {
-        self.ids.remove(&id);
-    }
-
-    fn namespace(&self) -> String {
-        String::from("NotificationCenter")
-    }
-
-    fn subscription(&self) -> iced::Subscription<Self::Message> {
+    fn subscription(&self) -> iced::Subscription<Message> {
         iced::Subscription::batch([
             iced::Subscription::run(|| {
                 iced::stream::channel(100, |sender| async move {
@@ -175,7 +87,7 @@ impl MultiApplication for NotificationCenter {
                     let _connection = match builder.build().await {
                         Ok(connection) => connection,
                         Err(e) => {
-                            log::error!("Failed to build the connection: {}", e);
+                            log::error!("Failed to build the connection: {e}");
                             std::process::exit(1);
                         }
                     };
@@ -192,18 +104,17 @@ impl MultiApplication for NotificationCenter {
         ])
     }
 
-    fn update(&mut self, message: Message) -> Command<Message> {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Close(id) => {
-                let mut active_notifications = crate::data::shared_data::ACTIVE_NOTIFICATIONS
-                    .lock()
-                    .unwrap();
+                let mut active_notifications =
+                    crate::data::shared::ACTIVE_NOTIFICATIONS.lock().unwrap();
                 let info = self.id_info(id).unwrap();
 
                 //TODO rework this method to reverce cycle, to eliminate use of find
                 if let Some((&key, _)) = active_notifications
                     .iter()
-                    .find(|(_, &value)| value == info.notification.notification_id)
+                    .find(|&(_, &value)| value == info.notification.notification_id)
                 {
                     let pre_last = (active_notifications.len() - 1) as i32;
                     for i in key..=pre_last {
@@ -214,24 +125,23 @@ impl MultiApplication for NotificationCenter {
                     active_notifications.remove(&(pre_last + 1));
                 }
 
-                Command::batch([
-                    Command::done(Message::RemoveWindow(id)),
-                    Command::done(Message::MoveNotifications),
+                Task::batch([
+                    Task::done(Message::RemoveWindow(id)),
+                    Task::done(Message::MoveNotifications),
                 ])
             }
             Message::CloseByContentId(notification_id) => {
                 if let Some(id) = self.window_id(notification_id) {
-                    return Command::done(Message::Close(*id));
+                    return Task::done(Message::Close(*id));
                 }
-                Command::none()
+                Task::none()
             }
             Message::MoveNotifications => {
-                let config = crate::data::shared_data::CONFIG.lock().unwrap();
+                let config = crate::data::shared::CONFIG.lock().unwrap();
 
-                let active_notifications = crate::data::shared_data::ACTIVE_NOTIFICATIONS
-                    .lock()
-                    .unwrap();
-                let mut move_notifications: Vec<Command<Message>> = Vec::new();
+                let active_notifications =
+                    crate::data::shared::ACTIVE_NOTIFICATIONS.lock().unwrap();
+                let mut move_notifications: Vec<Task<Message>> = Vec::new();
 
                 for (position_in_q, id_in_q) in active_notifications.clone() {
                     if let Some(id) = self.window_id(id_in_q) {
@@ -240,7 +150,7 @@ impl MultiApplication for NotificationCenter {
                                 + (config.vertical_margin * (position_in_q - 1))
                                 + config.vertical_margin
                         };
-                        move_notifications.push(Command::done(Message::MarginChange {
+                        move_notifications.push(Task::done(Message::MarginChange {
                             id: *id,
                             margin: (
                                 offset,
@@ -252,25 +162,24 @@ impl MultiApplication for NotificationCenter {
                     }
                 }
 
-                if move_notifications.len() > 0 {
-                    return Command::batch(move_notifications);
+                if !move_notifications.is_empty() {
+                    return Task::batch(move_notifications);
                 }
-                Command::none()
+                Task::none()
             }
             Message::TestMessage => {
                 println!("TestMessage");
-                Command::none()
+                Task::none()
             }
             Message::Notify(notification) => {
-                let mut overflow = Command::none();
-                let id = notification.notification_id.clone();
-                let config = crate::data::shared_data::CONFIG.lock().unwrap();
-                let mut active_notifications = crate::data::shared_data::ACTIVE_NOTIFICATIONS
-                    .lock()
-                    .unwrap();
+                let mut overflow = Task::none();
+                let id = notification.notification_id;
+                let config = crate::data::shared::CONFIG.lock().unwrap();
+                let mut active_notifications =
+                    crate::data::shared::ACTIVE_NOTIFICATIONS.lock().unwrap();
                 let active_notifications_count = active_notifications.len() as i32;
                 if let Some(id_last) = active_notifications.get(&config.max_notifications) {
-                    overflow = Command::done(Message::CloseByContentId(*id_last));
+                    overflow = Task::done(Message::CloseByContentId(*id_last));
                 }
                 for i in
                     (1..=std::cmp::min(active_notifications_count, config.max_notifications - 1))
@@ -290,7 +199,7 @@ impl MultiApplication for NotificationCenter {
                     } else {
                         config.local_expire_timeout
                     };
-                let icons = crate::data::shared_data::ICONS.lock().unwrap();
+                let icons = crate::data::shared::ICONS.lock().unwrap();
 
                 let icon_name = if !notification.app_icon.is_empty() {
                     notification.app_icon.clone()
@@ -307,10 +216,10 @@ impl MultiApplication for NotificationCenter {
                     )
                 };
 
-                Command::batch([
+                Task::batch([
                     overflow,
-                    Command::done(Message::MoveNotifications),
-                    Command::done(Message::NewLayerShell {
+                    Task::done(Message::MoveNotifications),
+                    Task::done(Message::NewLayerShell {
                         settings: NewLayerShellSettings {
                             size: Some((config.width, config.height)),
                             exclusive_zone: None,
@@ -324,9 +233,9 @@ impl MultiApplication for NotificationCenter {
                             )),
                             keyboard_interactivity: KeyboardInteractivity::None,
                             // would've used flag if it wasnt broken
-                            // Message::ForgetLastOutput was used for this, but issue seems to be with implementation itself as 
+                            // Message::ForgetLastOutput was used for this, but issue seems to be with implementation itself as
                             // notifications allways appear on second screen instead of last used
-                            use_last_output: false,
+                            output_option: iced_layershell::reexport::OutputOption::LastOutput,
                             ..Default::default()
                         },
                         id: {
@@ -335,7 +244,7 @@ impl MultiApplication for NotificationCenter {
                             id
                         },
                     }),
-                    Command::perform(Self::sleep_timer(timeout.try_into().unwrap()), move |_| {
+                    Task::perform(Self::sleep_timer(timeout.try_into().unwrap()), move |_| {
                         Message::CloseByContentId(id)
                     }),
                 ])
@@ -349,19 +258,19 @@ impl MultiApplication for NotificationCenter {
             return iced::widget::container(
                 iced::widget::row![
                     iced::widget::svg(window_info.icon.clone())
-                        .width(iced::Length::Fixed(self.precalc.image_size as f32))
-                        .height(iced::Length::Fixed(self.precalc.image_size as f32)),
+                        .width(iced::Length::Fixed(self.precalc.image_size))
+                        .height(iced::Length::Fixed(self.precalc.image_size)),
                     iced::widget::column![
-                        iced::widget::column![iced::widget::text(
-                            window_info.notification.summary.clone()
-                        )
-                        .size(self.precalc.font_size_summary)
-                        .align_x(iced::alignment::Horizontal::Left),]
+                        iced::widget::column![
+                            iced::widget::text(window_info.notification.summary.clone())
+                                .size(self.precalc.font_size_summary)
+                                .align_x(iced::alignment::Horizontal::Left),
+                        ]
                         .padding(self.precalc.text_summary_paddings),
-                        iced::widget::column![iced::widget::text(
-                            window_info.notification.body.clone()
-                        )
-                        .size(self.precalc.font_size_body),]
+                        iced::widget::column![
+                            iced::widget::text(window_info.notification.body.clone())
+                                .size(self.precalc.font_size_body),
+                        ]
                         .padding(self.precalc.text_body_paddings),
                     ]
                     .padding(self.precalc.text_paddings_block)
@@ -373,7 +282,7 @@ impl MultiApplication for NotificationCenter {
             .padding(self.precalc.general_padding)
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
-            .style(move |_| NotificationCenter::iced_container_style())
+            .style(move |_| crate::gui::elements::style::notification_style())
             .into();
         }
         iced::widget::container("ss")
@@ -381,14 +290,29 @@ impl MultiApplication for NotificationCenter {
             .center(800)
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
-            .style(move |_| NotificationCenter::iced_container_style())
+            .style(move |_| crate::gui::elements::style::notification_style())
             .into()
     }
 
-    fn style(&self, _theme: &Self::Theme) -> iced_layershell::Appearance {
-        iced_layershell::Appearance {
-            background_color: Color::TRANSPARENT,
-            text_color: Color::TRANSPARENT,
+    // Style method is now handled in the daemon builder chain above
+
+    async fn sleep_timer(sleep_time: u64) {
+        tokio::time::sleep(std::time::Duration::from_secs(sleep_time)).await;
+    }
+    fn window_id(&self, notification_id: u32) -> Option<&iced::window::Id> {
+        for (k, v) in self.ids.iter() {
+            if notification_id == v.notification.notification_id {
+                return Some(k);
+            }
         }
+        None
+    }
+
+    fn id_info(&self, id: iced::window::Id) -> Option<WindowInfo> {
+        self.ids.get(&id).cloned()
+    }
+
+    fn set_id_info(&mut self, id: iced::window::Id, info: WindowInfo) {
+        self.ids.insert(id, info);
     }
 }

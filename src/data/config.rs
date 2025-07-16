@@ -18,7 +18,7 @@ pub struct Config {
 }
 impl Config {
     pub fn default() -> Self {
-        let nvidia_sucks = crate::data::shared_data::NVIDIA_SUCKS.lock().unwrap();
+        let nvidia_sucks = crate::data::shared::NVIDIA_SUCKS.lock().unwrap();
         Config {
             respect_notification_timeout: true,
             local_expire_timeout: 7,
@@ -53,14 +53,14 @@ impl Config {
             let key = match splited.next() {
                 Some(key) => key.trim(),
                 None => {
-                    log::warn!("Incorrect line in config file: {}", line);
+                    log::warn!("Incorrect line in config file: {line}");
                     continue;
                 }
             };
             let value = match splited.next() {
                 Some(value) => value.trim(),
                 None => {
-                    log::warn!("Incorrect line in config file: {}", line);
+                    log::warn!("Incorrect line in config file: {line}");
                     continue;
                 }
             };
@@ -70,10 +70,7 @@ impl Config {
                         "true" => true,
                         "false" => false,
                         _ => {
-                            log::warn!(
-                                "Incorrect value for respect_notification_timeout: {}",
-                                value
-                            );
+                            log::warn!("Incorrect value for respect_notification_timeout: {value}");
                             log::warn!(
                                 "Using default value: {}",
                                 config.respect_notification_timeout
@@ -93,7 +90,7 @@ impl Config {
                             value
                         }
                         Err(e) => {
-                            log::warn!("Incorrect value for local_expire_timeout: {}", e);
+                            log::warn!("Incorrect value for local_expire_timeout: {e}");
                             log::warn!("Using default value: {}", config.local_expire_timeout);
                             continue;
                         }
@@ -110,7 +107,7 @@ impl Config {
                             value
                         }
                         Err(e) => {
-                            log::warn!("Incorrect value for max_notifications: {}", e);
+                            log::warn!("Incorrect value for max_notifications: {e}");
                             log::warn!("Using default value: {}", config.max_notifications);
                             continue;
                         }
@@ -119,7 +116,7 @@ impl Config {
                 "height" => {
                     config.height = match value.parse() {
                         Ok(value) => {
-                            if value <= 0 {
+                            if value == 0 {
                                 log::warn!("Value for height must be greater than 0");
                                 log::warn!("Using default value: {}", config.height);
                                 continue;
@@ -130,7 +127,7 @@ impl Config {
                             value
                         }
                         Err(e) => {
-                            log::warn!("Incorrect value for height: {}", e);
+                            log::warn!("Incorrect value for height: {e}");
                             log::warn!("Using default value: {}", config.height);
                             continue;
                         }
@@ -139,7 +136,7 @@ impl Config {
                 "width" => {
                     config.width = match value.parse() {
                         Ok(value) => {
-                            if value <= 0 {
+                            if value == 0 {
                                 log::warn!("Value for width must be greater than 0");
                                 log::warn!("Using default value: {}", config.width);
                                 continue;
@@ -150,7 +147,7 @@ impl Config {
                             value
                         }
                         Err(e) => {
-                            log::warn!("Incorrect value for width: {}", e);
+                            log::warn!("Incorrect value for width: {e}");
                             log::warn!("Using default value: {}", config.width);
                             continue;
                         }
@@ -169,7 +166,7 @@ impl Config {
                             value
                         }
                         Err(e) => {
-                            log::warn!("Incorrect value for vertical_margin: {}", e);
+                            log::warn!("Incorrect value for vertical_margin: {e}");
                             log::warn!("Using default value: {}", config.vertical_margin);
                             continue;
                         }
@@ -179,31 +176,33 @@ impl Config {
                     config.horizontal_margin = match value.parse() {
                         Ok(value) => {
                             if value < 0 {
-                                log::warn!("Value for horizontal_margin must be greater than or equal to 0");
+                                log::warn!(
+                                    "Value for horizontal_margin must be greater than or equal to 0"
+                                );
                                 log::warn!("Using default value: {}", config.horizontal_margin);
                                 continue;
                             }
                             value
                         }
                         Err(e) => {
-                            log::warn!("Incorrect value for horizontal_margin: {}", e);
+                            log::warn!("Incorrect value for horizontal_margin: {e}");
                             log::warn!("Using default value: {}", config.horizontal_margin);
                             continue;
                         }
                     };
                 }
                 "border_radius" => {
-                    let nvidia_sucks = crate::data::shared_data::NVIDIA_SUCKS.lock().unwrap();
+                    let nvidia_sucks = crate::data::shared::NVIDIA_SUCKS.lock().unwrap();
                     if *nvidia_sucks {
-                        log::warn!("Nvidia moment, gl backend is used, border_radius is ignored and set to 0");
+                        log::warn!(
+                            "Nvidia moment, gl backend is used, border_radius is ignored and set to 0"
+                        );
                         continue;
                     }
                     config.border_radius = iced::border::radius(match value.parse() {
-                        Ok(value) => {
-                            value
-                        }
+                        Ok(value) => value,
                         Err(e) => {
-                            log::warn!("Incorrect value for border_radius: {}", e);
+                            log::warn!("Incorrect value for border_radius: {e}");
                             log::warn!("Using default value: {}", config.border_radius.top_left);
                             config.border_radius.top_left
                         }
@@ -213,7 +212,7 @@ impl Config {
                     config.border_color = if let Some(color) = iced::Color::parse(value) {
                         color
                     } else {
-                        log::warn!("Incorrect value for border_color: {}", value);
+                        log::warn!("Incorrect value for border_color: {value}");
                         log::warn!("Using default value"); // TODO: later parse Color to string
                         config.border_color
                     };
@@ -231,7 +230,7 @@ impl Config {
                             value
                         }
                         Err(e) => {
-                            log::warn!("Incorrect value for border_width: {}", e);
+                            log::warn!("Incorrect value for border_width: {e}");
                             log::warn!("Using default value: {}", config.border_width);
                             continue;
                         }
@@ -241,7 +240,7 @@ impl Config {
                     config.primary_text_color = if let Some(color) = iced::Color::parse(value) {
                         color
                     } else {
-                        log::warn!("Incorrect value for primary_text_color: {}", value);
+                        log::warn!("Incorrect value for primary_text_color: {value}");
                         log::warn!("Using default value"); // TODO: later parse Color to string
                         config.primary_text_color
                     };
@@ -250,7 +249,7 @@ impl Config {
                     config.secondary_text_color = if let Some(color) = iced::Color::parse(value) {
                         color
                     } else {
-                        log::warn!("Incorrect value for secondary_text_color: {}", value);
+                        log::warn!("Incorrect value for secondary_text_color: {value}");
                         log::warn!("Using default value"); // TODO: later parse Color to string
                         config.secondary_text_color
                     };
@@ -259,7 +258,7 @@ impl Config {
                     config.background_color = if let Some(color) = iced::Color::parse(value) {
                         color
                     } else {
-                        log::warn!("Incorrect value for background_color: {}", value);
+                        log::warn!("Incorrect value for background_color: {value}");
                         log::warn!("Using default value"); // TODO: later parse Color to string
                         config.background_color
                     };
@@ -269,7 +268,7 @@ impl Config {
                         "true" => true,
                         "false" => false,
                         _ => {
-                            log::warn!("Incorrect value for respect_notification_icon: {}", value);
+                            log::warn!("Incorrect value for respect_notification_icon: {value}");
                             log::warn!("Using default value: {}", config.respect_notification_icon);
                             continue;
                         }
@@ -279,7 +278,7 @@ impl Config {
                     if key.starts_with('#') {
                         continue;
                     }
-                    log::warn!("Unknown key in config file: {}", key);
+                    log::warn!("Unknown key in config file: {key}");
                 }
             }
         }

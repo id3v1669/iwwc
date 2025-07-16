@@ -1,4 +1,4 @@
-use crate::data::nf_struct::NotificationAction;
+use crate::data::notification::NotificationAction;
 
 pub enum ErrorHandler {
     ZbusFdo(zbus::fdo::Error),

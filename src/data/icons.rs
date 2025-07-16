@@ -4,14 +4,14 @@ fn default_icon() {
     let path = std::env::var("HOME").unwrap() + "/.config/rs-nc";
     if !std::path::Path::new(&path).exists() {
         if let Err(e) = std::fs::create_dir_all(&path) {
-            log::error!("Failed to create a default icon directory: {}", e);
+            log::error!("Failed to create a default icon directory: {e}");
             std::process::exit(1);
         }
     }
     let default_icon = path.clone() + "/default.svg";
     if !std::path::Path::new(&default_icon).exists() {
         if let Err(e) = std::fs::write(default_icon, DEFAULT_ICON) {
-            log::error!("Failed to create a default icon: {}", e);
+            log::error!("Failed to create a default icon: {e}");
             std::process::exit(1);
         }
     } else {
@@ -60,16 +60,16 @@ pub fn get_system_icons_paths() -> std::collections::HashMap<String, std::path::
         }
     }
     if icons_dir.is_none() {
-        log::warn!(
-            "Icon theme {} not found, default icons will be used everywhere",
-            icon_theme_name
-        );
+        log::warn!("Icon theme {icon_theme_name} not found, default icons will be used everywhere");
         return icons;
     }
 
     if let Some(folders) = find_folders_recursively(&icons_dir.unwrap().into(), "apps") {
         for folder in folders {
-            find_icons_recursively(&folder.into()).map(|i| icons.extend(i));
+            //find_icons_recursively(&folder).map(|i| icons.extend(i));
+            if let Some(i) = find_icons_recursively(&folder) {
+                icons.extend(i)
+            }
         }
     }
     icons
@@ -89,10 +89,8 @@ fn find_folders_recursively(
         if path.is_dir() {
             if path.file_name().unwrap().to_str().unwrap() == folder_name {
                 folders.push(path);
-            } else {
-                if let Some(mut sub_folders) = find_folders_recursively(&path, folder_name) {
-                    folders.append(&mut sub_folders);
-                }
+            } else if let Some(mut sub_folders) = find_folders_recursively(&path, folder_name) {
+                folders.append(&mut sub_folders);
             }
         }
     }
@@ -125,9 +123,5 @@ fn find_icons_recursively(
             }
         }
     }
-    if icons.is_empty() {
-        None
-    } else {
-        Some(icons)
-    }
+    if icons.is_empty() { None } else { Some(icons) }
 }
