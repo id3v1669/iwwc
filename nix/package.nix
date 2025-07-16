@@ -6,18 +6,18 @@
 }:
 rustPlatform.buildRustPackage rec {
 
-  pname = "rs-nc";
-  version = "0.0.1";
+  pname = "iwwc";
+  version = "0.1.0";
 
   src = lib.cleanSource ../.;
 
   cargoLock = {
     lockFile = "${src}/Cargo.lock";
     outputHashes = {
-      "dpi-0.1.1" = "sha256-25sOvEBhlIaekTeWvy3UhjPI1xrJbOQvw/OkTg12kQY=";
-      "glyphon-0.5.0" = "sha256-VgeV/5nYQwzYQWN8/e/kCljqv3vB7McJb4aA6OhhrOI=";
-      "iced-0.14.0-dev" = "sha256-d4j5GT2PPLmsRrBuWZd4L/4ApWA9RiAR1Kdr+KzImXY=";
-      "iced_layershell-0.9.7" = "sha256-o1/SHx2yW6znbf6BA8i5jQL4Dq+JD1hxqILNXSjIz5k=";
+      "cryoglyph-0.1.0" = "sha256-X7S9jq8wU6g1DDNEzOtP3lKWugDnpopPDBK49iWvD4o=";
+      "dpi-0.1.1" = "sha256-hlVhlQ8MmIbNFNr6BM4edKdZbe+ixnPpKm819zauFLQ=";
+      "iced-0.14.0-dev" = "sha256-gPz/J9+agGiyA9DIdFkcR7nvBeKcalXaHeHLwGZJ77I=";
+      "iced_exdevtools-0.14.0-dev" = "sha256-ViPH4HPI+NdQ9+DHnavfyrdaMWuhoDWeBfoKfGGn4d0=";
     };
   };
 
@@ -40,7 +40,7 @@ rustPlatform.buildRustPackage rec {
   ];
 
   postFixup = ''
-    patchelf $out/bin/rs-nc \
+    patchelf $out/bin/iwwc \
       --add-rpath ${lib.makeLibraryPath (with pkgs; [ vulkan-loader xorg.libX11 libxkbcommon wayland ])}
   '';
 }

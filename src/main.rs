@@ -1,7 +1,8 @@
 use clap::Parser;
 
 mod data;
-mod notification;
+mod gui;
+mod handler;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -28,22 +29,17 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
-    std::env::set_var("RUST_LOG", "warn");
-    if args.debug {
-        std::env::set_var("RUST_LOG", "debug");
+    unsafe {
+        if args.debug {
+            std::env::set_var("RUST_LOG", "debug");
+        }
     }
-    if args.nvidia {
-        let mut nvidia_sucks = data::shared_data::NVIDIA_SUCKS.lock().unwrap();
-        *nvidia_sucks = true;
-        std::env::set_var("WGPU_BACKEND", "gl");
-    }
+
     env_logger::init();
     log::debug!("Logger initialized");
 
-    if args.daemon {
-        crate::data::icons::get_system_icons_paths();
-        crate::notification::app::gen_ui().expect("REASON");
-    }
+    crate::data::icons::get_system_icons_paths();
+    crate::gui::app::start().expect("REASON");
 
     Ok(())
 }

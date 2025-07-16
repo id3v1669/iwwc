@@ -1,4 +1,4 @@
-use crate::notification::app::Message;
+use crate::gui::app::Message;
 use zbus::interface;
 
 pub struct NotificationHandler {
@@ -14,16 +14,16 @@ impl NotificationHandler {
 
 #[interface(name = "org.freedesktop.Notifications")]
 impl NotificationHandler {
-    #[dbus_interface(name = "CloseNotification")]
-    async fn close_notification(&mut self, notification_id: u32) -> zbus::fdo::Result<()> {
+    #[allow(non_snake_case)]
+    async fn CloseNotification(&mut self, notification_id: u32) -> zbus::fdo::Result<()> {
         self.sender
             .try_send(Message::CloseByContentId(notification_id))
             .ok();
         Ok(())
     }
 
-    #[dbus_interface(name = "Notify")]
-    async fn notify(
+    #[allow(non_snake_case, clippy::too_many_arguments)]
+    async fn Notify(
         &mut self,
         app_name: String,
         replaces_id: u32,
@@ -47,7 +47,7 @@ impl NotificationHandler {
             String::new()
         };
 
-        let notification = crate::data::nf_struct::Notification {
+        let notification = crate::data::notification::Notification {
             app_name,
             replaces_id,
             app_icon,
@@ -64,11 +64,8 @@ impl NotificationHandler {
         Ok(notification_id)
     }
 
-    #[dbus_interface(
-        out_args("name", "vendor", "version", "spec_version"),
-        name = "GetServerInformation"
-    )]
-    fn get_server_information(&mut self) -> zbus::fdo::Result<(String, String, String, String)> {
+    #[allow(non_snake_case)]
+    fn GetServerInformation(&mut self) -> zbus::fdo::Result<(String, String, String, String)> {
         let name = std::env::var("CARGO_PKG_DESCRIPTION")
             .unwrap_or_else(|_| "No description found".to_string());
         let vendor =
@@ -80,8 +77,8 @@ impl NotificationHandler {
         Ok((name, vendor, version, spec_version))
     }
 
-    #[dbus_interface(name = "GetCapabilities")]
-    fn get_capabilities(&mut self) -> zbus::fdo::Result<Vec<&str>> {
+    #[allow(non_snake_case)]
+    fn GetCapabilities(&mut self) -> zbus::fdo::Result<Vec<&str>> {
         let capabilities = vec![
             "action-icons",
             "actions",
