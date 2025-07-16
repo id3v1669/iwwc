@@ -212,7 +212,7 @@ impl IcedWaylandWidgetCenter {
                     icon.clone()
                 } else {
                     std::path::PathBuf::from(
-                        std::env::var("HOME").unwrap() + "/.config/rs-nc/default.svg",
+                        std::env::var("HOME").unwrap() + "/.config/iwwc/default.svg",
                     )
                 };
 

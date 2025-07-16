@@ -2,7 +2,7 @@
 WantedBy=graphical-session.target
 
 [Service]
-ExecStart=/usr/bin/rs-nc -D
+ExecStart=/usr/bin/iwwc
 Restart=on-failure
 
 [Unit]

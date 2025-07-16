@@ -40,7 +40,7 @@ impl Config {
         let mut config = Config::default();
 
         let read_config =
-            std::fs::read_to_string(std::env::var("HOME").unwrap() + "/.config/rs-nc/config");
+            std::fs::read_to_string(std::env::var("HOME").unwrap() + "/.config/iwwc/config");
         if read_config.is_err() {
             log::warn!("Config file not found, using default values");
             return config;

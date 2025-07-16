@@ -1,11 +1,11 @@
-{ lib
-, rustPlatform
-, makeWrapper
-, pkg-config
-, pkgs
+{
+  lib,
+  rustPlatform,
+  makeWrapper,
+  pkg-config,
+  pkgs,
 }:
 rustPlatform.buildRustPackage rec {
-
   pname = "iwwc";
   version = "0.1.0";
 
@@ -41,6 +41,6 @@ rustPlatform.buildRustPackage rec {
 
   postFixup = ''
     patchelf $out/bin/iwwc \
-      --add-rpath ${lib.makeLibraryPath (with pkgs; [ vulkan-loader xorg.libX11 libxkbcommon wayland ])}
+      --add-rpath ${lib.makeLibraryPath (with pkgs; [vulkan-loader xorg.libX11 libxkbcommon wayland])}
   '';
 }
