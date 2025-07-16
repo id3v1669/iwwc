@@ -1,6 +1,6 @@
 {pkgs}:
 pkgs.mkShell {
-  name = "rs-nc devShell";
+  name = "iwwc devShell";
   nativeBuildInputs = with pkgs; [
     # Compilers
     cargo
@@ -24,7 +24,6 @@ pkgs.mkShell {
     xorg.libXcursor
     xorg.libXi
     xorg.libXrandr
-    
 
     # Tools
     cargo-audit

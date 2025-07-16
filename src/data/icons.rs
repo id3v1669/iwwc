@@ -1,7 +1,7 @@
 fn default_icon() {
     const DEFAULT_ICON: &[u8] = include_bytes!("../../assets/testing/default.svg");
 
-    let path = std::env::var("HOME").unwrap() + "/.config/rs-nc";
+    let path = std::env::var("HOME").unwrap() + "/.config/iwwc";
     if !std::path::Path::new(&path).exists() {
         if let Err(e) = std::fs::create_dir_all(&path) {
             log::error!("Failed to create a default icon directory: {e}");
