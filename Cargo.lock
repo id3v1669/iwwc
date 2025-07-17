@@ -1938,6 +1938,7 @@ dependencies = [
  "futures",
  "iced",
  "iced_layershell",
+ "indexmap",
  "log",
  "once_cell",
  "serde",

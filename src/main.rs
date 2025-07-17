@@ -8,19 +8,11 @@ mod handler;
 #[command(version, about, long_about = None)]
 struct Args {
     /// Set a custom config file
-    #[arg(short = 'c', value_name = "FILE")]
+    #[arg(short = 'c', long = "config", value_name = "Path")]
     config: Option<std::path::PathBuf>,
 
-    /// Launch daemon
-    #[arg(short = 'D')]
-    daemon: bool,
-
-    /// Nvidia moment flag
-    #[arg(short = 'n')]
-    nvidia: bool,
-
     /// Enable Debug Mode
-    #[arg(short, long)]
+    #[arg(short = 'd', long = "debug")]
     debug: bool,
 }
 

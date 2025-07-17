@@ -25,6 +25,7 @@ iced = { git = "https://github.com/iced-rs/iced.git", features = [
 ]}
 iced_layershell = { git = "https://github.com/id3v1669/exwlshelleventloop.git" }
 futures = "0.3.31"
+indexmap = "2.10.0"
 
 [profile.release]
 opt-level = "z"
