@@ -31,40 +31,44 @@ pub struct PreCalc {
 }
 
 impl PreCalc {
-    pub fn generate() -> Self {
-        let config = crate::data::shared::CONFIG.lock().unwrap();
+    pub fn generate(config: &crate::data::config::Config) -> Self {
         // precalculation of font sizes to avoid recalculating them every frame(view) update
         // TODO: ajust formulas here after figuring out propper grid layout and proportions
         Self {
             general_padding: std::cmp::min(
-                (config.height as f32 * 0.15) as u16,
-                (config.width as f32 * 0.03) as u16,
+                (config.notifications.height as f32 * 0.15) as u16,
+                (config.notifications.width as f32 * 0.03) as u16,
             ) as f32,
             font_size_summary: std::cmp::min(
-                (config.height as f32 * 0.24) as u16,
-                (((config.width as f32) - ((config.height as f32) * 0.65)) * 0.06) as u16,
+                (config.notifications.height as f32 * 0.24) as u16,
+                (((config.notifications.width as f32)
+                    - ((config.notifications.height as f32) * 0.65))
+                    * 0.06) as u16,
             ) as f32,
             font_size_body: std::cmp::min(
-                (config.height as f32 * 0.17) as u16,
-                (((config.width as f32) - ((config.height as f32) * 0.65)) * 0.042) as u16,
+                (config.notifications.height as f32 * 0.17) as u16,
+                (((config.notifications.width as f32)
+                    - ((config.notifications.height as f32) * 0.65))
+                    * 0.042) as u16,
             ) as f32,
-            image_size: (config.height as f32) * 0.65,
+            image_size: (config.notifications.height as f32) * 0.65,
             text_summary_paddings: iced::Padding {
                 top: 0.0,
                 bottom: 0.0,
-                left: (config.height as f32 * 0.05) + (config.height as f32 * 0.01),
+                left: (config.notifications.height as f32 * 0.05)
+                    + (config.notifications.height as f32 * 0.01),
                 right: 0.0,
             },
             text_body_paddings: iced::Padding {
                 top: 0.0,
                 bottom: 0.0,
-                left: config.height as f32 * 0.05,
+                left: config.notifications.height as f32 * 0.05,
                 right: 0.0,
             },
             text_paddings_block: iced::Padding {
-                top: config.height as f32 * 0.1,
-                bottom: config.height as f32 * 0.1,
-                left: config.height as f32 * 0.15,
+                top: config.notifications.height as f32 * 0.1,
+                bottom: config.notifications.height as f32 * 0.1,
+                left: config.notifications.height as f32 * 0.15,
                 right: 0.0,
             },
         }

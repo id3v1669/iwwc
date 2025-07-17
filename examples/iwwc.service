@@ -8,4 +8,4 @@ Restart=on-failure
 [Unit]
 After=graphical-session-pre.target
 PartOf=graphical-session.target
-Description=Notification Daemon
+Description=Iced Wayland Widget Center

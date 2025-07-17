@@ -95,3 +95,80 @@ impl NotificationHandler {
         Ok(capabilities)
     }
 }
+
+pub fn handle_notification(
+    iwwc: &mut crate::gui::app::IcedWaylandWidgetCenter,
+    notification: crate::data::notification::Notification,
+) -> iced::Task<Message> {
+    let mut overflow = iced::Task::none();
+    let id = notification.notification_id;
+
+    if iwwc.notification_ids.len() >= iwwc.config.notifications.max_notifications as usize {
+        if let Some((_, info)) = iwwc.notification_ids.shift_remove_index(0) {
+            overflow =
+                iced::Task::done(Message::CloseByContentId(info.notification.notification_id));
+        }
+    }
+
+    let timeout = if iwwc.config.notifications.respect_notification_timeout
+        && notification.expire_timeout > 0
+    {
+        notification.expire_timeout
+    } else {
+        iwwc.config.notifications.local_expire_timeout
+    };
+
+    let icons = crate::data::shared::ICONS.lock().unwrap();
+
+    let icon_name = if !notification.app_icon.is_empty() {
+        notification.app_icon.clone()
+    } else if !notification.app_name.is_empty() {
+        notification.app_name.clone().to_lowercase()
+    } else {
+        "default".to_string()
+    };
+
+    let icon = if let Some(icon) = icons.get(&icon_name) {
+        icon.clone()
+    } else {
+        std::path::PathBuf::from(std::env::var("HOME").unwrap() + "/.config/iwwc/default.svg")
+    };
+
+    let window_id = iced::window::Id::unique();
+
+    iwwc.notification_ids.insert(
+        window_id,
+        crate::gui::elements::notification::NotificationWindowInfo { notification, icon },
+    );
+
+    iced::Task::batch([
+        overflow,
+        iced::Task::done(Message::MoveNotifications),
+        iced::Task::done(Message::NewLayerShell {
+            settings: iced_layershell::reexport::NewLayerShellSettings {
+                size: Some((
+                    iwwc.config.notifications.width,
+                    iwwc.config.notifications.height,
+                )),
+                exclusive_zone: None,
+                anchor: iced_layershell::reexport::Anchor::Top
+                    | iced_layershell::reexport::Anchor::Right,
+                layer: iced_layershell::reexport::Layer::Overlay,
+                margin: Some((
+                    iwwc.config.notifications.vertical_margin,
+                    iwwc.config.notifications.horizontal_margin,
+                    iwwc.config.notifications.vertical_margin,
+                    iwwc.config.notifications.horizontal_margin,
+                )),
+                keyboard_interactivity: iced_layershell::reexport::KeyboardInteractivity::None,
+                output_option: iced_layershell::reexport::OutputOption::LastOutput,
+                ..Default::default()
+            },
+            id: window_id,
+        }),
+        iced::Task::perform(
+            tokio::time::sleep(std::time::Duration::from_secs(timeout.try_into().unwrap())),
+            move |_| Message::CloseByContentId(id),
+        ),
+    ])
+}
