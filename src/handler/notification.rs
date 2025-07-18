@@ -151,8 +151,7 @@ pub fn handle_notification(
                     iwwc.config.notifications.height,
                 )),
                 exclusive_zone: None,
-                anchor: iced_layershell::reexport::Anchor::Top
-                    | iced_layershell::reexport::Anchor::Right,
+                anchor: iwwc.config.notifications.location,
                 layer: iced_layershell::reexport::Layer::Overlay,
                 margin: Some((
                     iwwc.config.notifications.vertical_margin,

@@ -1,21 +1,27 @@
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-pub struct WidgetConfig {
-    pub name: String,
+pub struct WidgetWindow {
     pub width: u32,
     pub height: u32,
-}
-#[derive(Debug, Clone)]
-pub struct GlobalConfig {
-    pub antialiasing: bool,
-    pub output: String,
+    pub name: String,
+    pub location: iced_layershell::reexport::Anchor,
+    pub exclusive: bool,
+    pub layer: iced_layershell::reexport::Layer,
 }
 
-impl Default for GlobalConfig {
+//pub struct WidgetElement
+
+#[derive(Debug, Clone)]
+pub struct Global {
+    pub antialiasing: bool,
+    //pub output: String,
+}
+
+impl Default for Global {
     fn default() -> Self {
         Self {
             antialiasing: true,
-            output: "DP-1".to_string(),
+            //output: "DP-1".to_string(),
         }
     }
 }
@@ -23,7 +29,8 @@ impl Default for GlobalConfig {
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct NotificationConfig {
-    pub respect_notification_timeout: bool,
+    pub enable: bool,
+    pub location: iced_layershell::reexport::Anchor,
     pub local_expire_timeout: i32, //in seconds
     pub max_notifications: i32,    //0 for unlimited
     pub height: u32,
@@ -37,12 +44,15 @@ pub struct NotificationConfig {
     pub secondary_text_color: iced::Color,
     pub background_color: iced::Color,
     pub respect_notification_icon: bool,
+    pub respect_notification_timeout: bool,
 }
 
 impl Default for NotificationConfig {
     fn default() -> Self {
         Self {
-            respect_notification_timeout: true,
+            enable: true,
+            location: iced_layershell::reexport::Anchor::Top
+                | iced_layershell::reexport::Anchor::Right,
             local_expire_timeout: 7,
             max_notifications: 5,
             height: 85, // to be min 65
@@ -56,14 +66,15 @@ impl Default for NotificationConfig {
             secondary_text_color: iced::Color::parse("#e7d4a2").unwrap(),
             background_color: iced::Color::parse("#282828").unwrap(),
             respect_notification_icon: false,
+            respect_notification_timeout: false,
         }
     }
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct Config {
-    pub global: GlobalConfig,
+    pub global: Global,
     pub notifications: NotificationConfig,
     #[allow(dead_code)]
-    pub widgets: Vec<WidgetConfig>,
+    pub widgets: Vec<WidgetWindow>,
 }

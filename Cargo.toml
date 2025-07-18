@@ -23,7 +23,7 @@ iced = { git = "https://github.com/iced-rs/iced.git", features = [
 	"tokio",
 	"svg",
 ]}
-iced_layershell = { git = "https://github.com/id3v1669/exwlshelleventloop.git" }
+iced_layershell = { git = "https://github.com/id3v1669/exwlshelleventloop.git", rev = "aada765" }
 futures = "0.3.31"
 indexmap = "2.10.0"
 

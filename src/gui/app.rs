@@ -13,12 +13,10 @@ pub fn start() -> Result<(), iced_layershell::Error> {
             anchor: Anchor::Top | Anchor::Right,
             layer: Layer::Overlay,
             exclusive_zone: 0,
-            size: Some((50, 50)),
+            size: None,
             margin: (10, 10, 10, 10),
             keyboard_interactivity: KeyboardInteractivity::None,
-            start_mode: iced_layershell::settings::StartMode::TargetScreen(
-                config.global.output.clone(),
-            ), // TODO: fix StartMode in lib itself as it's broken
+            start_mode: iced_layershell::settings::StartMode::Background,
             ..Default::default()
         },
         antialiasing: config.global.antialiasing,
@@ -71,7 +69,7 @@ impl IcedWaylandWidgetCenter {
     }
 
     fn subscription(&self) -> iced::Subscription<Message> {
-        iced::Subscription::batch([
+        let notification_subscription = if self.config.notifications.enable {
             iced::Subscription::run(|| {
                 iced::stream::channel(100, |sender| async move {
                     let builder = zbus::connection::Builder::session()
@@ -93,7 +91,51 @@ impl IcedWaylandWidgetCenter {
                     futures::future::pending::<()>().await;
                     unreachable!()
                 })
-            }),
+            })
+        } else {
+            iced::Subscription::none()
+        };
+
+        let ipc_subscription = iced::Subscription::run(|| {
+            iced::stream::channel(
+                100,
+                |sender: futures::channel::mpsc::Sender<_>| async move {
+                    let ipc_server = match crate::handler::ipc::IpcServer::new() {
+                        Ok(server) => server,
+                        Err(e) => {
+                            log::error!("Failed to create IPC server: {e}");
+                            return;
+                        }
+                    };
+
+                    loop {
+                        match ipc_server.accept().await {
+                            Ok(stream) => {
+                                let sender_clone = sender.clone();
+                                tokio::spawn(async move {
+                                    if let Err(e) = crate::handler::ipc::IpcServer::handle_client(
+                                        stream,
+                                        sender_clone,
+                                    )
+                                    .await
+                                    {
+                                        log::error!("Error handling IPC client: {e}");
+                                    }
+                                });
+                            }
+                            Err(e) => {
+                                log::error!("Failed to accept IPC connection: {e}");
+                                break;
+                            }
+                        }
+                    }
+                },
+            )
+        });
+
+        iced::Subscription::batch([
+            notification_subscription,
+            ipc_subscription,
             iced::event::listen_with(|event, _status, id| match event {
                 iced::Event::Mouse(iced::mouse::Event::ButtonReleased(
                     iced::mouse::Button::Right,
@@ -162,15 +204,19 @@ impl IcedWaylandWidgetCenter {
 
     fn view(&self, id: iced::window::Id) -> Element<Message> {
         let (notification_window_info, _) = self.id_info(id);
-        if let Some(notification_window_info) = notification_window_info {
-            return crate::gui::elements::notification::body(self, notification_window_info);
-        }
-        iced::widget::container("ss")
-            .padding(10)
-            .center(800)
-            .width(iced::Length::Fill)
-            .height(iced::Length::Fill)
-            .style(move |_| crate::gui::elements::style::notification_style(&self.config))
+        let notification: iced::widget::Container<Message> =
+            if let Some(notification_window_info) = notification_window_info {
+                crate::gui::elements::notification::body(self, notification_window_info)
+            } else {
+                iced::widget::container(iced::widget::horizontal_space())
+                    .style(move |_| crate::gui::elements::style::notification_style(&self.config))
+            };
+        iced::widget::stack![notification]
+            //.padding(10)
+            //.center(800)
+            //.width(iced::Length::Fill)
+            //.height(iced::Length::Fill)
+            //.style(move |_| crate::gui::elements::style::notification_style(&self.config))
             .into()
     }
 

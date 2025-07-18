@@ -7,7 +7,7 @@ pub struct NotificationWindowInfo {
 pub fn body(
     iwwc: &crate::gui::app::IcedWaylandWidgetCenter,
     window_info: NotificationWindowInfo,
-) -> iced::Element<crate::gui::app::Message> {
+) -> iced::widget::Container<'_, crate::gui::app::Message> {
     iced::widget::container(
         iced::widget::row![
             iced::widget::svg(window_info.icon.clone())
@@ -36,5 +36,4 @@ pub fn body(
     .width(iced::Length::Fill)
     .height(iced::Length::Fill)
     .style(move |_| crate::gui::elements::style::notification_style(&iwwc.config))
-    .into()
 }
