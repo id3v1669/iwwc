@@ -7,11 +7,11 @@ use iced_layershell::to_layer_message;
 use crate::handler::notification::NotificationHandler;
 
 pub fn start() -> Result<(), iced_layershell::Error> {
-    let config = crate::data::config::Config::default(); //TODO: change to read from file
+    let config = crate::data::config::primary::Config::load(None); //TODO: change to read from file
     let settings = Settings {
         layer_settings: LayerShellSettings {
             anchor: Anchor::Top | Anchor::Right,
-            layer: Layer::Overlay,
+            layer: Layer::Background,
             exclusive_zone: 0,
             size: None,
             margin: (10, 10, 10, 10),
@@ -40,9 +40,10 @@ pub fn start() -> Result<(), iced_layershell::Error> {
 use indexmap::IndexMap;
 
 pub struct IcedWaylandWidgetCenter {
-    pub config: crate::data::config::Config,
+    pub config: crate::data::config::primary::Config,
     pub notification_ids:
         IndexMap<iced::window::Id, crate::gui::elements::notification::NotificationWindowInfo>,
+    pub widget_ids: std::collections::HashMap<iced::window::Id, String>,
     pub precalc: crate::data::notification::PreCalc,
 }
 
@@ -51,18 +52,20 @@ pub struct IcedWaylandWidgetCenter {
 pub enum Message {
     Close(iced::window::Id),
     CloseByContentId(u32),
+    IpcCommand(String),
     TestMessage,
     MoveNotifications,
     Notify(crate::data::notification::Notification),
 }
 
 impl IcedWaylandWidgetCenter {
-    fn new(cfg: crate::data::config::Config) -> (Self, Task<Message>) {
+    fn new(cfg: crate::data::config::primary::Config) -> (Self, Task<Message>) {
         (
             Self {
                 precalc: crate::data::notification::PreCalc::generate(&cfg),
                 config: cfg,
                 notification_ids: IndexMap::new(),
+                widget_ids: std::collections::HashMap::new(),
             },
             Task::none(),
         )
@@ -166,6 +169,10 @@ impl IcedWaylandWidgetCenter {
                 }
                 Task::none()
             }
+            Message::IpcCommand(command) => {
+                log::debug!("Received IPC command: {command}");
+                crate::handler::ipc::handle_command(self, command)
+            }
             Message::MoveNotifications => {
                 let mut move_notifications: Vec<Task<Message>> = Vec::new();
 
@@ -203,20 +210,17 @@ impl IcedWaylandWidgetCenter {
     }
 
     fn view(&self, id: iced::window::Id) -> Element<Message> {
-        let (notification_window_info, _) = self.id_info(id);
-        let notification: iced::widget::Container<Message> =
-            if let Some(notification_window_info) = notification_window_info {
-                crate::gui::elements::notification::body(self, notification_window_info)
-            } else {
-                iced::widget::container(iced::widget::horizontal_space())
-                    .style(move |_| crate::gui::elements::style::notification_style(&self.config))
-            };
-        iced::widget::stack![notification]
-            //.padding(10)
-            //.center(800)
-            //.width(iced::Length::Fill)
-            //.height(iced::Length::Fill)
-            //.style(move |_| crate::gui::elements::style::notification_style(&self.config))
+        let (notification_window_info, widget_info) = self.id_info(id);
+        if let Some(notification_window_info) = notification_window_info {
+            return crate::gui::elements::notification::body(self, notification_window_info).into();
+        };
+
+        if let Some(widget_info) = widget_info {
+            return crate::gui::elements::element::body(self, widget_info).into();
+        };
+
+        iced::widget::container(iced::widget::horizontal_space())
+            .style(move |_| crate::gui::elements::style::notification_style(&self.config))
             .into()
     }
 
@@ -225,9 +229,12 @@ impl IcedWaylandWidgetCenter {
         id: iced::window::Id,
     ) -> (
         Option<crate::gui::elements::notification::NotificationWindowInfo>,
-        Option<bool>,
+        Option<String>,
     ) {
         //None to be info of widget elements
-        (self.notification_ids.get(&id).cloned(), None)
+        (
+            self.notification_ids.get(&id).cloned(),
+            self.widget_ids.get(&id).cloned(),
+        )
     }
 }

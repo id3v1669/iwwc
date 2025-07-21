@@ -1,0 +1,15 @@
+global:
+  antialiasing: true
+widgets:
+- size:
+  - 400
+  - 300
+  name: WidgetWindow0
+  element: test_element0
+containers:
+- id: test_element0
+  child: default_button
+buttons:
+- id: default_button
+  text: Click me
+  action_id: default_action

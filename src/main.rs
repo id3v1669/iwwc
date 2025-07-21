@@ -25,7 +25,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     unsafe {
         if args.debug {
-            std::env::set_var("RUST_LOG", "debug");
+            std::env::set_var(
+                "RUST_LOG",
+                "debug, iced_layershell=off, naga=off, zbus=off, tracing=off, wgpu_core=off, iced_wgpu=off, cosmic_text=off, wgpu_hal=off",
+            );
         }
     }
 
@@ -34,7 +37,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(command) = args.command {
         match command.as_str() {
-            "test" => crate::handler::ipc::IpcServer::send_ipc_command("test").await?,
             "daemon" => {
                 if crate::handler::ipc::IpcServer::is_active().await {
                     log::error!("Daemon is already running.");
@@ -44,8 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 crate::gui::app::start().expect("REASON");
             }
             _ => {
-                log::error!("Unknown command: {command}");
-                std::process::exit(1);
+                crate::handler::ipc::IpcServer::send_ipc_command(command.as_str()).await?;
             }
         }
         return Ok(());

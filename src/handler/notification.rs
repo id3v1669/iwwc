@@ -103,6 +103,8 @@ pub fn handle_notification(
     let mut overflow = iced::Task::none();
     let id = notification.notification_id;
 
+    let window_id = iced::window::Id::unique();
+
     if iwwc.notification_ids.len() >= iwwc.config.notifications.max_notifications as usize {
         if let Some((_, info)) = iwwc.notification_ids.shift_remove_index(0) {
             overflow =
@@ -133,8 +135,6 @@ pub fn handle_notification(
     } else {
         std::path::PathBuf::from(std::env::var("HOME").unwrap() + "/.config/iwwc/default.svg")
     };
-
-    let window_id = iced::window::Id::unique();
 
     iwwc.notification_ids.insert(
         window_id,

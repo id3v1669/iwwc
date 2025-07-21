@@ -1,4 +1,6 @@
-pub fn notification_style(config: &crate::data::config::Config) -> iced::widget::container::Style {
+pub fn notification_style(
+    config: &crate::data::config::primary::Config,
+) -> iced::widget::container::Style {
     iced::widget::container::Style {
         text_color: Some(config.notifications.primary_text_color),
         border: iced::Border {
