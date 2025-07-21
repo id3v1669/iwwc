@@ -46,9 +46,9 @@ impl IpcServer {
 
                 let message = match command {
                     "test" => Message::TestMessage,
-                    _ => {
-                        log::warn!("Unknown IPC command: {command}");
-                        return Ok(());
+                    window => {
+                        log::debug!("Sending command \"{command}\" to iced");
+                        Message::IpcCommand(window.to_string())
                     }
                 };
 
@@ -109,6 +109,50 @@ impl Drop for IpcServer {
         if socket_path.exists() {
             if let Err(e) = fs::remove_file(&socket_path) {
                 log::error!("Failed to remove socket file: {e}");
+            }
+        }
+    }
+}
+
+pub fn handle_command(
+    iwwc: &mut crate::gui::app::IcedWaylandWidgetCenter,
+    command: String,
+) -> iced::Task<Message> {
+    match command.as_str() {
+        "test2" => {
+            log::info!("test2");
+            iced::Task::done(Message::TestMessage)
+        }
+        _ => {
+            match iwwc.config.widgets.iter().find(|w| w.id == command) {
+                Some(window) => {
+                    log::debug!("Found window with name: {command}");
+                    let window_id = iced::window::Id::unique();
+
+                    iwwc.widget_ids.insert(window_id, window.element.clone());
+
+                    let widget_window = iced::Task::done(Message::NewLayerShell {
+                        settings: window.settings.clone(),
+                        id: window_id,
+                    });
+
+                    let timeout = window.timeout.unwrap_or(0);
+                    let timeout_task = if timeout > 0 {
+                        iced::Task::none()
+                        // iced::Task::perform(
+                        //     tokio::time::sleep(std::time::Duration::from_secs(timeout as u64)),
+                        //     move |_| Message::Close(window_id),
+                        // )
+                    } else {
+                        iced::Task::none()
+                    };
+                    log::debug!("Widget window created with ID: {window_id:?}");
+                    return iced::Task::batch([widget_window, timeout_task]);
+                }
+                None => {
+                    log::warn!("No window found with name: {command}");
+                    return iced::Task::none();
+                }
             }
         }
     }

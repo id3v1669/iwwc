@@ -31,7 +31,7 @@ pub struct PreCalc {
 }
 
 impl PreCalc {
-    pub fn generate(config: &crate::data::config::Config) -> Self {
+    pub fn generate(config: &crate::data::config::primary::Config) -> Self {
         // precalculation of font sizes to avoid recalculating them every frame(view) update
         // TODO: ajust formulas here after figuring out propper grid layout and proportions
         Self {
