@@ -6,15 +6,16 @@ pub fn body(
         let child_content = build_child_element(iwwc, &container.child);
 
         return iced::widget::container(child_content)
+            .padding(container.padding)
             .width(container.width)
             .height(container.height)
+            .align_x(container.align_x)
+            .align_y(container.align_y)
             .style(|_theme| container.style.clone());
     }
-
-    let content = build_child_element(iwwc, &window_info);
-    iced::widget::container(content)
-        .width(iced::Length::Fill)
-        .height(iced::Length::Fill)
+    // Should not be reached, better way to handle this?
+    log::warn!("Container not found: {}", window_info);
+    iced::widget::container(iced::widget::horizontal_space())
 }
 
 fn build_child_element<'a>(
@@ -22,7 +23,12 @@ fn build_child_element<'a>(
     element_id: &str,
 ) -> iced::Element<'a, crate::gui::app::Message> {
     if let Some(row) = iwwc.config.rows.iter().find(|r| r.id == element_id) {
-        let mut row_widget = iced::widget::Row::new().align_y(row.allinment);
+        let mut row_widget = iced::widget::Row::new()
+            .spacing(row.spacing)
+            .padding(row.padding)
+            .width(row.width)
+            .height(row.height)
+            .align_y(row.allinment);
 
         for child_id in &row.children {
             let child = build_child_element(iwwc, child_id);
@@ -33,7 +39,12 @@ fn build_child_element<'a>(
     }
 
     if let Some(column) = iwwc.config.columns.iter().find(|c| c.id == element_id) {
-        let mut column_widget = iced::widget::Column::new().align_x(column.allinment);
+        let mut column_widget = iced::widget::Column::new()
+            .spacing(column.spacing)
+            .padding(column.padding)
+            .width(column.width)
+            .height(column.height)
+            .align_x(column.allinment);
 
         for child_id in &column.children {
             let child = build_child_element(iwwc, child_id);
@@ -57,12 +68,16 @@ fn build_child_element<'a>(
         let child_content = build_child_element(iwwc, &container.child);
 
         return iced::widget::container(child_content)
+            .padding(container.padding)
             .width(container.width)
             .height(container.height)
+            .align_x(container.align_x)
+            .align_y(container.align_y)
             .style(|_theme| container.style.clone())
             .into();
     }
 
+    // Should not be reached, better way to handle this?
     log::warn!("Element not found: {}", element_id);
     iced::widget::text(format!("Unknown element: {}", element_id)).into()
 }

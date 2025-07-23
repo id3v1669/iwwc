@@ -124,13 +124,14 @@ impl Container {
         style_id: Option<String>,
         container_button_styles: &[ContainerButtonStyle],
     ) -> iced::widget::container::Style {
-        let container_style = style_id.clone()
-        .and_then(|id| container_button_styles.iter().find(|s| s.id == id));
+        let container_style = style_id
+            .clone()
+            .and_then(|id| container_button_styles.iter().find(|s| s.id == id));
 
-    if container_style.is_none() {
-        log::debug!("style with id {style_id:?} not found, using default style");
-        return iced::widget::container::Style::default();
-    }
+        if container_style.is_none() {
+            log::debug!("style with id {style_id:?} not found, using default style");
+            return iced::widget::container::Style::default();
+        }
 
         iced::widget::container::Style {
             text_color: container_style.and_then(|s| s.text_color).or_else(|| {
@@ -255,8 +256,9 @@ impl Button {
         style_id: Option<String>,
         container_button_styles: &[ContainerButtonStyle],
     ) -> iced::widget::button::Style {
-        let button_style =
-            style_id.clone().and_then(|id| container_button_styles.iter().find(|s| s.id == id));
+        let button_style = style_id
+            .clone()
+            .and_then(|id| container_button_styles.iter().find(|s| s.id == id));
 
         iced::widget::button::Style {
             text_color: button_style.and_then(|s| s.text_color).unwrap_or_else(|| {
