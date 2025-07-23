@@ -53,6 +53,7 @@ pub enum Message {
     Close(iced::window::Id),
     CloseByContentId(u32),
     IpcCommand(String),
+    RightClick(iced::window::Id),
     TestMessage,
     MoveNotifications,
     Notify(crate::data::notification::Notification),
@@ -139,10 +140,10 @@ impl IcedWaylandWidgetCenter {
         iced::Subscription::batch([
             notification_subscription,
             ipc_subscription,
-            iced::event::listen_with(|event, _status, id| match event {
+            iced::event::listen_with(|event, status, id| match event {
                 iced::Event::Mouse(iced::mouse::Event::ButtonReleased(
                     iced::mouse::Button::Right,
-                )) => Some(Message::Close(id)),
+                )) => Some(Message::RightClick(id)),
                 _ => None,
             }),
         ])
@@ -157,6 +158,13 @@ impl IcedWaylandWidgetCenter {
                     Task::done(Message::RemoveWindow(id)),
                     Task::done(Message::MoveNotifications),
                 ])
+            }
+            Message::RightClick(id) => {
+                let (notification_window_info, widget_info) = self.id_info(id);
+                if let Some(notification_window_info) = notification_window_info {
+                    return Task::done(Message::Close(id));
+                }
+                Task::none()
             }
             Message::CloseByContentId(notification_id) => {
                 if let Some((window_id, _)) = self

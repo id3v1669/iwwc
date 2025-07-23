@@ -3,6 +3,7 @@ use iced_layershell::reexport::{Anchor, Layer, NewLayerShellSettings, OutputOpti
 use serde::{Deserialize, Serialize};
 use std::{fs, io::Write, path::PathBuf};
 
+// Final
 #[derive(Debug, Clone)]
 pub struct WidgetWindow {
     pub id: String, // ID of the widget window
@@ -11,13 +12,14 @@ pub struct WidgetWindow {
     pub element: String,      // ID of WidgetElement
 }
 
+// Semi-final, fix lib for output_option
 impl WidgetWindow {
-    pub fn from_wrapper(w: crate::data::config::wraper::WidgetWindowWraper) -> Self {
+    pub fn from_wrapper(window_raw: crate::data::config::wraper::WidgetWindowWraper) -> Self {
         Self {
-            id: w.name.clone(),
+            id: window_raw.name.clone(),
             settings: iced_layershell::reexport::NewLayerShellSettings {
-                size: Some(w.size),
-                layer: match w.layer {
+                size: Some(window_raw.size),
+                layer: match window_raw.layer {
                     Some(value) => match value.to_lowercase().as_str() {
                         "background" => iced_layershell::reexport::Layer::Background,
                         "bottom" => iced_layershell::reexport::Layer::Bottom,
@@ -30,7 +32,7 @@ impl WidgetWindow {
                     },
                     None => iced_layershell::reexport::Layer::Overlay,
                 },
-                anchor: match w.location {
+                anchor: match window_raw.location {
                     Some(loc) => {
                         let mut anchor = iced_layershell::reexport::Anchor::empty();
                         for location_str in loc.iter() {
@@ -41,7 +43,7 @@ impl WidgetWindow {
                                 "right" => iced_layershell::reexport::Anchor::Right,
                                 _ => {
                                     log::warn!("Unknown anchor: {}, ignoring", location_str);
-                                    iced_layershell::reexport::Anchor::empty()
+                                    continue;
                                 }
                             };
                         }
@@ -58,9 +60,9 @@ impl WidgetWindow {
                             | iced_layershell::reexport::Anchor::Right
                     }
                 },
-                exclusive_zone: w.exclusive,
-                margin: w.margin,
-                keyboard_interactivity: match w.focus {
+                exclusive_zone: window_raw.exclusive,
+                margin: window_raw.margin,
+                keyboard_interactivity: match window_raw.focus {
                     Some(value) => match value.to_lowercase().as_str() {
                         "none" => iced_layershell::reexport::KeyboardInteractivity::None,
                         "exclusive" => iced_layershell::reexport::KeyboardInteractivity::Exclusive,
@@ -77,27 +79,30 @@ impl WidgetWindow {
                     },
                     None => iced_layershell::reexport::KeyboardInteractivity::None,
                 },
-                output_option: iced_layershell::reexport::OutputOption::LastOutput,
-                events_transparent: w.events_transparent.unwrap_or(false),
-                namespace: Some(w.name),
+                output_option: iced_layershell::reexport::OutputOption::LastOutput, // TODO: fix lib
+                events_transparent: window_raw.events_transparent.unwrap_or(false),
+                namespace: Some(window_raw.name),
             },
-            timeout: w.timeout,
-            element: w.element,
+            timeout: window_raw.timeout,
+            element: window_raw.element,
         }
     }
 }
 
+// Semi final, maybe add max width and height
 #[derive(Debug, Clone)]
 pub struct Container {
     pub id: String,
     pub child: String, // ID of child
+    pub padding: iced::Padding,
     pub width: iced::Length,
     pub height: iced::Length,
+    pub align_x: iced::alignment::Horizontal,
+    pub align_y: iced::alignment::Vertical,
     pub style: iced::widget::container::Style,
-    //other parameters to be added later
-    // alignment, padding, size, center(location)
 }
 
+// Semi final, maybe add max width and height
 impl Container {
     pub fn from_wrapper(
         w: crate::data::config::wraper::ContainerWpraper,
@@ -106,114 +111,118 @@ impl Container {
         Self {
             id: w.id,
             child: w.child,
-            width: Self::parse_length(w.width, "width"),
-            height: Self::parse_length(w.height, "height"),
+            padding: crate::data::config::helper::parse_padding(w.padding),
+            width: crate::data::config::helper::parse_length(w.width, "width"),
+            height: crate::data::config::helper::parse_length(w.height, "height"),
+            align_x: crate::data::config::helper::allinment_horizontal(w.align_x),
+            align_y: crate::data::config::helper::allinment_vertical(w.align_y),
             style: Self::create_style(w.style, container_button_styles),
         }
-    }
-
-    fn parse_length(length: Option<String>, dimension: &str) -> iced::Length {
-        length.map_or(iced::Length::Fill, |s| match s.to_lowercase().as_str() {
-            "fill" => iced::Length::Fill,
-            "shrink" => iced::Length::Shrink,
-            _ => {
-                let size: f32 = match s.parse::<f32>() {
-                    Ok(size) => size,
-                    Err(_) => {
-                        log::warn!("Invalid {dimension} value: {s}, defaulting to Fill");
-                        return iced::Length::Fill;
-                    }
-                };
-                iced::Length::Fixed(size)
-            }
-        })
     }
 
     fn create_style(
         style_id: Option<String>,
         container_button_styles: &[ContainerButtonStyle],
     ) -> iced::widget::container::Style {
-        let container_style =
-            style_id.and_then(|id| container_button_styles.iter().find(|s| s.id == id));
+        let container_style = style_id.clone()
+        .and_then(|id| container_button_styles.iter().find(|s| s.id == id));
+
+    if container_style.is_none() {
+        log::debug!("style with id {style_id:?} not found, using default style");
+        return iced::widget::container::Style::default();
+    }
 
         iced::widget::container::Style {
-            text_color: container_style.and_then(|s| s.text_color),
-            background: container_style.and_then(|s| s.background_color.clone()),
-            border: container_style
-                .map(|s| s.border.clone())
-                .unwrap_or(iced::Border {
+            text_color: container_style.and_then(|s| s.text_color).or_else(|| {
+                log::debug!("No text color found, defaulting to white");
+                Some(iced::Color::WHITE)
+            }),
+            background: container_style
+                .and_then(|s| s.background_color.clone())
+                .or_else(|| {
+                    log::debug!("No background color found, defaulting to black");
+                    Some(iced::Background::Color(iced::Color::BLACK))
+                }),
+            border: container_style.map(|s| s.border.clone()).unwrap_or({
+                log::debug!(
+                    "No border style found for style {style_id:?}, defaulting to no border"
+                );
+                iced::Border {
                     color: iced::Color::BLACK,
                     width: 0.0,
                     radius: iced::border::Radius::from(0.0),
-                }),
-            shadow: container_style
-                .map(|s| s.shadow.clone())
-                .unwrap_or(iced::Shadow {
+                }
+            }),
+            shadow: container_style.map(|s| s.shadow.clone()).unwrap_or({
+                log::debug!(
+                    "No shadow style found for style {style_id:?}, defaulting to no shadow"
+                );
+                iced::Shadow {
                     color: iced::Color::BLACK,
                     offset: iced::Vector { x: 0.0, y: 0.0 },
                     blur_radius: 0.0,
-                }),
+                }
+            }),
             snap: container_style.map(|s| s.snap).unwrap_or(false),
         }
     }
 }
 
+// Final
 #[derive(Debug, Clone)]
 pub struct Row {
     pub id: String,
     pub children: Vec<String>, // IDs of child elements
+    pub spacing: f32,
+    pub padding: iced::Padding,
+    pub width: iced::Length,
+    pub height: iced::Length,
     pub allinment: iced::alignment::Vertical,
 }
 
+// Final
 impl Row {
     pub fn from_wrapper(r: crate::data::config::wraper::RowWraper) -> Self {
         Self {
             id: r.id,
             children: r.children,
-            allinment: r
-                .allinment
-                .map(|a| match a.to_lowercase().as_str() {
-                    "top" => iced::alignment::Vertical::Top,
-                    "center" => iced::alignment::Vertical::Center,
-                    "bottom" => iced::alignment::Vertical::Bottom,
-                    _ => {
-                        log::warn!("Unknown vertical alignment: {a}, defaulting to Center");
-                        iced::alignment::Vertical::Center
-                    }
-                })
-                .unwrap_or(iced::alignment::Vertical::Center),
+            spacing: r.spacing.unwrap_or(3.0),
+            padding: crate::data::config::helper::parse_padding(r.padding),
+            width: crate::data::config::helper::parse_length(r.width, "width"),
+            height: crate::data::config::helper::parse_length(r.height, "height"),
+            allinment: crate::data::config::helper::allinment_vertical(r.allinment),
         }
     }
 }
 
+// Final
 #[derive(Debug, Clone)]
 pub struct Column {
     pub id: String,
     pub children: Vec<String>, // IDs of child elements
+    pub spacing: f32,
+    pub padding: iced::Padding,
+    pub width: iced::Length,
+    pub height: iced::Length,
     pub allinment: iced::alignment::Horizontal,
 }
 
+// Final
 impl Column {
     pub fn from_wrapper(c: crate::data::config::wraper::ColumnWraper) -> Self {
         Self {
             id: c.id,
             children: c.children,
-            allinment: c
-                .allinment
-                .map(|a| match a.to_lowercase().as_str() {
-                    "left" => iced::alignment::Horizontal::Left,
-                    "center" => iced::alignment::Horizontal::Center,
-                    "right" => iced::alignment::Horizontal::Right,
-                    _ => {
-                        log::warn!("Unknown horizontal alignment: {a}, defaulting to Center");
-                        iced::alignment::Horizontal::Center
-                    }
-                })
-                .unwrap_or(iced::alignment::Horizontal::Center),
+            spacing: c.spacing.unwrap_or(3.0),
+            padding: crate::data::config::helper::parse_padding(c.padding),
+            width: crate::data::config::helper::parse_length(c.width, "width"),
+            height: crate::data::config::helper::parse_length(c.height, "height"),
+            allinment: crate::data::config::helper::allinment_horizontal(c.allinment),
         }
     }
 }
 
+// Final
 #[derive(Debug, Clone)]
 pub struct Button {
     pub id: String,
@@ -225,6 +234,7 @@ pub struct Button {
     pub style: iced::widget::button::Style,
 }
 
+// Final
 impl Button {
     pub fn from_wrapper(
         b: crate::data::config::wraper::ButtonWpraper,
@@ -234,36 +244,11 @@ impl Button {
             id: b.id,
             text: b.text,
             action_id: b.action_id,
-            width: Self::parse_length(b.width, "width"),
-            height: Self::parse_length(b.height, "height"),
-            padding: b
-                .padding
-                .map(|p| iced::Padding {
-                    top: p.0,
-                    right: p.1,
-                    bottom: p.2,
-                    left: p.3,
-                })
-                .unwrap_or(iced::Padding::new(5.0)),
+            width: crate::data::config::helper::parse_length(b.width, "width"),
+            height: crate::data::config::helper::parse_length(b.height, "height"),
+            padding: crate::data::config::helper::parse_padding(b.padding),
             style: Self::create_style(b.style, container_button_styles),
         }
-    }
-
-    fn parse_length(length: Option<String>, dimension: &str) -> iced::Length {
-        length.map_or(iced::Length::Shrink, |s| match s.to_lowercase().as_str() {
-            "fill" => iced::Length::Fill,
-            "shrink" => iced::Length::Shrink,
-            _ => {
-                let size: f32 = match s.parse::<f32>() {
-                    Ok(size) => size,
-                    Err(_) => {
-                        log::warn!("Invalid button {dimension}: {s}, defaulting to Shrink");
-                        return iced::Length::Shrink;
-                    }
-                };
-                iced::Length::Fixed(size)
-            }
-        })
     }
 
     fn create_style(
@@ -271,32 +256,45 @@ impl Button {
         container_button_styles: &[ContainerButtonStyle],
     ) -> iced::widget::button::Style {
         let button_style =
-            style_id.and_then(|id| container_button_styles.iter().find(|s| s.id == id));
+            style_id.clone().and_then(|id| container_button_styles.iter().find(|s| s.id == id));
 
         iced::widget::button::Style {
-            text_color: button_style
-                .and_then(|s| s.text_color)
-                .unwrap_or(iced::Color::BLACK),
-            background: button_style.and_then(|s| s.background_color.clone()),
-            border: button_style
-                .map(|s| s.border.clone())
-                .unwrap_or(iced::Border {
+            text_color: button_style.and_then(|s| s.text_color).unwrap_or_else(|| {
+                log::debug!("No text color found, defaulting to white");
+                iced::Color::WHITE
+            }),
+            background: button_style
+                .and_then(|s| s.background_color.clone())
+                .or_else(|| {
+                    log::debug!("No background color found, defaulting to black");
+                    Some(iced::Background::Color(iced::Color::BLACK))
+                }),
+            border: button_style.map(|s| s.border.clone()).unwrap_or({
+                log::debug!(
+                    "No border style found for style {style_id:?}, defaulting to no border"
+                );
+                iced::Border {
                     color: iced::Color::BLACK,
                     width: 0.0,
                     radius: iced::border::Radius::from(0.0),
-                }),
-            shadow: button_style
-                .map(|s| s.shadow.clone())
-                .unwrap_or(iced::Shadow {
+                }
+            }),
+            shadow: button_style.map(|s| s.shadow.clone()).unwrap_or({
+                log::debug!(
+                    "No shadow style found for style {style_id:?}, defaulting to no shadow"
+                );
+                iced::Shadow {
                     color: iced::Color::BLACK,
                     offset: iced::Vector { x: 0.0, y: 0.0 },
                     blur_radius: 0.0,
-                }),
+                }
+            }),
             snap: button_style.map(|s| s.snap).unwrap_or(false),
         }
     }
 }
 
+// Final
 #[derive(Debug, Clone)]
 pub struct ContainerButtonStyle {
     pub id: String,
@@ -307,6 +305,7 @@ pub struct ContainerButtonStyle {
     pub snap: bool,
 }
 
+// Final
 impl ContainerButtonStyle {
     pub fn from_wrapper(
         s: crate::data::config::wraper::ContainerButtonStyleWpraper,
@@ -345,17 +344,20 @@ impl ContainerButtonStyle {
     }
 }
 
+// Unfinished
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Global {
     pub antialiasing: bool,
 }
 
+// Unfinished
 impl Default for Global {
     fn default() -> Self {
         Self { antialiasing: true }
     }
 }
 
+// Unknown, maybe transform to a widget
 #[derive(Debug, Clone)]
 pub struct NotificationConfig {
     pub enable: bool,
@@ -376,11 +378,12 @@ pub struct NotificationConfig {
     pub respect_notification_timeout: bool,
 }
 
+// Unknown, maybe transform to a widget
 impl NotificationConfig {
     pub fn from_wrapper(notif_cfg: crate::data::config::wraper::NotificationConfig) -> Self {
         Self {
             enable: notif_cfg.enable.unwrap_or(true),
-            location: Self::parse_anchor(notif_cfg.location),
+            location: crate::data::config::helper::parse_anchor(notif_cfg.location),
             local_expire_timeout: notif_cfg.local_expire_timeout.unwrap_or(7),
             max_notifications: notif_cfg.max_notifications.unwrap_or(5),
             height: notif_cfg.height.unwrap_or(85),
@@ -417,34 +420,8 @@ impl NotificationConfig {
             respect_notification_timeout: notif_cfg.respect_notification_timeout.unwrap_or(false),
         }
     }
-
-    fn parse_anchor(locations: Option<Vec<String>>) -> iced_layershell::reexport::Anchor {
-        let mut anchor =
-            iced_layershell::reexport::Anchor::Top | iced_layershell::reexport::Anchor::Right;
-
-        if let Some(locations) = locations {
-            anchor = iced_layershell::reexport::Anchor::empty();
-            for location_str in locations.iter() {
-                anchor |= match location_str.to_lowercase().as_str() {
-                    "top" => iced_layershell::reexport::Anchor::Top,
-                    "bottom" => iced_layershell::reexport::Anchor::Bottom,
-                    "left" => iced_layershell::reexport::Anchor::Left,
-                    "right" => iced_layershell::reexport::Anchor::Right,
-                    _ => {
-                        log::warn!("Unknown notification anchor: {}, ignoring", location_str);
-                        iced_layershell::reexport::Anchor::empty()
-                    }
-                };
-            }
-            if anchor == iced_layershell::reexport::Anchor::empty() {
-                anchor = iced_layershell::reexport::Anchor::Top
-                    | iced_layershell::reexport::Anchor::Right;
-            }
-        }
-        anchor
-    }
 }
-
+// Unknown, maybe transform to a widget
 impl Default for NotificationConfig {
     fn default() -> Self {
         Self {
@@ -469,6 +446,7 @@ impl Default for NotificationConfig {
     }
 }
 
+// Unfinished, add actions and maybe more element types
 #[derive(Default, Debug, Clone)]
 pub struct Config {
     pub global: Global,
@@ -489,29 +467,10 @@ impl Config {
             PathBuf::from(format!("{}/.config/iwwc/config.yml", home))
         };
         let config: ConfigRead = if !path_buf.exists() {
+            log::warn!("Config file not found at: {path_buf:#?}");
+            log::warn!("Falling back to default config");
             return Self::default();
-            // if let Some(parent) = path_buf.parent() {
-            //     if !parent.exists() {
-            //         if let Err(e) = fs::create_dir_all(parent) {
-            //             log::error!("Error creating config directory: {e}");
-            //             log::error!("Falling back to default config");
-            //             return Self::default();
-            //         }
-            //     }
-            // }
-            // match fs::File::create(&path_buf) {
-            //     Ok(mut file) => {
-            //         let cfg = ConfigRead::default();
-            //         log::debug!("Created default aplin config at: {path_buf:#?}");
-            //         let _ = file.write_all(serde_yml::to_string(&cfg).unwrap().as_bytes());
-            //         return Self::default();
-            //     }
-            //     Err(e) => {
-            //         log::error!("Error creating config file: {e}");
-            //         log::error!("Falling back to default config");
-            //         return Self::default();
-            //     }
-            // };
+            //TODO: implement propper default file creation
         } else {
             match fs::read_to_string(path_buf) {
                 Ok(content) => serde_yml::from_str(&content).unwrap(),
@@ -527,7 +486,6 @@ impl Config {
     }
 
     pub fn from(cfg: ConfigRead) -> Self {
-        // First, build the style maps
         let shadow_styles = Self::build_shadow_styles(&cfg);
         let border_styles = Self::build_border_styles(&cfg);
         let container_button_styles =
@@ -607,8 +565,8 @@ impl Config {
                             iced::Color::BLACK
                         }),
                         offset: iced::Vector {
-                            x: s.offset_x.unwrap_or(0.0),
-                            y: s.offset_y.unwrap_or(0.0),
+                            x: s.offset.map_or(0.0, |o| o.0),
+                            y: s.offset.map_or(0.0, |o| o.1),
                         },
                         blur_radius: s.blur_radius.unwrap_or(5.0),
                     },

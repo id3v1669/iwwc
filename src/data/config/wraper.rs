@@ -21,6 +21,7 @@ pub struct NotificationConfig {
     pub respect_notification_timeout: Option<bool>,
 }
 
+// Final
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct WidgetWindowWraper {
     pub size: (u32, u32),
@@ -32,70 +33,102 @@ pub struct WidgetWindowWraper {
     pub events_transparent: Option<bool>, // TODO: fugure out what it does in NewLayerShell
     pub name: String,
     pub timeout: Option<i32>, // 0 or None for no timeout
-    pub element: String,      // ID of WidgetElement
+    pub element: String,
+    pub right_click_action: Option<String>,
 }
 
+// Semi final, maybe add max width and height
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ContainerWpraper {
     pub id: String,
-    pub child: String, // ID of child
+    pub child: String,
+    pub padding: Option<Vec<f32>>,
     pub width: Option<String>,
     pub height: Option<String>,
-    pub style: Option<String>, // ID of style
+    pub align_x: Option<String>,
+    pub align_y: Option<String>,
+    pub style: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct ButtonWpraper {
-    pub id: String,
-    pub text: String,
-    pub action_id: String,
-    pub width: Option<String>,
-    pub height: Option<String>,
-    pub padding: Option<(f32, f32, f32, f32)>,
-    pub style: Option<String>, // ID of style
-}
-
+// Final
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ContainerButtonStyleWpraper {
     pub id: String,
     pub text_color: Option<String>,
     pub background_color: Option<String>,
-    pub border: Option<String>, // ID of BorderWraper
-    pub shadow: Option<String>, // ID of ShadowWraper
-    pub snap: Option<bool>,     // TODO: figure out what it does
+    pub border: Option<String>,
+    pub shadow: Option<String>,
+    pub snap: Option<bool>, // TODO: figure out what it does
 }
 
+// Final
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BorderWraper {
     pub id: String,
     pub width: Option<f32>,
     pub radius: Option<(f32, f32, f32, f32)>,
-    pub color: Option<String>, // hex color code
+    pub color: Option<String>,
 }
 
+// Final
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ShadowWraper {
     pub id: String,
     pub color: Option<String>,
-    pub offset_x: Option<f32>,
-    pub offset_y: Option<f32>,
+    pub offset: Option<(f32, f32)>,
     pub blur_radius: Option<f32>,
 }
 
+// Final
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RowWraper {
     pub id: String,
-    pub children: Vec<String>, // IDs of child elements
+    pub children: Vec<String>,
+    pub spacing: Option<f32>,
+    pub padding: Option<Vec<f32>>,
+    pub width: Option<String>,
+    pub height: Option<String>,
     pub allinment: Option<String>,
 }
 
+// Final
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ColumnWraper {
     pub id: String,
-    pub children: Vec<String>, // IDs of child elements
+    pub children: Vec<String>,
+    pub spacing: Option<f32>,
+    pub padding: Option<Vec<f32>>,
+    pub width: Option<String>,
+    pub height: Option<String>,
     pub allinment: Option<String>,
 }
 
+// Final
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ButtonWpraper {
+    pub id: String,
+    pub text: String,
+    pub action_id: String, //figure out right click when added to iced lib
+    pub width: Option<String>,
+    pub height: Option<String>,
+    pub padding: Option<Vec<f32>>,
+    pub style: Option<String>,
+}
+
+// Unfinished
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TextWraper {
+    pub id: String,
+    pub text: String,
+    pub width: Option<String>,
+    pub height: Option<String>,
+    pub allignment: Option<String>,
+    pub font_size: Option<u32>,
+    pub font_color: Option<String>,
+    //pub font_family: Option<String>, // TODO
+}
+
+// Unfinished, more objects and actions to add
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ConfigRead {
     pub global: Option<Global>,
@@ -108,4 +141,5 @@ pub struct ConfigRead {
     pub container_styles: Option<Vec<ContainerButtonStyleWpraper>>,
     pub border_styles: Option<Vec<BorderWraper>>,
     pub shadow_styles: Option<Vec<ShadowWraper>>,
+    pub text: Option<Vec<TextWraper>>,
 }
