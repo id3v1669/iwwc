@@ -21,7 +21,7 @@ impl IpcServer {
         }
 
         let listener = UnixListener::bind(&socket_path)?;
-        log::info!("IPC server listening on {socket_path:?}");
+        log::debug!("IPC server listening on {socket_path:?}");
 
         Ok(Self { listener })
     }

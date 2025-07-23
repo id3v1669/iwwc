@@ -15,7 +15,7 @@ fn default_icon() {
             std::process::exit(1);
         }
     } else {
-        log::info!("Default icon already exists");
+        log::debug!("Default icon already exists");
     }
 }
 

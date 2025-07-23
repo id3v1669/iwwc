@@ -17,25 +17,6 @@ pub fn body(
         .height(iced::Length::Fill)
 }
 
-fn build_element<'a>(
-    iwwc: &'a crate::gui::app::IcedWaylandWidgetCenter,
-    element_id: &str,
-) -> iced::widget::Container<'a, crate::gui::app::Message> {
-    if let Some(container) = iwwc.config.containers.iter().find(|c| c.id == element_id) {
-        let child_content = build_child_element(iwwc, &container.child);
-
-        return iced::widget::container(child_content)
-            .width(container.width)
-            .height(container.height)
-            .style(|_theme| container.style.clone());
-    }
-
-    let content = build_child_element(iwwc, element_id);
-    iced::widget::container(content)
-        .width(iced::Length::Fill)
-        .height(iced::Length::Fill)
-}
-
 fn build_child_element<'a>(
     iwwc: &'a crate::gui::app::IcedWaylandWidgetCenter,
     element_id: &str,

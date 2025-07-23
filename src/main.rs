@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if args.debug {
             std::env::set_var(
                 "RUST_LOG",
-                "debug, iced_layershell=off, naga=off, zbus=off, tracing=off, wgpu_core=off, iced_wgpu=off, cosmic_text=off, wgpu_hal=off",
+                "debug, iced_layershell=off, naga=off, zbus=off, tracing=off, wgpu_core=off, iced_wgpu=off, cosmic_text=off, wgpu_hal=off, sctk=off",
             );
         }
     }
