@@ -27,6 +27,10 @@
 
     defaultPackage = eachSystem (system: self.packages.${system}.default);
 
+    overlays.default = final: prev: {
+      iwwc = self.packages.${prev.system}.default;
+    };
+
     devShells = eachSystem (system: {
       default = (pkgsFor system).callPackage ./nix/shell.nix {};
     });
