@@ -7,19 +7,25 @@ use iced_layershell::to_layer_message;
 use crate::handler::notification::NotificationHandler;
 
 pub fn start() -> Result<(), iced_layershell::Error> {
-    let config = crate::data::config::primary::Config::load(None); //TODO: change to read from file
+    let config = crate::data::config::primary::Config::load(None); //TODO: change to read from file in args
+    // start mode should be background, but since lib is kinda broken, use target screen as workaround
+    // active is also working not as expected, but need some kind of fallback
+    let start_mode = match config.global.output {
+        Some(ref output) => iced_layershell::settings::StartMode::TargetScreen(output.to_string()),
+        None => iced_layershell::settings::StartMode::Active,
+    };
     let settings = Settings {
         layer_settings: LayerShellSettings {
             anchor: Anchor::Top | Anchor::Right,
             layer: Layer::Background,
             exclusive_zone: 0,
-            size: None,
+            size: Some((4, 4)),
             margin: (10, 10, 10, 10),
             keyboard_interactivity: KeyboardInteractivity::None,
-            start_mode: iced_layershell::settings::StartMode::Background,
+            start_mode: start_mode,
             ..Default::default()
         },
-        antialiasing: config.global.antialiasing,
+        antialiasing: config.global.antialiasing.unwrap_or(true),
         ..Default::default()
     };
     daemon(
@@ -50,9 +56,10 @@ pub struct IcedWaylandWidgetCenter {
 #[to_layer_message(multi)]
 #[derive(Debug, Clone)]
 pub enum Message {
+    FontLoaded(Result<(), iced::font::Error>),
     Close(iced::window::Id),
     CloseByContentId(u32),
-    IpcCommand(String),
+    IpcCommand(String, Option<String>),
     RightClick(iced::window::Id),
     TestMessage,
     MoveNotifications,
@@ -69,6 +76,18 @@ impl IcedWaylandWidgetCenter {
                 widget_ids: std::collections::HashMap::new(),
             },
             Task::none(),
+            // Task::batch(vec![
+            //     iced::font::load(ICOFONT_BYTES).map(Message::FontLoaded),
+            //     // iced::font::load(
+            //     //     iced_fonts::REQUIRED_FONT_BYTES
+            //     // ).map(Message::FontLoaded),
+            //     // iced::font::load(
+            //     //     iced_fonts::NERD_FONT_BYTES
+            //     // ).map(Message::FontLoaded),
+            //     // iced::font::load(
+            //     //     iced_fonts::BOOTSTRAP_FONT_BYTES
+            //     // ).map(Message::FontLoaded),
+            // ]),
         )
     }
 
@@ -177,9 +196,9 @@ impl IcedWaylandWidgetCenter {
                 }
                 Task::none()
             }
-            Message::IpcCommand(command) => {
+            Message::IpcCommand(command, subcommand) => {
                 log::debug!("Received IPC command: {command}");
-                crate::handler::ipc::handle_command(self, command)
+                crate::handler::ipc::handle_command(self, command, subcommand)
             }
             Message::MoveNotifications => {
                 let mut move_notifications: Vec<Task<Message>> = Vec::new();
@@ -228,7 +247,11 @@ impl IcedWaylandWidgetCenter {
         };
 
         iced::widget::container(iced::widget::horizontal_space())
-            .style(move |_| crate::gui::elements::style::notification_style(&self.config))
+            .style(move |_| iced::widget::container::Style {
+                background: Some(iced::Background::Color(Color::TRANSPARENT)),
+                text_color: Some(Color::TRANSPARENT),
+                ..Default::default()
+            })
             .into()
     }
 
@@ -244,5 +267,12 @@ impl IcedWaylandWidgetCenter {
             self.notification_ids.get(&id).cloned(),
             self.widget_ids.get(&id).cloned(),
         )
+    }
+    fn style(_counter: &Self, theme: &iced::Theme) -> iced::theme::Style {
+        use iced::theme::Style;
+        Style {
+            background_color: Color::TRANSPARENT,
+            text_color: theme.palette().text,
+        }
     }
 }

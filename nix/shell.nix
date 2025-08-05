@@ -6,25 +6,27 @@ pkgs.mkShell {
     cargo
     rustc
     scdoc
-
-    # build Deps
+    
+    # Build Deps
     pkg-config
     pango
     glib
     gdk-pixbuf
     atkmm
-
     libxkbcommon
-
-    # other
+    
+    # graphics
+    vulkan-loader
+    mesa # Mesa drivers, otherwise vulkan backend fails to see mesa from system
+    
+    # Wayland
     wayland
     wayland-protocols
+    wayland-scanner
+    
+    # System
     dbus
-    xorg.libX11
-    xorg.libXcursor
-    xorg.libXi
-    xorg.libXrandr
-
+    
     # Tools
     cargo-audit
     cargo-deny
@@ -32,10 +34,10 @@ pkgs.mkShell {
     rust-analyzer
     rustfmt
   ];
-
+  
   LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (with pkgs; [
     vulkan-loader
-    xorg.libX11
+    mesa
     libxkbcommon
     wayland
     wayland-protocols
