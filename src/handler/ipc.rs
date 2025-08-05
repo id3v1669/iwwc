@@ -41,16 +41,20 @@ impl IpcServer {
         match reader.read_line(&mut line).await {
             Ok(0) => return Ok(()), // Connection closed
             Ok(_) => {
-                let command = line.trim();
-                log::debug!("Received IPC command: {command}");
+                let command_line = line.trim();
+                log::debug!("Received IPC command: {command_line}");
 
-                let message = match command {
-                    "test" => Message::TestMessage,
-                    window => {
-                        log::debug!("Sending command \"{command}\" to iced");
-                        Message::IpcCommand(window.to_string())
-                    }
-                };
+                // Parse command and subcommand
+                let parts: Vec<&str> = command_line.split_whitespace().collect();
+                let command = parts.get(0).unwrap();
+                let subcommand = parts.get(1);
+
+                log::debug!(
+                    "Sending command \"{command}\" with subcommand \"{subcommand:?}\" to iced"
+                );
+                // not calling handle_command directly as getting iwwc here would be pain in the ass
+                let message =
+                    Message::IpcCommand(command.to_string(), subcommand.map(|s| s.to_string()));
 
                 if let Err(e) = sender.send(message).await {
                     log::error!("Failed to send message: {e}");
@@ -85,14 +89,22 @@ impl IpcServer {
         PathBuf::from(runtime_dir).join("iwwc.sock")
     }
 
-    pub async fn send_ipc_command(command: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn send_ipc_command(
+        command: &str,
+        subcommand: Option<&str>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let socket_path = Self::get_socket_path();
         use tokio::io::AsyncWriteExt;
         match tokio::net::UnixStream::connect(&socket_path).await {
             Ok(mut stream) => {
-                let message = format!("{command}\n");
+                let message = match subcommand {
+                    Some(sub) => format!("{command} {sub}\n"),
+                    None => format!("{command}\n"),
+                };
                 stream.write_all(message.as_bytes()).await?;
-                log::debug!("Command '{command}' sent successfully");
+                log::debug!(
+                    "Command '{command}' with subcommand '{subcommand:?}' sent successfully"
+                );
             }
             Err(_) => {
                 log::error!("Failed to connect to daemon. Is the daemon running?");
@@ -117,14 +129,20 @@ impl Drop for IpcServer {
 pub fn handle_command(
     iwwc: &mut crate::gui::app::IcedWaylandWidgetCenter,
     command: String,
+    subcommand: Option<String>,
 ) -> iced::Task<Message> {
     match command.as_str() {
         "test2" => {
             log::info!("test2");
             iced::Task::done(Message::TestMessage)
         }
-        _ => {
-            match iwwc.config.widgets.iter().find(|w| w.id == command) {
+        "open" => {
+            match iwwc
+                .config
+                .widgets
+                .iter()
+                .find(|w| w.id == *subcommand.as_ref().unwrap())
+            {
                 Some(window) => {
                     log::debug!("Found window with name: {command}");
                     let window_id = iced::window::Id::unique();
@@ -154,6 +172,10 @@ pub fn handle_command(
                     return iced::Task::none();
                 }
             }
+        }
+        _ => {
+            log::warn!("Yet unsupported command: {command}");
+            iced::Task::none()
         }
     }
 }

@@ -112,20 +112,33 @@ pub struct ButtonWpraper {
     pub width: Option<String>,
     pub height: Option<String>,
     pub padding: Option<Vec<f32>>,
-    pub style: Option<String>,
+    pub style_active: Option<String>,
+    pub style_hover: Option<String>,
+    pub style_pressed: Option<String>,
 }
 
-// Unfinished
+// Final
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TextWraper {
     pub id: String,
     pub text: String,
     pub width: Option<String>,
     pub height: Option<String>,
-    pub allignment: Option<String>,
+    pub align_x: Option<String>,
+    pub align_y: Option<String>,
     pub font_size: Option<u32>,
     pub font_color: Option<String>,
-    //pub font_family: Option<String>, // TODO
+    pub font_id: Option<String>,
+}
+
+// Final
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct FontWraper {
+    pub id: String,
+    pub family: String,
+    pub weight: Option<String>,
+    pub style: Option<String>,
+    pub stretch: Option<String>,
 }
 
 // Unfinished, more objects and actions to add
@@ -138,8 +151,9 @@ pub struct ConfigRead {
     pub rows: Option<Vec<RowWraper>>,
     pub columns: Option<Vec<ColumnWraper>>,
     pub buttons: Option<Vec<ButtonWpraper>>,
-    pub container_styles: Option<Vec<ContainerButtonStyleWpraper>>,
+    pub container_button_styles: Option<Vec<ContainerButtonStyleWpraper>>,
     pub border_styles: Option<Vec<BorderWraper>>,
     pub shadow_styles: Option<Vec<ShadowWraper>>,
-    pub text: Option<Vec<TextWraper>>,
+    pub texts: Option<Vec<TextWraper>>,
+    pub fonts: Option<Vec<FontWraper>>,
 }

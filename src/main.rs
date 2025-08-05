@@ -17,6 +17,9 @@ struct Args {
 
     #[arg(value_name = "COMMAND")]
     command: Option<String>,
+
+    #[arg(value_name = "SUBCOMMAND")]
+    subcommand: Option<String>,
 }
 
 #[tokio::main]
@@ -27,6 +30,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if args.debug {
             std::env::set_var(
                 "RUST_LOG",
+                //"debug"
+                //"debug, iced_layershell=off"
                 "debug, iced_layershell=off, naga=off, zbus=off, tracing=off, wgpu_core=off, iced_wgpu=off, cosmic_text=off, wgpu_hal=off, sctk=off",
             );
         }
@@ -45,8 +50,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 crate::data::icons::get_system_icons_paths();
                 crate::gui::app::start().expect("REASON");
             }
+            "open" | "close" => {
+                if let Some(subcommand) = args.subcommand {
+                    crate::handler::ipc::IpcServer::send_ipc_command(
+                        command.as_str(),
+                        Some(subcommand.as_str()),
+                    )
+                    .await?;
+                } else {
+                    log::error!("Subcommand required for open/close command");
+                    std::process::exit(1);
+                }
+            }
             _ => {
-                crate::handler::ipc::IpcServer::send_ipc_command(command.as_str()).await?;
+                crate::handler::ipc::IpcServer::send_ipc_command(command.as_str(), None).await?;
             }
         }
         return Ok(());

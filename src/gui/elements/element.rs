@@ -55,11 +55,18 @@ fn build_child_element<'a>(
     }
 
     if let Some(button) = iwwc.config.buttons.iter().find(|b| b.id == element_id) {
-        return iced::widget::button(iced::widget::text(&button.text))
+        let child_content = build_child_element(iwwc, &button.text);
+
+        return iced::widget::button(child_content)
             .width(button.width)
             .height(button.height)
             .padding(button.padding)
-            .style(|_, _| button.style.clone())
+            .style(|_, status| match status {
+                iced::widget::button::Status::Active => button.style_active.clone(),
+                iced::widget::button::Status::Hovered => button.style_hover.clone(),
+                iced::widget::button::Status::Pressed => button.style_pressed.clone(),
+                _ => iced::widget::button::Style::default(),
+            })
             .on_press(crate::gui::app::Message::TestMessage)
             .into();
     }
@@ -74,6 +81,18 @@ fn build_child_element<'a>(
             .align_x(container.align_x)
             .align_y(container.align_y)
             .style(|_theme| container.style.clone())
+            .into();
+    }
+
+    if let Some(text) = iwwc.config.texts.iter().find(|t| t.id == element_id) {
+        return iced::widget::text(&text.text)
+            .width(text.width)
+            .height(text.height)
+            .align_x(text.align_x)
+            .align_y(text.align_y)
+            .size(text.font_size)
+            .color(text.color)
+            .font(text.font)
             .into();
     }
 

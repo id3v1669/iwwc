@@ -14,10 +14,10 @@ rustPlatform.buildRustPackage rec {
   cargoLock = {
     lockFile = "${src}/Cargo.lock";
     outputHashes = {
-      "cryoglyph-0.1.0" = "sha256-X7S9jq8wU6g1DDNEzOtP3lKWugDnpopPDBK49iWvD4o=";
+      "cryoglyph-0.1.0" = "sha256-Jc+rhzd5BIT7aYBtIfsBFFKkGChdEYhDHdYGiv4KE+c=";
       "dpi-0.1.1" = "sha256-hlVhlQ8MmIbNFNr6BM4edKdZbe+ixnPpKm819zauFLQ=";
-      "iced-0.14.0-dev" = "sha256-gPz/J9+agGiyA9DIdFkcR7nvBeKcalXaHeHLwGZJ77I=";
-      "iced_exdevtools-0.14.0-dev" = "sha256-ViPH4HPI+NdQ9+DHnavfyrdaMWuhoDWeBfoKfGGn4d0=";
+      "iced-0.14.0-dev" = "sha256-1svvPtYyjL4/0ESRGSXPfWU6JoWqKMO147849vmD7hs=";
+      "iced_exdevtools-0.14.0-dev" = "sha256-0Lp95CsLbM9byBxW8tP5UQuiJSUgA9QNYQtBRgi6JNI=";
     };
   };
 
@@ -31,16 +31,11 @@ rustPlatform.buildRustPackage rec {
     gdk-pixbuf
     atkmm
 
-    fontconfig
     vulkan-loader
-    xorg.libX11
-    xorg.libXcursor
-    xorg.libXi
-    xorg.libXrandr
   ];
 
   postFixup = ''
     patchelf $out/bin/iwwc \
-      --add-rpath ${lib.makeLibraryPath (with pkgs; [vulkan-loader xorg.libX11 libxkbcommon wayland])}
+      --add-rpath ${lib.makeLibraryPath (with pkgs; [vulkan-loader libxkbcommon wayland])}
   '';
 }

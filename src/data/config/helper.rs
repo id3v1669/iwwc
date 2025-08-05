@@ -87,3 +87,81 @@ pub fn parse_anchor(locations: Option<Vec<String>>) -> iced_layershell::reexport
     }
     anchor
 }
+
+pub fn parse_font_weight(weight: Option<String>) -> iced::font::Weight {
+    match weight {
+        Some(w) => match w.to_lowercase().as_str() {
+            "thin" => iced::font::Weight::Thin,
+            "extra_light" | "ultra_light" => iced::font::Weight::ExtraLight,
+            "light" => iced::font::Weight::Light,
+            "normal" | "regular" => iced::font::Weight::Normal,
+            "medium" => iced::font::Weight::Medium,
+            "semi_bold" | "demi_bold" => iced::font::Weight::Semibold,
+            "bold" => iced::font::Weight::Bold,
+            "extra_bold" | "ultra_bold" => iced::font::Weight::ExtraBold,
+            "black" => iced::font::Weight::Black,
+            _ => {
+                log::warn!("Unknown font weight: {}, defaulting to normal", w);
+                iced::font::Weight::Normal
+            }
+        },
+        None => iced::font::Weight::Normal,
+    }
+}
+
+pub fn parse_font_stretch(stretch: Option<String>) -> iced::font::Stretch {
+    match stretch {
+        Some(s) => match s.to_lowercase().as_str() {
+            "ultra_condensed" => iced::font::Stretch::UltraCondensed,
+            "extra_condensed" => iced::font::Stretch::ExtraCondensed,
+            "condensed" => iced::font::Stretch::Condensed,
+            "semi_condensed" | "demi_condensed" => iced::font::Stretch::SemiCondensed,
+            "normal" | "regular" => iced::font::Stretch::Normal,
+            "semi_expanded" | "demi_expanded" => iced::font::Stretch::SemiExpanded,
+            "expanded" => iced::font::Stretch::Expanded,
+            "extra_expanded" => iced::font::Stretch::ExtraExpanded,
+            "ultra_expanded" => iced::font::Stretch::UltraExpanded,
+            _ => {
+                log::warn!("Unknown font stretch: {}, defaulting to normal", s);
+                iced::font::Stretch::Normal
+            }
+        },
+        None => iced::font::Stretch::Normal,
+    }
+}
+
+pub fn parse_font_style(style: Option<String>) -> iced::font::Style {
+    match style {
+        Some(s) => match s.to_lowercase().as_str() {
+            "normal" => iced::font::Style::Normal,
+            "italic" => iced::font::Style::Italic,
+            "oblique" => iced::font::Style::Oblique,
+            _ => {
+                log::warn!("Unknown font style: {}, defaulting to normal", s);
+                iced::font::Style::Normal
+            }
+        },
+        None => iced::font::Style::Normal,
+    }
+}
+
+static FONT_INTERNER: std::sync::OnceLock<
+    std::sync::RwLock<std::collections::HashMap<String, &'static str>>,
+> = std::sync::OnceLock::new();
+
+pub fn get_font_name_static(name: String) -> &'static str {
+    let interner =
+        FONT_INTERNER.get_or_init(|| std::sync::RwLock::new(std::collections::HashMap::new()));
+    {
+        let reader = interner.read().unwrap();
+        if let Some(&interned) = reader.get(&name) {
+            return interned;
+        }
+    } // extra scope to release the read lock before acquiring the write lock
+
+    let mut writer = interner.write().unwrap();
+
+    let leaked: &'static str = Box::leak(name.clone().into_boxed_str());
+    writer.insert(name, leaked);
+    leaked
+}

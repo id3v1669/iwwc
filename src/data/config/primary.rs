@@ -149,7 +149,7 @@ impl Container {
                     "No border style found for style {style_id:?}, defaulting to no border"
                 );
                 iced::Border {
-                    color: iced::Color::BLACK,
+                    color: iced::Color::TRANSPARENT,
                     width: 0.0,
                     radius: iced::border::Radius::from(0.0),
                 }
@@ -159,7 +159,7 @@ impl Container {
                     "No shadow style found for style {style_id:?}, defaulting to no shadow"
                 );
                 iced::Shadow {
-                    color: iced::Color::BLACK,
+                    color: iced::Color::TRANSPARENT,
                     offset: iced::Vector { x: 0.0, y: 0.0 },
                     blur_radius: 0.0,
                 }
@@ -232,7 +232,9 @@ pub struct Button {
     pub width: iced::Length,
     pub height: iced::Length,
     pub padding: iced::Padding,
-    pub style: iced::widget::button::Style,
+    pub style_active: iced::widget::button::Style,
+    pub style_hover: iced::widget::button::Style,
+    pub style_pressed: iced::widget::button::Style,
 }
 
 // Final
@@ -248,7 +250,9 @@ impl Button {
             width: crate::data::config::helper::parse_length(b.width, "width"),
             height: crate::data::config::helper::parse_length(b.height, "height"),
             padding: crate::data::config::helper::parse_padding(b.padding),
-            style: Self::create_style(b.style, container_button_styles),
+            style_active: Self::create_style(b.style_active, container_button_styles),
+            style_hover: Self::create_style(b.style_hover, container_button_styles),
+            style_pressed: Self::create_style(b.style_pressed, container_button_styles),
         }
     }
 
@@ -276,7 +280,7 @@ impl Button {
                     "No border style found for style {style_id:?}, defaulting to no border"
                 );
                 iced::Border {
-                    color: iced::Color::BLACK,
+                    color: iced::Color::TRANSPARENT,
                     width: 0.0,
                     radius: iced::border::Radius::from(0.0),
                 }
@@ -286,7 +290,7 @@ impl Button {
                     "No shadow style found for style {style_id:?}, defaulting to no shadow"
                 );
                 iced::Shadow {
-                    color: iced::Color::BLACK,
+                    color: iced::Color::TRANSPARENT,
                     offset: iced::Vector { x: 0.0, y: 0.0 },
                     blur_radius: 0.0,
                 }
@@ -346,17 +350,57 @@ impl ContainerButtonStyle {
     }
 }
 
-// Unfinished
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Global {
-    pub antialiasing: bool,
+//Unfinished, add font family & for text create function to handle widget variables
+#[derive(Debug, Clone)]
+pub struct Text {
+    pub id: String,
+    pub text: String,
+    pub width: iced::Length,
+    pub height: iced::Length,
+    pub align_x: iced::alignment::Horizontal,
+    pub align_y: iced::alignment::Vertical,
+    pub font_size: u32,
+    pub color: iced::Color,
+    pub font: iced::Font,
+}
+
+//Unfinished, add font family
+impl Text {
+    pub fn from_wrapper(
+        t: crate::data::config::wraper::TextWraper,
+        f: std::collections::HashMap<String, iced::Font>,
+    ) -> Self {
+        Self {
+            id: t.id,
+            text: t.text,
+            width: crate::data::config::helper::parse_length(t.width, "width"),
+            height: crate::data::config::helper::parse_length(t.height, "height"),
+            align_x: crate::data::config::helper::allinment_horizontal(t.align_x),
+            align_y: crate::data::config::helper::allinment_vertical(t.align_y),
+            font_size: t.font_size.unwrap_or(16),
+            color: t
+                .font_color
+                .and_then(|c| iced::Color::parse(&c))
+                .unwrap_or_else(|| {
+                    log::warn!("Invalid font color, defaulting to white");
+                    iced::Color::WHITE
+                }),
+            font: f
+                .get(&t.font_id.unwrap_or_default())
+                .cloned()
+                .unwrap_or_else(|| {
+                    log::warn!("Font not found, defaulting to system font");
+                    iced::Font::default()
+                }),
+        }
+    }
 }
 
 // Unfinished
-impl Default for Global {
-    fn default() -> Self {
-        Self { antialiasing: true }
-    }
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct Global {
+    pub antialiasing: Option<bool>,
+    pub output: Option<String>,
 }
 
 // Unknown, maybe transform to a widget
@@ -458,6 +502,8 @@ pub struct Config {
     pub rows: Vec<Row>,
     pub columns: Vec<Column>,
     pub buttons: Vec<Button>,
+    pub texts: Vec<Text>,
+    pub subscriptions: Vec<String>, // TODO: implement subscriptions based on text elements
 }
 
 impl Config {
@@ -490,6 +536,7 @@ impl Config {
     pub fn from(cfg: ConfigRead) -> Self {
         let shadow_styles = Self::build_shadow_styles(&cfg);
         let border_styles = Self::build_border_styles(&cfg);
+        let fonts = Self::build_fonts(&cfg);
         let container_button_styles =
             Self::build_container_button_styles(&cfg, &border_styles, &shadow_styles);
 
@@ -544,6 +591,16 @@ impl Config {
                 .into_iter()
                 .map(|b| Button::from_wrapper(b, &container_button_styles))
                 .collect(),
+            texts: cfg
+                .texts
+                .unwrap_or_else(|| {
+                    log::warn!("No texts found in config");
+                    vec![]
+                })
+                .into_iter()
+                .map(|t| Text::from_wrapper(t, fonts.clone()))
+                .collect(),
+            subscriptions: vec![], // TODO: implement subscriptions based on text elements
         }
     }
 
@@ -617,7 +674,7 @@ impl Config {
         border_styles: &std::collections::HashMap<String, iced::Border>,
         shadow_styles: &std::collections::HashMap<String, iced::Shadow>,
     ) -> Vec<ContainerButtonStyle> {
-        cfg.container_styles
+        cfg.container_button_styles
             .clone()
             .unwrap_or_else(|| {
                 log::warn!("No container styles found in config");
@@ -625,6 +682,30 @@ impl Config {
             })
             .into_iter()
             .map(|s| ContainerButtonStyle::from_wrapper(s, border_styles, shadow_styles))
+            .collect()
+    }
+
+    fn build_fonts(cfg: &ConfigRead) -> std::collections::HashMap<String, iced::Font> {
+        cfg.fonts
+            .clone()
+            .unwrap_or_else(|| {
+                log::warn!("No fonts found in config");
+                vec![]
+            })
+            .into_iter()
+            .map(|f| {
+                let family_static =
+                    crate::data::config::helper::get_font_name_static(f.family.clone());
+                (
+                    f.id.clone(),
+                    iced::Font {
+                        family: iced::font::Family::Name(family_static),
+                        weight: crate::data::config::helper::parse_font_weight(f.weight),
+                        stretch: crate::data::config::helper::parse_font_stretch(f.stretch),
+                        style: crate::data::config::helper::parse_font_style(f.style),
+                    },
+                )
+            })
             .collect()
     }
 }
