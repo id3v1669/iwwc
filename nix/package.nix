@@ -34,6 +34,10 @@ rustPlatform.buildRustPackage rec {
     vulkan-loader
   ];
 
+  runtimeDependencies = with pkgs; [
+    fontconfig.lib
+  ];
+
   postFixup = ''
     patchelf $out/bin/iwwc \
       --add-rpath ${lib.makeLibraryPath (with pkgs; [vulkan-loader libxkbcommon wayland])}
