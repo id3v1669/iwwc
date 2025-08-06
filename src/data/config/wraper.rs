@@ -1,4 +1,4 @@
-use crate::data::config::primary::{Container, Global};
+use crate::data::config::primary::Global;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -108,7 +108,7 @@ pub struct ColumnWraper {
 pub struct ButtonWpraper {
     pub id: String,
     pub text: String,
-    pub action_id: String, //figure out right click when added to iced lib
+    pub on_click: Option<String>, //figure out right click when added to iced lib
     pub width: Option<String>,
     pub height: Option<String>,
     pub padding: Option<Vec<f32>>,

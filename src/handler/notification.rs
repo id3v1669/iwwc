@@ -122,9 +122,13 @@ pub fn handle_notification(
 
     let icons = crate::data::shared::ICONS.lock().unwrap();
 
-    let icon_name = if !notification.app_icon.is_empty() {
+    let icon_name = if !notification.app_icon.is_empty()
+        && iwwc.config.notifications.respect_notification_icon
+    {
         notification.app_icon.clone()
-    } else if !notification.app_name.is_empty() {
+    } else if !notification.app_name.is_empty()
+        && iwwc.config.notifications.respect_notification_icon
+    {
         notification.app_name.clone().to_lowercase()
     } else {
         "default".to_string()
