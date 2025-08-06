@@ -29,5 +29,10 @@ iced_layershell = { version = "0.14.0-dev", git = "https://github.com/id3v1669/e
 futures = "0.3.31"
 indexmap = "2.10.0"
 
+[profile.release]
+opt-level = "z"
+lto = true          # Enable Link Time Optimization
+codegen-units = 1   # Reduce number of codegen units to increase optimizations.
+strip = true  
 
 
