@@ -46,7 +46,7 @@ impl IpcServer {
 
                 // Parse command and subcommand
                 let parts: Vec<&str> = command_line.split_whitespace().collect();
-                let command = parts.get(0).unwrap();
+                let command = parts.first().unwrap();
                 let subcommand = parts.get(1);
 
                 log::debug!(
@@ -156,20 +156,19 @@ pub fn handle_command(
 
                     let timeout = window.timeout.unwrap_or(0);
                     let timeout_task = if timeout > 0 {
-                        iced::Task::none()
-                        // iced::Task::perform(
-                        //     tokio::time::sleep(std::time::Duration::from_secs(timeout as u64)),
-                        //     move |_| Message::Close(window_id),
-                        // )
+                        iced::Task::perform(
+                            tokio::time::sleep(std::time::Duration::from_secs(timeout as u64)),
+                            move |_| Message::Close(window_id),
+                        )
                     } else {
                         iced::Task::none()
                     };
                     log::debug!("Widget window created with ID: {window_id:?}");
-                    return iced::Task::batch([widget_window, timeout_task]);
+                    iced::Task::batch([widget_window, timeout_task])
                 }
                 None => {
                     log::warn!("No window found with name: {command}");
-                    return iced::Task::none();
+                    iced::Task::none()
                 }
             }
         }

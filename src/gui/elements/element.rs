@@ -11,10 +11,10 @@ pub fn body(
             .height(container.height)
             .align_x(container.align_x)
             .align_y(container.align_y)
-            .style(|_theme| container.style.clone());
+            .style(|_theme| container.style);
     }
     // Should not be reached, better way to handle this?
-    log::warn!("Container not found: {}", window_info);
+    log::warn!("Container not found: {window_info}");
     iced::widget::container(iced::widget::horizontal_space())
 }
 
@@ -62,12 +62,18 @@ fn build_child_element<'a>(
             .height(button.height)
             .padding(button.padding)
             .style(|_, status| match status {
-                iced::widget::button::Status::Active => button.style_active.clone(),
-                iced::widget::button::Status::Hovered => button.style_hover.clone(),
-                iced::widget::button::Status::Pressed => button.style_pressed.clone(),
+                iced::widget::button::Status::Active => button.style_active,
+                iced::widget::button::Status::Hovered => button.style_hover,
+                iced::widget::button::Status::Pressed => button.style_pressed,
                 _ => iced::widget::button::Style::default(),
             })
-            .on_press(crate::gui::app::Message::TestMessage)
+            .on_press({
+                if let Some(on_click) = &button.on_click {
+                    crate::gui::app::Message::RunCommand(on_click.clone())
+                } else {
+                    crate::gui::app::Message::EmptyAction
+                }
+            })
             .into();
     }
 
@@ -80,11 +86,12 @@ fn build_child_element<'a>(
             .height(container.height)
             .align_x(container.align_x)
             .align_y(container.align_y)
-            .style(|_theme| container.style.clone())
+            .style(|_theme| container.style)
             .into();
     }
 
     if let Some(text) = iwwc.config.texts.iter().find(|t| t.id == element_id) {
+        log::debug!("Font in use: {:?}", text.font);
         return iced::widget::text(&text.text)
             .width(text.width)
             .height(text.height)
@@ -97,6 +104,6 @@ fn build_child_element<'a>(
     }
 
     // Should not be reached, better way to handle this?
-    log::warn!("Element not found: {}", element_id);
-    iced::widget::text(format!("Unknown element: {}", element_id)).into()
+    log::warn!("Element not found: {element_id}");
+    iced::widget::text(format!("Unknown element: {element_id}")).into()
 }

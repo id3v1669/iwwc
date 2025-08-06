@@ -22,7 +22,7 @@ pub fn start() -> Result<(), iced_layershell::Error> {
             size: Some((4, 4)),
             margin: (10, 10, 10, 10),
             keyboard_interactivity: KeyboardInteractivity::None,
-            start_mode: start_mode,
+            start_mode,
             ..Default::default()
         },
         antialiasing: config.global.antialiasing.unwrap_or(true),
@@ -62,6 +62,8 @@ pub enum Message {
     IpcCommand(String, Option<String>),
     RightClick(iced::window::Id),
     TestMessage,
+    RunCommand(String),
+    EmptyAction,
     MoveNotifications,
     Notify(crate::data::notification::Notification),
 }
@@ -159,7 +161,7 @@ impl IcedWaylandWidgetCenter {
         iced::Subscription::batch([
             notification_subscription,
             ipc_subscription,
-            iced::event::listen_with(|event, status, id| match event {
+            iced::event::listen_with(|event, _status, id| match event {
                 iced::Event::Mouse(iced::mouse::Event::ButtonReleased(
                     iced::mouse::Button::Right,
                 )) => Some(Message::RightClick(id)),
@@ -179,8 +181,8 @@ impl IcedWaylandWidgetCenter {
                 ])
             }
             Message::RightClick(id) => {
-                let (notification_window_info, widget_info) = self.id_info(id);
-                if let Some(notification_window_info) = notification_window_info {
+                let (notification_window_info, _widget_info) = self.id_info(id);
+                if notification_window_info.is_some() {
                     return Task::done(Message::Close(id));
                 }
                 Task::none()
@@ -229,6 +231,17 @@ impl IcedWaylandWidgetCenter {
                 println!("TestMessage");
                 Task::none()
             }
+            Message::EmptyAction => {
+                log::warn!("Empty action received");
+                Task::none()
+            }
+            Message::RunCommand(command) => {
+                log::info!("Running command: {command}");
+                tokio::spawn(async move {
+                    crate::handler::actions::run_system_command(&command).await;
+                });
+                Task::none()
+            }
             Message::Notify(notification) => {
                 crate::handler::notification::handle_notification(self, notification)
             }
@@ -267,12 +280,5 @@ impl IcedWaylandWidgetCenter {
             self.notification_ids.get(&id).cloned(),
             self.widget_ids.get(&id).cloned(),
         )
-    }
-    fn style(_counter: &Self, theme: &iced::Theme) -> iced::theme::Style {
-        use iced::theme::Style;
-        Style {
-            background_color: Color::TRANSPARENT,
-            text_color: theme.palette().text,
-        }
     }
 }

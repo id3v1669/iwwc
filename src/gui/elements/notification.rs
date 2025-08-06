@@ -22,6 +22,7 @@ pub fn body(
                 .padding(iwwc.precalc.text_summary_paddings),
                 iced::widget::column![
                     iced::widget::text(window_info.notification.body.clone())
+                        .color(iwwc.config.notifications.secondary_text_color)
                         .size(iwwc.precalc.font_size_body),
                 ]
                 .padding(iwwc.precalc.text_body_paddings),

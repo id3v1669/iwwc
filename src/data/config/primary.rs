@@ -1,7 +1,6 @@
 use crate::data::config::wraper::ConfigRead;
-use iced_layershell::reexport::{Anchor, Layer, NewLayerShellSettings, OutputOption};
 use serde::{Deserialize, Serialize};
-use std::{fs, io::Write, path::PathBuf};
+use std::{fs, path::PathBuf};
 
 // Final
 #[derive(Debug, Clone)]
@@ -42,7 +41,7 @@ impl WidgetWindow {
                                 "left" => iced_layershell::reexport::Anchor::Left,
                                 "right" => iced_layershell::reexport::Anchor::Right,
                                 _ => {
-                                    log::warn!("Unknown anchor: {}, ignoring", location_str);
+                                    log::warn!("Unknown anchor: {location_str}, ignoring");
                                     continue;
                                 }
                             };
@@ -71,8 +70,7 @@ impl WidgetWindow {
                         }
                         _ => {
                             log::warn!(
-                                "Unknown keyboard interactivity: {}, defaulting to None",
-                                value
+                                "Unknown keyboard interactivity: {value}, defaulting to None"
                             );
                             iced_layershell::reexport::KeyboardInteractivity::None
                         }
@@ -139,12 +137,12 @@ impl Container {
                 Some(iced::Color::WHITE)
             }),
             background: container_style
-                .and_then(|s| s.background_color.clone())
+                .and_then(|s| s.background_color)
                 .or_else(|| {
                     log::debug!("No background color found, defaulting to black");
                     Some(iced::Background::Color(iced::Color::BLACK))
                 }),
-            border: container_style.map(|s| s.border.clone()).unwrap_or({
+            border: container_style.map(|s| s.border).unwrap_or({
                 log::debug!(
                     "No border style found for style {style_id:?}, defaulting to no border"
                 );
@@ -154,7 +152,7 @@ impl Container {
                     radius: iced::border::Radius::from(0.0),
                 }
             }),
-            shadow: container_style.map(|s| s.shadow.clone()).unwrap_or({
+            shadow: container_style.map(|s| s.shadow).unwrap_or({
                 log::debug!(
                     "No shadow style found for style {style_id:?}, defaulting to no shadow"
                 );
@@ -228,7 +226,7 @@ impl Column {
 pub struct Button {
     pub id: String,
     pub text: String,
-    pub action_id: String,
+    pub on_click: Option<String>,
     pub width: iced::Length,
     pub height: iced::Length,
     pub padding: iced::Padding,
@@ -246,7 +244,7 @@ impl Button {
         Self {
             id: b.id,
             text: b.text,
-            action_id: b.action_id,
+            on_click: b.on_click,
             width: crate::data::config::helper::parse_length(b.width, "width"),
             height: crate::data::config::helper::parse_length(b.height, "height"),
             padding: crate::data::config::helper::parse_padding(b.padding),
@@ -269,13 +267,11 @@ impl Button {
                 log::debug!("No text color found, defaulting to white");
                 iced::Color::WHITE
             }),
-            background: button_style
-                .and_then(|s| s.background_color.clone())
-                .or_else(|| {
-                    log::debug!("No background color found, defaulting to black");
-                    Some(iced::Background::Color(iced::Color::BLACK))
-                }),
-            border: button_style.map(|s| s.border.clone()).unwrap_or({
+            background: button_style.and_then(|s| s.background_color).or_else(|| {
+                log::debug!("No background color found, defaulting to black");
+                Some(iced::Background::Color(iced::Color::BLACK))
+            }),
+            border: button_style.map(|s| s.border).unwrap_or({
                 log::debug!(
                     "No border style found for style {style_id:?}, defaulting to no border"
                 );
@@ -285,7 +281,7 @@ impl Button {
                     radius: iced::border::Radius::from(0.0),
                 }
             }),
-            shadow: button_style.map(|s| s.shadow.clone()).unwrap_or({
+            shadow: button_style.map(|s| s.shadow).unwrap_or({
                 log::debug!(
                     "No shadow style found for style {style_id:?}, defaulting to no shadow"
                 );
@@ -368,7 +364,7 @@ pub struct Text {
 impl Text {
     pub fn from_wrapper(
         t: crate::data::config::wraper::TextWraper,
-        f: std::collections::HashMap<String, iced::Font>,
+        f: &std::collections::HashMap<String, iced::Font>,
     ) -> Self {
         Self {
             id: t.id,
@@ -503,7 +499,7 @@ pub struct Config {
     pub columns: Vec<Column>,
     pub buttons: Vec<Button>,
     pub texts: Vec<Text>,
-    pub subscriptions: Vec<String>, // TODO: implement subscriptions based on text elements
+    //pub subscriptions: Vec<String>, // TODO: implement subscriptions based on text elements
 }
 
 impl Config {
@@ -512,7 +508,7 @@ impl Config {
             p
         } else {
             let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-            PathBuf::from(format!("{}/.config/iwwc/config.yml", home))
+            PathBuf::from(format!("{home}/.config/iwwc/config.yml"))
         };
         let config: ConfigRead = if !path_buf.exists() {
             log::warn!("Config file not found at: {path_buf:#?}");
@@ -598,9 +594,9 @@ impl Config {
                     vec![]
                 })
                 .into_iter()
-                .map(|t| Text::from_wrapper(t, fonts.clone()))
+                .map(|t| Text::from_wrapper(t, &fonts))
                 .collect(),
-            subscriptions: vec![], // TODO: implement subscriptions based on text elements
+            //subscriptions: vec![], // TODO: implement subscriptions based on text elements
         }
     }
 

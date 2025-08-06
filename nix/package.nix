@@ -1,7 +1,6 @@
 {
   lib,
   rustPlatform,
-  makeWrapper,
   pkg-config,
   pkgs,
 }:
@@ -32,10 +31,6 @@ rustPlatform.buildRustPackage rec {
     atkmm
 
     vulkan-loader
-  ];
-
-  runtimeDependencies = with pkgs; [
-    fontconfig.lib
   ];
 
   postFixup = ''

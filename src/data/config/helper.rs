@@ -75,7 +75,7 @@ pub fn parse_anchor(locations: Option<Vec<String>>) -> iced_layershell::reexport
                 "left" => iced_layershell::reexport::Anchor::Left,
                 "right" => iced_layershell::reexport::Anchor::Right,
                 _ => {
-                    log::warn!("Unknown notification anchor: {}, ignoring", location_str);
+                    log::warn!("Unknown notification anchor: {location_str}, ignoring");
                     iced_layershell::reexport::Anchor::empty()
                 }
             };
@@ -101,7 +101,7 @@ pub fn parse_font_weight(weight: Option<String>) -> iced::font::Weight {
             "extra_bold" | "ultra_bold" => iced::font::Weight::ExtraBold,
             "black" => iced::font::Weight::Black,
             _ => {
-                log::warn!("Unknown font weight: {}, defaulting to normal", w);
+                log::warn!("Unknown font weight: {w}, defaulting to normal");
                 iced::font::Weight::Normal
             }
         },
@@ -122,7 +122,7 @@ pub fn parse_font_stretch(stretch: Option<String>) -> iced::font::Stretch {
             "extra_expanded" => iced::font::Stretch::ExtraExpanded,
             "ultra_expanded" => iced::font::Stretch::UltraExpanded,
             _ => {
-                log::warn!("Unknown font stretch: {}, defaulting to normal", s);
+                log::warn!("Unknown font stretch: {s}, defaulting to normal");
                 iced::font::Stretch::Normal
             }
         },
@@ -137,7 +137,7 @@ pub fn parse_font_style(style: Option<String>) -> iced::font::Style {
             "italic" => iced::font::Style::Italic,
             "oblique" => iced::font::Style::Oblique,
             _ => {
-                log::warn!("Unknown font style: {}, defaulting to normal", s);
+                log::warn!("Unknown font style: {s}, defaulting to normal");
                 iced::font::Style::Normal
             }
         },
