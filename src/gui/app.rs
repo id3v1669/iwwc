@@ -8,6 +8,7 @@ use crate::handler::notification::NotificationHandler;
 
 pub fn start() -> Result<(), iced_layershell::Error> {
     let config = crate::data::config::primary::Config::load(None); //TODO: change to read from file in args
+
     // start mode should be background, but since lib is kinda broken, use target screen as workaround
     // active is also working not as expected, but need some kind of fallback
     let start_mode = match config.global.output {
@@ -20,7 +21,7 @@ pub fn start() -> Result<(), iced_layershell::Error> {
             layer: Layer::Background,
             exclusive_zone: 0,
             size: Some((4, 4)),
-            margin: (10, 10, 10, 10),
+            margin: (0, 0, 0, 0),
             keyboard_interactivity: KeyboardInteractivity::None,
             start_mode,
             ..Default::default()
@@ -78,18 +79,6 @@ impl IcedWaylandWidgetCenter {
                 widget_ids: std::collections::HashMap::new(),
             },
             Task::none(),
-            // Task::batch(vec![
-            //     iced::font::load(ICOFONT_BYTES).map(Message::FontLoaded),
-            //     // iced::font::load(
-            //     //     iced_fonts::REQUIRED_FONT_BYTES
-            //     // ).map(Message::FontLoaded),
-            //     // iced::font::load(
-            //     //     iced_fonts::NERD_FONT_BYTES
-            //     // ).map(Message::FontLoaded),
-            //     // iced::font::load(
-            //     //     iced_fonts::BOOTSTRAP_FONT_BYTES
-            //     // ).map(Message::FontLoaded),
-            // ]),
         )
     }
 

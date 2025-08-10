@@ -185,7 +185,7 @@ impl Row {
         Self {
             id: r.id,
             children: r.children,
-            spacing: r.spacing.unwrap_or(3.0),
+            spacing: r.spacing.unwrap_or(0.3), // Figure out wierd behavior with transparent borders
             padding: crate::data::config::helper::parse_padding(r.padding),
             width: crate::data::config::helper::parse_length(r.width, "width"),
             height: crate::data::config::helper::parse_length(r.height, "height"),

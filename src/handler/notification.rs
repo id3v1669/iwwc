@@ -120,7 +120,7 @@ pub fn handle_notification(
         iwwc.config.notifications.local_expire_timeout
     };
 
-    let icons = crate::data::shared::ICONS.lock().unwrap();
+    let icons = crate::data::icons::ICONS.lock().unwrap();
 
     let icon_name = if !notification.app_icon.is_empty()
         && iwwc.config.notifications.respect_notification_icon

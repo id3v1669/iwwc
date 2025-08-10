@@ -92,6 +92,7 @@ fn build_child_element<'a>(
 
     if let Some(text) = iwwc.config.texts.iter().find(|t| t.id == element_id) {
         log::debug!("Font in use: {:?}", text.font);
+
         return iced::widget::text(&text.text)
             .width(text.width)
             .height(text.height)
