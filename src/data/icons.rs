@@ -14,11 +14,11 @@ fn default_icon() {
     const DEFAULT_ICON: &[u8] = include_bytes!("../../assets/testing/default.svg");
 
     let path = std::env::var("HOME").unwrap() + "/.config/iwwc";
-    if !Path::new(&path).exists() {
-        if let Err(e) = fs::create_dir_all(&path) {
-            log::error!("Failed to create a default icon directory: {e}");
-            process::exit(1);
-        }
+    if !Path::new(&path).exists()
+        && let Err(e) = fs::create_dir_all(&path)
+    {
+        log::error!("Failed to create a default icon directory: {e}");
+        process::exit(1);
     }
     let default_icon = path.clone() + "/default.svg";
     if !Path::new(&default_icon).exists() {
@@ -112,18 +112,18 @@ fn find_icons_recursively(init_path: &PathBuf) -> Option<HashMap<String, PathBuf
         let entry = entry.unwrap();
         if entry.file_type().unwrap().is_file() {
             let path = entry.path();
-            if let Some(ext) = path.extension() {
-                if ext == "svg" {
-                    icons.insert(
-                        path.file_stem().unwrap().to_str().unwrap().to_string(),
-                        path,
-                    );
-                }
+            if let Some(ext) = path.extension()
+                && ext == "svg"
+            {
+                icons.insert(
+                    path.file_stem().unwrap().to_str().unwrap().to_string(),
+                    path,
+                );
             }
-        } else if entry.file_type().unwrap().is_dir() {
-            if let Some(sub_icons) = find_icons_recursively(&entry.path()) {
-                icons.extend(sub_icons);
-            }
+        } else if entry.file_type().unwrap().is_dir()
+            && let Some(sub_icons) = find_icons_recursively(&entry.path())
+        {
+            icons.extend(sub_icons);
         }
     }
     if icons.is_empty() { None } else { Some(icons) }

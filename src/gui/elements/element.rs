@@ -2,7 +2,7 @@ pub fn body(
     iwwc: &crate::gui::app::IcedWaylandWidgetCenter,
     window_info: String,
 ) -> iced::widget::Container<'_, crate::gui::app::Message> {
-    if let Some(container) = iwwc.config.containers.iter().find(|c| c.id == window_info) {
+    if let Some(container) = iwwc.config.containers.get(window_info.as_str()) {
         let child_content = build_child_element(iwwc, &container.child);
 
         return iced::widget::container(child_content)
@@ -15,14 +15,14 @@ pub fn body(
     }
     // Should not be reached, better way to handle this?
     log::warn!("Container not found: {window_info}");
-    iced::widget::container(iced::widget::horizontal_space())
+    iced::widget::container(iced::widget::space::horizontal())
 }
 
 fn build_child_element<'a>(
     iwwc: &'a crate::gui::app::IcedWaylandWidgetCenter,
     element_id: &str,
 ) -> iced::Element<'a, crate::gui::app::Message> {
-    if let Some(row) = iwwc.config.rows.iter().find(|r| r.id == element_id) {
+    if let Some(row) = iwwc.config.rows.get(element_id) {
         let mut row_widget = iced::widget::Row::new()
             .spacing(row.spacing)
             .padding(row.padding)
@@ -38,7 +38,7 @@ fn build_child_element<'a>(
         return row_widget.into();
     }
 
-    if let Some(column) = iwwc.config.columns.iter().find(|c| c.id == element_id) {
+    if let Some(column) = iwwc.config.columns.get(element_id) {
         let mut column_widget = iced::widget::Column::new()
             .spacing(column.spacing)
             .padding(column.padding)
@@ -54,7 +54,7 @@ fn build_child_element<'a>(
         return column_widget.into();
     }
 
-    if let Some(button) = iwwc.config.buttons.iter().find(|b| b.id == element_id) {
+    if let Some(button) = iwwc.config.buttons.get(element_id) {
         let child_content = build_child_element(iwwc, &button.text);
 
         return iced::widget::button(child_content)
@@ -77,7 +77,7 @@ fn build_child_element<'a>(
             .into();
     }
 
-    if let Some(container) = iwwc.config.containers.iter().find(|c| c.id == element_id) {
+    if let Some(container) = iwwc.config.containers.get(element_id) {
         let child_content = build_child_element(iwwc, &container.child);
 
         return iced::widget::container(child_content)
@@ -90,7 +90,7 @@ fn build_child_element<'a>(
             .into();
     }
 
-    if let Some(text) = iwwc.config.texts.iter().find(|t| t.id == element_id) {
+    if let Some(text) = iwwc.config.texts.get(element_id) {
         log::debug!("Font in use: {:?}", text.font);
 
         return iced::widget::text(&text.text)

@@ -105,11 +105,10 @@ pub fn handle_notification(
 
     let window_id = iced::window::Id::unique();
 
-    if iwwc.notification_ids.len() >= iwwc.config.notifications.max_notifications as usize {
-        if let Some((_, info)) = iwwc.notification_ids.shift_remove_index(0) {
-            overflow =
-                iced::Task::done(Message::CloseByContentId(info.notification.notification_id));
-        }
+    if iwwc.notification_ids.len() >= iwwc.config.notifications.max_notifications as usize
+        && let Some((_, info)) = iwwc.notification_ids.shift_remove_index(0)
+    {
+        overflow = iced::Task::done(Message::CloseByContentId(info.notification.notification_id));
     }
 
     let timeout = if iwwc.config.notifications.respect_notification_timeout

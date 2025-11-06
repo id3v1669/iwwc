@@ -74,10 +74,10 @@ impl IpcServer {
         match UnixStream::connect(&socket_path).await {
             Ok(_) => true,
             Err(_) => {
-                if socket_path.exists() {
-                    if let Err(e) = std::fs::remove_file(&socket_path) {
-                        log::error!("Failed to remove old socker file: {e}");
-                    }
+                if socket_path.exists()
+                    && let Err(e) = std::fs::remove_file(&socket_path)
+                {
+                    log::error!("Failed to remove old socker file: {e}");
                 }
                 false
             }
@@ -118,10 +118,10 @@ impl IpcServer {
 impl Drop for IpcServer {
     fn drop(&mut self) {
         let socket_path = Self::get_socket_path();
-        if socket_path.exists() {
-            if let Err(e) = fs::remove_file(&socket_path) {
-                log::error!("Failed to remove socket file: {e}");
-            }
+        if socket_path.exists()
+            && let Err(e) = fs::remove_file(&socket_path)
+        {
+            log::error!("Failed to remove socket file: {e}");
         }
     }
 }
@@ -136,42 +136,35 @@ pub fn handle_command(
             log::info!("test2");
             iced::Task::done(Message::TestMessage)
         }
-        "open" => {
-            match iwwc
-                .config
-                .widgets
-                .iter()
-                .find(|w| w.id == *subcommand.as_ref().unwrap())
-            {
-                Some(window) => {
-                    log::debug!("Found window with name: {command}");
-                    let window_id = iced::window::Id::unique();
+        "open" => match iwwc.config.widgets.get(subcommand.as_ref().unwrap()) {
+            Some(window) => {
+                log::debug!("Found window with name: {command}");
+                let window_id = iced::window::Id::unique();
 
-                    iwwc.widget_ids.insert(window_id, window.element.clone());
+                iwwc.widget_ids.insert(window_id, window.element.clone());
 
-                    let widget_window = iced::Task::done(Message::NewLayerShell {
-                        settings: window.settings.clone(),
-                        id: window_id,
-                    });
+                let widget_window = iced::Task::done(Message::NewLayerShell {
+                    settings: window.settings.clone(),
+                    id: window_id,
+                });
 
-                    let timeout = window.timeout.unwrap_or(0);
-                    let timeout_task = if timeout > 0 {
-                        iced::Task::perform(
-                            tokio::time::sleep(std::time::Duration::from_secs(timeout as u64)),
-                            move |_| Message::Close(window_id),
-                        )
-                    } else {
-                        iced::Task::none()
-                    };
-                    log::debug!("Widget window created with ID: {window_id:?}");
-                    iced::Task::batch([widget_window, timeout_task])
-                }
-                None => {
-                    log::warn!("No window found with name: {command}");
+                let timeout = window.timeout.unwrap_or(0);
+                let timeout_task = if timeout > 0 {
+                    iced::Task::perform(
+                        tokio::time::sleep(std::time::Duration::from_secs(timeout as u64)),
+                        move |_| Message::Close(window_id),
+                    )
+                } else {
                     iced::Task::none()
-                }
+                };
+                log::debug!("Widget window created with ID: {window_id:?}");
+                iced::Task::batch([widget_window, timeout_task])
             }
-        }
+            None => {
+                log::warn!("No window found with name: {command}");
+                iced::Task::none()
+            }
+        },
         _ => {
             log::warn!("Yet unsupported command: {command}");
             iced::Task::none()

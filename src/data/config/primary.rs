@@ -5,7 +5,6 @@ use std::{fs, path::PathBuf};
 // Final
 #[derive(Debug, Clone)]
 pub struct WidgetWindow {
-    pub id: String, // ID of the widget window
     pub settings: iced_layershell::reexport::NewLayerShellSettings,
     pub timeout: Option<i32>, // 0 or None for no timeout
     pub element: String,      // ID of WidgetElement
@@ -15,7 +14,6 @@ pub struct WidgetWindow {
 impl WidgetWindow {
     pub fn from_wrapper(window_raw: crate::data::config::wraper::WidgetWindowWraper) -> Self {
         Self {
-            id: window_raw.name.clone(),
             settings: iced_layershell::reexport::NewLayerShellSettings {
                 size: Some(window_raw.size),
                 layer: match window_raw.layer {
@@ -90,7 +88,6 @@ impl WidgetWindow {
 // Semi final, maybe add max width and height
 #[derive(Debug, Clone)]
 pub struct Container {
-    pub id: String,
     pub child: String, // ID of child
     pub padding: iced::Padding,
     pub width: iced::Length,
@@ -104,10 +101,9 @@ pub struct Container {
 impl Container {
     pub fn from_wrapper(
         w: crate::data::config::wraper::ContainerWpraper,
-        container_button_styles: &[ContainerButtonStyle],
+        container_button_styles: &std::collections::HashMap<String, ContainerButtonStyle>,
     ) -> Self {
         Self {
-            id: w.id,
             child: w.child,
             padding: crate::data::config::helper::parse_padding(w.padding),
             width: crate::data::config::helper::parse_length(w.width, "width"),
@@ -120,11 +116,12 @@ impl Container {
 
     fn create_style(
         style_id: Option<String>,
-        container_button_styles: &[ContainerButtonStyle],
+        container_button_styles: &std::collections::HashMap<String, ContainerButtonStyle>,
     ) -> iced::widget::container::Style {
         let container_style = style_id
             .clone()
-            .and_then(|id| container_button_styles.iter().find(|s| s.id == id));
+            .as_ref()
+            .and_then(|id| container_button_styles.get(id));
 
         if container_style.is_none() {
             log::debug!("style with id {style_id:?} not found, using default style");
@@ -170,7 +167,6 @@ impl Container {
 // Final
 #[derive(Debug, Clone)]
 pub struct Row {
-    pub id: String,
     pub children: Vec<String>, // IDs of child elements
     pub spacing: f32,
     pub padding: iced::Padding,
@@ -183,7 +179,6 @@ pub struct Row {
 impl Row {
     pub fn from_wrapper(r: crate::data::config::wraper::RowWraper) -> Self {
         Self {
-            id: r.id,
             children: r.children,
             spacing: r.spacing.unwrap_or(0.3), // Figure out wierd behavior with transparent borders
             padding: crate::data::config::helper::parse_padding(r.padding),
@@ -197,7 +192,6 @@ impl Row {
 // Final
 #[derive(Debug, Clone)]
 pub struct Column {
-    pub id: String,
     pub children: Vec<String>, // IDs of child elements
     pub spacing: f32,
     pub padding: iced::Padding,
@@ -210,7 +204,6 @@ pub struct Column {
 impl Column {
     pub fn from_wrapper(c: crate::data::config::wraper::ColumnWraper) -> Self {
         Self {
-            id: c.id,
             children: c.children,
             spacing: c.spacing.unwrap_or(3.0),
             padding: crate::data::config::helper::parse_padding(c.padding),
@@ -224,7 +217,6 @@ impl Column {
 // Final
 #[derive(Debug, Clone)]
 pub struct Button {
-    pub id: String,
     pub text: String,
     pub on_click: Option<String>,
     pub width: iced::Length,
@@ -239,10 +231,9 @@ pub struct Button {
 impl Button {
     pub fn from_wrapper(
         b: crate::data::config::wraper::ButtonWpraper,
-        container_button_styles: &[ContainerButtonStyle],
+        container_button_styles: &std::collections::HashMap<String, ContainerButtonStyle>,
     ) -> Self {
         Self {
-            id: b.id,
             text: b.text,
             on_click: b.on_click,
             width: crate::data::config::helper::parse_length(b.width, "width"),
@@ -256,11 +247,12 @@ impl Button {
 
     fn create_style(
         style_id: Option<String>,
-        container_button_styles: &[ContainerButtonStyle],
+        container_button_styles: &std::collections::HashMap<String, ContainerButtonStyle>,
     ) -> iced::widget::button::Style {
         let button_style = style_id
             .clone()
-            .and_then(|id| container_button_styles.iter().find(|s| s.id == id));
+            .as_ref()
+            .and_then(|id| container_button_styles.get(id));
 
         iced::widget::button::Style {
             text_color: button_style.and_then(|s| s.text_color).unwrap_or_else(|| {
@@ -299,7 +291,6 @@ impl Button {
 // Final
 #[derive(Debug, Clone)]
 pub struct ContainerButtonStyle {
-    pub id: String,
     pub text_color: Option<iced::Color>,
     pub background_color: Option<iced::Background>,
     pub border: iced::Border,
@@ -315,7 +306,6 @@ impl ContainerButtonStyle {
         shadow_styles: &std::collections::HashMap<String, iced::Shadow>,
     ) -> Self {
         Self {
-            id: s.id,
             text_color: s
                 .text_color
                 .and_then(|color_str| iced::Color::parse(&color_str)),
@@ -349,7 +339,6 @@ impl ContainerButtonStyle {
 //Unfinished, add font family & for text create function to handle widget variables
 #[derive(Debug, Clone)]
 pub struct Text {
-    pub id: String,
     pub text: String,
     pub width: iced::Length,
     pub height: iced::Length,
@@ -367,7 +356,6 @@ impl Text {
         f: &std::collections::HashMap<String, iced::Font>,
     ) -> Self {
         Self {
-            id: t.id,
             text: t.text,
             width: crate::data::config::helper::parse_length(t.width, "width"),
             height: crate::data::config::helper::parse_length(t.height, "height"),
@@ -493,12 +481,12 @@ impl Default for NotificationConfig {
 pub struct Config {
     pub global: Global,
     pub notifications: NotificationConfig,
-    pub widgets: Vec<WidgetWindow>,
-    pub containers: Vec<Container>,
-    pub rows: Vec<Row>,
-    pub columns: Vec<Column>,
-    pub buttons: Vec<Button>,
-    pub texts: Vec<Text>,
+    pub widgets: std::collections::HashMap<String, WidgetWindow>,
+    pub containers: std::collections::HashMap<String, Container>,
+    pub rows: std::collections::HashMap<String, Row>,
+    pub columns: std::collections::HashMap<String, Column>,
+    pub buttons: std::collections::HashMap<String, Button>,
+    pub texts: std::collections::HashMap<String, Text>,
     //pub subscriptions: Vec<String>, // TODO: implement subscriptions based on text elements
 }
 
@@ -549,7 +537,7 @@ impl Config {
                     vec![]
                 })
                 .into_iter()
-                .map(WidgetWindow::from_wrapper)
+                .map(|w| (w.name.clone(), WidgetWindow::from_wrapper(w)))
                 .collect(),
             containers: cfg
                 .containers
@@ -558,7 +546,12 @@ impl Config {
                     vec![]
                 })
                 .into_iter()
-                .map(|w| Container::from_wrapper(w, &container_button_styles))
+                .map(|c| {
+                    (
+                        c.id.clone(),
+                        Container::from_wrapper(c, &container_button_styles),
+                    )
+                })
                 .collect(),
             rows: cfg
                 .rows
@@ -567,7 +560,7 @@ impl Config {
                     vec![]
                 })
                 .into_iter()
-                .map(Row::from_wrapper)
+                .map(|r| (r.id.clone(), Row::from_wrapper(r)))
                 .collect(),
             columns: cfg
                 .columns
@@ -576,7 +569,7 @@ impl Config {
                     vec![]
                 })
                 .into_iter()
-                .map(Column::from_wrapper)
+                .map(|c| (c.id.clone(), Column::from_wrapper(c)))
                 .collect(),
             buttons: cfg
                 .buttons
@@ -585,7 +578,12 @@ impl Config {
                     vec![]
                 })
                 .into_iter()
-                .map(|b| Button::from_wrapper(b, &container_button_styles))
+                .map(|b| {
+                    (
+                        b.id.clone(),
+                        Button::from_wrapper(b, &container_button_styles),
+                    )
+                })
                 .collect(),
             texts: cfg
                 .texts
@@ -594,8 +592,9 @@ impl Config {
                     vec![]
                 })
                 .into_iter()
-                .map(|t| Text::from_wrapper(t, &fonts))
+                .map(|t| (t.id.clone(), Text::from_wrapper(t, &fonts)))
                 .collect(),
+            //variables: vec![],
             //subscriptions: vec![], // TODO: implement subscriptions based on text elements
         }
     }
@@ -669,7 +668,7 @@ impl Config {
         cfg: &ConfigRead,
         border_styles: &std::collections::HashMap<String, iced::Border>,
         shadow_styles: &std::collections::HashMap<String, iced::Shadow>,
-    ) -> Vec<ContainerButtonStyle> {
+    ) -> std::collections::HashMap<String, ContainerButtonStyle> {
         cfg.container_button_styles
             .clone()
             .unwrap_or_else(|| {
@@ -677,7 +676,12 @@ impl Config {
                 vec![]
             })
             .into_iter()
-            .map(|s| ContainerButtonStyle::from_wrapper(s, border_styles, shadow_styles))
+            .map(|s| {
+                (
+                    s.id.clone(),
+                    ContainerButtonStyle::from_wrapper(s, border_styles, shadow_styles),
+                )
+            })
             .collect()
     }
 
