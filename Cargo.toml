@@ -6,8 +6,8 @@ version = "0.1.0"
 
 [dependencies]
 # base deps
-clap = { version = "4.5.43", features = ["derive"] }
-log = "0.4.27"
+clap = { version = "4.5.47", features = ["derive"] }
+log = "0.4.28"
 env_logger = "0.11.8"
 tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = "0.1.17"
@@ -17,17 +17,13 @@ serde = { version = "1.0", features = ["derive"] }
 serde_yml = "0.0.12"
 
 # backend deps
-zbus = "5.9.0"
+zbus = "5.10.0"
 
 # frontend deps
-iced = { version = "0.14.0-dev", git = "https://github.com/iced-rs/iced.git", features = [
-	"tokio",
-	"svg",
-	"wgpu"
-]}
-iced_layershell = { version = "0.14.0-dev", git = "https://github.com/id3v1669/exwlshelleventloop.git", rev = "ff979054e02f6251c586e088aa7d58aca3cdfcac" }
+iced = { version = "0.14.0-dev", git = "https://github.com/iced-rs/iced.git", default-features = false, features = ["tokio","svg","wgpu"]}
+iced_layershell = { version = "0.14.0-dev", git = "https://github.com/waycrate/exwlshelleventloop.git", rev = "0b8361f33891078e7a58ee6c3fbafd699c542ff0" }
 futures = "0.3.31"
-indexmap = "2.10.0"
+indexmap = "2.11.0"
 
 [profile.release]
 opt-level = "z"

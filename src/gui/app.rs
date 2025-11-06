@@ -238,7 +238,7 @@ impl IcedWaylandWidgetCenter {
         }
     }
 
-    fn view(&self, id: iced::window::Id) -> Element<Message> {
+    fn view(&self, id: iced::window::Id) -> Element<'_, Message> {
         let (notification_window_info, widget_info) = self.id_info(id);
         if let Some(notification_window_info) = notification_window_info {
             return crate::gui::elements::notification::body(self, notification_window_info).into();
@@ -248,7 +248,7 @@ impl IcedWaylandWidgetCenter {
             return crate::gui::elements::element::body(self, widget_info).into();
         };
 
-        iced::widget::container(iced::widget::horizontal_space())
+        iced::widget::container(iced::widget::space::horizontal())
             .style(move |_| iced::widget::container::Style {
                 background: Some(iced::Background::Color(Color::TRANSPARENT)),
                 text_color: Some(Color::TRANSPARENT),
