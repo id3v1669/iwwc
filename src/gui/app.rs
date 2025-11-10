@@ -1,47 +1,26 @@
-use iced::{Color, Element, Task};
-use iced_layershell::build_pattern::daemon;
-use iced_layershell::reexport::{Anchor, KeyboardInteractivity, Layer};
-use iced_layershell::settings::{LayerShellSettings, Settings};
-use iced_layershell::to_layer_message;
+use iced::{Color, Element, Task, Subscription};
+use iced::window;
+use iced::platform_specific::shell::commands::layer_surface::{
+    Anchor, KeyboardInteractivity, Layer, get_layer_surface, destroy_layer_surface, set_margin,
+};
+use iced::runtime::platform_specific::wayland::layer_surface::{
+    IcedOutput, SctkLayerSurfaceSettings,
+};
 
 use crate::handler::notification::NotificationHandler;
 
-pub fn start() -> Result<(), iced_layershell::Error> {
-    let config = crate::data::config::primary::Config::load(None); //TODO: change to read from file in args
+pub fn start() -> Result<(), iced::Error> {
+    let config = crate::data::config::primary::Config::load(None);
 
-    // start mode should be background, but since lib is kinda broken, use target screen as workaround
-    // active is also working not as expected, but need some kind of fallback
-    let start_mode = match config.global.output {
-        Some(ref output) => iced_layershell::settings::StartMode::TargetScreen(output.to_string()),
-        None => iced_layershell::settings::StartMode::Active,
-    };
-    let settings = Settings {
-        layer_settings: LayerShellSettings {
-            anchor: Anchor::Top | Anchor::Right,
-            layer: Layer::Background,
-            exclusive_zone: 0,
-            size: Some((4, 4)),
-            margin: (0, 0, 0, 0),
-            keyboard_interactivity: KeyboardInteractivity::None,
-            start_mode,
-            ..Default::default()
-        },
-        antialiasing: config.global.antialiasing.unwrap_or(true),
-        ..Default::default()
-    };
-    daemon(
-        move || IcedWaylandWidgetCenter::new(config.clone()),
-        "IcedWaylandWidgetCenter",
+    iced::daemon(
+        IcedWaylandWidgetCenter::title,
         IcedWaylandWidgetCenter::update,
         IcedWaylandWidgetCenter::view,
     )
     .subscription(IcedWaylandWidgetCenter::subscription)
-    .style(|_state, _theme| iced::theme::Style {
-        background_color: Color::TRANSPARENT,
-        text_color: Color::TRANSPARENT,
-    })
-    .settings(settings)
-    .run()
+    .theme(IcedWaylandWidgetCenter::theme)
+    .style(IcedWaylandWidgetCenter::style)
+    .run_with(move || IcedWaylandWidgetCenter::new(config.clone()))
 }
 
 use indexmap::IndexMap;
@@ -52,12 +31,13 @@ pub struct IcedWaylandWidgetCenter {
         IndexMap<iced::window::Id, crate::gui::elements::notification::NotificationWindowInfo>,
     pub widget_ids: std::collections::HashMap<iced::window::Id, String>,
     pub precalc: crate::data::notification::PreCalc,
+    pub main_layer_id: Option<window::Id>, // Optional main background layer
 }
 
-#[to_layer_message(multi)]
 #[derive(Debug, Clone)]
 pub enum Message {
-    FontLoaded(Result<(), iced::font::Error>),
+    LayerSurfaceCreated(window::Id),
+    //FontLoaded(Result<(), iced::font::Error>),
     Close(iced::window::Id),
     CloseByContentId(u32),
     IpcCommand(String, Option<String>),
@@ -67,87 +47,86 @@ pub enum Message {
     EmptyAction,
     MoveNotifications,
     Notify(crate::data::notification::Notification),
+    MarginChange {
+        id: window::Id,
+        margin: (i32, i32, i32, i32),
+    },
+    CreateWindow {
+        id: window::Id,
+        settings: SctkLayerSurfaceSettings,
+    },
 }
 
 impl IcedWaylandWidgetCenter {
     fn new(cfg: crate::data::config::primary::Config) -> (Self, Task<Message>) {
+        // Create a minimal background layer surface that acts as the daemon's main window
+        // This is a tiny invisible surface that keeps the daemon running
+        let id = window::Id::unique();
+        
+        let output = match &cfg.global.output {
+            Some(_output_name) => {
+                log::warn!("Specific output targeting not fully implemented, using active output");
+                IcedOutput::Active
+            }
+            None => IcedOutput::Active,
+        };
+
+        let layer_task = get_layer_surface(SctkLayerSurfaceSettings {
+            id,
+            namespace: "iced-wayland-widget-center-main".to_string(),
+            size: Some((Some(1), Some(1))),
+            layer: Layer::Background,
+            keyboard_interactivity: KeyboardInteractivity::None,
+            exclusive_zone: 0,
+            output,
+            anchor: Anchor::TOP | Anchor::RIGHT,
+            //margin: (0, 0, 0, 0),
+            ..Default::default()
+        });
+
         (
             Self {
                 precalc: crate::data::notification::PreCalc::generate(&cfg),
                 config: cfg,
                 notification_ids: IndexMap::new(),
                 widget_ids: std::collections::HashMap::new(),
+                main_layer_id: Some(id),
             },
-            Task::none(),
+            Task::batch(vec![
+                layer_task,
+                Task::done(Message::LayerSurfaceCreated(id)),
+            ]),
         )
     }
 
-    fn subscription(&self) -> iced::Subscription<Message> {
+    fn title(&self, _id: window::Id) -> String {
+        String::from("IcedWaylandWidgetCenter")
+    }
+
+    fn theme(&self, _id: window::Id) -> iced::Theme {
+        iced::Theme::default()
+    }
+
+    fn style(&self, _theme: &iced::Theme) -> iced::daemon::Appearance {
+        iced::daemon::Appearance {
+            background_color: Color::TRANSPARENT,
+            text_color: Color::TRANSPARENT,
+            icon_color: Color::TRANSPARENT,
+        }
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
         let notification_subscription = if self.config.notifications.enable {
-            iced::Subscription::run(|| {
-                iced::stream::channel(100, |sender| async move {
-                    let builder = zbus::connection::Builder::session()
-                        .unwrap()
-                        .name("org.freedesktop.Notifications")
-                        .unwrap()
-                        .serve_at(
-                            "/org/freedesktop/Notifications",
-                            NotificationHandler::new(sender),
-                        )
-                        .unwrap();
-                    let _connection = match builder.build().await {
-                        Ok(connection) => connection,
-                        Err(e) => {
-                            log::error!("Failed to build the connection: {e}");
-                            std::process::exit(1);
-                        }
-                    };
-                    futures::future::pending::<()>().await;
-                    unreachable!()
-                })
-            })
+            
+            NotificationHandler::subscribe_iced()
         } else {
-            iced::Subscription::none()
+            log::debug!("Notifications are disabled in config");
+            Subscription::none()
         };
 
-        let ipc_subscription = iced::Subscription::run(|| {
-            iced::stream::channel(
-                100,
-                |sender: futures::channel::mpsc::Sender<_>| async move {
-                    let ipc_server = match crate::handler::ipc::IpcServer::new() {
-                        Ok(server) => server,
-                        Err(e) => {
-                            log::error!("Failed to create IPC server: {e}");
-                            return;
-                        }
-                    };
+        let ipc_subscription = crate::handler::ipc::IpcServer::subscribe_iced();
 
-                    loop {
-                        match ipc_server.accept().await {
-                            Ok(stream) => {
-                                let sender_clone = sender.clone();
-                                tokio::spawn(async move {
-                                    if let Err(e) = crate::handler::ipc::IpcServer::handle_client(
-                                        stream,
-                                        sender_clone,
-                                    )
-                                    .await
-                                    {
-                                        log::error!("Error handling IPC client: {e}");
-                                    }
-                                });
-                            }
-                            Err(e) => {
-                                log::error!("Failed to accept IPC connection: {e}");
-                                break;
-                            }
-                        }
-                    }
-                },
-            )
-        });
-
-        iced::Subscription::batch([
+        Subscription::batch([
             notification_subscription,
             ipc_subscription,
             iced::event::listen_with(|event, _status, id| match event {
@@ -161,11 +140,15 @@ impl IcedWaylandWidgetCenter {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::LayerSurfaceCreated(id) => {
+                log::debug!("Layer surface created with ID: {:?}", id);
+                Task::none()
+            }
             Message::Close(id) => {
                 self.notification_ids.shift_remove(&id);
 
                 Task::batch([
-                    Task::done(Message::RemoveWindow(id)),
+                    destroy_layer_surface(id),
                     Task::done(Message::MoveNotifications),
                 ])
             }
@@ -189,7 +172,7 @@ impl IcedWaylandWidgetCenter {
             }
             Message::IpcCommand(command, subcommand) => {
                 log::debug!("Received IPC command: {command}");
-                crate::handler::ipc::handle_command(self, command, subcommand)
+                crate::handler::ipc::IpcServer::handle_command(self, command, subcommand)
             }
             Message::MoveNotifications => {
                 let mut move_notifications: Vec<Task<Message>> = Vec::new();
@@ -216,6 +199,9 @@ impl IcedWaylandWidgetCenter {
                 }
                 Task::none()
             }
+            Message::MarginChange { id, margin } => {
+                set_margin(id, margin.0, margin.1, margin.2, margin.3)
+            }
             Message::TestMessage => {
                 println!("TestMessage");
                 Task::none()
@@ -225,7 +211,7 @@ impl IcedWaylandWidgetCenter {
                 Task::none()
             }
             Message::RunCommand(command) => {
-                log::info!("Running command: {command}");
+                log::debug!("Running command: {command}");
                 tokio::spawn(async move {
                     crate::handler::actions::run_system_command(&command).await;
                 });
@@ -234,11 +220,34 @@ impl IcedWaylandWidgetCenter {
             Message::Notify(notification) => {
                 crate::handler::notification::handle_notification(self, notification)
             }
-            _ => unreachable!(),
+            // Message::FontLoaded(result) => {
+            //     if let Err(e) = result {
+            //         log::error!("Failed to load font: {:?}", e);
+            //     }
+            //     Task::none()
+            // }
+            Message::CreateWindow { id, settings } => {
+                log::debug!("Creating window: {:?}", id);
+                get_layer_surface(settings)
+            }
         }
     }
 
     fn view(&self, id: iced::window::Id) -> Element<'_, Message> {
+        // Check if this is the main background layer
+        if self.main_layer_id == Some(id) {
+            // Return minimal transparent element for the background daemon window
+            return iced::widget::container(iced::widget::horizontal_space())
+                .width(1)
+                .height(1)
+                .style(|_| iced::widget::container::Style {
+                    background: Some(iced::Background::Color(Color::TRANSPARENT)),
+                    text_color: Some(Color::TRANSPARENT),
+                    ..Default::default()
+                })
+                .into();
+        }
+
         let (notification_window_info, widget_info) = self.id_info(id);
         if let Some(notification_window_info) = notification_window_info {
             return crate::gui::elements::notification::body(self, notification_window_info).into();
@@ -248,8 +257,8 @@ impl IcedWaylandWidgetCenter {
             return crate::gui::elements::element::body(self, widget_info).into();
         };
 
-        iced::widget::container(iced::widget::space::horizontal())
-            .style(move |_| iced::widget::container::Style {
+        iced::widget::container(iced::widget::horizontal_space())
+            .style(|_| iced::widget::container::Style {
                 background: Some(iced::Background::Color(Color::TRANSPARENT)),
                 text_color: Some(Color::TRANSPARENT),
                 ..Default::default()
@@ -264,7 +273,6 @@ impl IcedWaylandWidgetCenter {
         Option<crate::gui::elements::notification::NotificationWindowInfo>,
         Option<String>,
     ) {
-        //None to be info of widget elements
         (
             self.notification_ids.get(&id).cloned(),
             self.widget_ids.get(&id).cloned(),

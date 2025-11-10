@@ -58,7 +58,6 @@ pub struct ContainerButtonStyleWpraper {
     pub background_color: Option<String>,
     pub border: Option<String>,
     pub shadow: Option<String>,
-    pub snap: Option<bool>, // TODO: figure out what it does
 }
 
 // Final
@@ -126,7 +125,7 @@ pub struct TextWraper {
     pub height: Option<String>,
     pub align_x: Option<String>,
     pub align_y: Option<String>,
-    pub font_size: Option<u32>,
+    pub font_size: Option<f32>,
     pub font_color: Option<String>,
     pub font_id: Option<String>,
 }

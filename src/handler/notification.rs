@@ -1,4 +1,6 @@
-use crate::gui::app::Message;
+use crate::gui::app::{Message};
+use iced::platform_specific::shell::commands::layer_surface::{ KeyboardInteractivity, Layer };
+use iced::Task;
 use zbus::interface;
 
 pub struct NotificationHandler {
@@ -9,6 +11,32 @@ pub struct NotificationHandler {
 impl NotificationHandler {
     pub fn new(sender: futures::channel::mpsc::Sender<Message>) -> Self {
         NotificationHandler { count: 0, sender }
+    }
+    pub fn subscribe_iced() -> iced::Subscription<Message> {
+        iced::Subscription::run_with_id(
+                "notification-listener",
+                iced::stream::channel(100, |sender| async move {
+                    log::debug!("Notification listener started");
+                    let builder = zbus::connection::Builder::session()
+                        .unwrap()
+                        .name("org.freedesktop.Notifications")
+                        .unwrap()
+                        .serve_at(
+                            "/org/freedesktop/Notifications",
+                            NotificationHandler::new(sender),
+                        )
+                        .unwrap();
+                    let _connection = match builder.build().await {
+                        Ok(connection) => connection,
+                        Err(e) => {
+                            log::error!("Failed to build the connection: {e}");
+                            std::process::exit(1);
+                        }
+                    };
+                    futures::future::pending::<()>().await;
+                    unreachable!()
+                })
+            )
     }
 }
 
@@ -105,10 +133,10 @@ pub fn handle_notification(
 
     let window_id = iced::window::Id::unique();
 
-    if iwwc.notification_ids.len() >= iwwc.config.notifications.max_notifications as usize
-        && let Some((_, info)) = iwwc.notification_ids.shift_remove_index(0)
-    {
-        overflow = iced::Task::done(Message::CloseByContentId(info.notification.notification_id));
+    if iwwc.notification_ids.len() >= iwwc.config.notifications.max_notifications as usize 
+        && let Some((_, info)) = iwwc.notification_ids.shift_remove_index(0) {
+            overflow = iced::Task::done(Message::CloseByContentId(info.notification.notification_id));
+        
     }
 
     let timeout = if iwwc.config.notifications.respect_notification_timeout
@@ -144,29 +172,33 @@ pub fn handle_notification(
         crate::gui::elements::notification::NotificationWindowInfo { notification, icon },
     );
 
+     let notification_settings = iced::platform_specific::runtime::wayland::layer_surface::SctkLayerSurfaceSettings {
+                        id: window_id,
+                        layer: Layer::Overlay,
+                        keyboard_interactivity: KeyboardInteractivity::None,
+                        input_zone: None, //FIXME: figure out what is it Option<Vec<Rectangle>>,
+                        anchor: iwwc.config.notifications.location,
+                        output: iced::platform_specific::runtime::wayland::layer_surface::IcedOutput::Active, // FIXME: rewrite config to support output selection
+                        namespace: format!("notification-{}", window_id),
+                        margin: iced::platform_specific::runtime::wayland::layer_surface::IcedMargin {
+                            top: iwwc.config.notifications.vertical_margin,
+                            right: iwwc.config.notifications.horizontal_margin,
+                            bottom: iwwc.config.notifications.vertical_margin,
+                            left: iwwc.config.notifications.horizontal_margin,
+                        },
+                        //margin: //IcedMargin, //FIXME: add margin support
+                        size: Some((Some(iwwc.config.notifications.width), Some(iwwc.config.notifications.height))),
+                        exclusive_zone: 0,
+                        //size_limits: iced_core::layout::Limits //FIXME: add size limits support
+                        ..Default::default()
+                    };
+
     iced::Task::batch([
         overflow,
-        iced::Task::done(Message::MoveNotifications),
-        iced::Task::done(Message::NewLayerShell {
-            settings: iced_layershell::reexport::NewLayerShellSettings {
-                size: Some((
-                    iwwc.config.notifications.width,
-                    iwwc.config.notifications.height,
-                )),
-                exclusive_zone: None,
-                anchor: iwwc.config.notifications.location,
-                layer: iced_layershell::reexport::Layer::Overlay,
-                margin: Some((
-                    iwwc.config.notifications.vertical_margin,
-                    iwwc.config.notifications.horizontal_margin,
-                    iwwc.config.notifications.vertical_margin,
-                    iwwc.config.notifications.horizontal_margin,
-                )),
-                keyboard_interactivity: iced_layershell::reexport::KeyboardInteractivity::None,
-                output_option: iced_layershell::reexport::OutputOption::LastOutput,
-                ..Default::default()
-            },
+        Task::done(Message::MoveNotifications),
+        Task::done(Message::CreateWindow {
             id: window_id,
+            settings: notification_settings,
         }),
         iced::Task::perform(
             tokio::time::sleep(std::time::Duration::from_secs(timeout.try_into().unwrap())),
