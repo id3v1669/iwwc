@@ -2,7 +2,8 @@ pub fn body(
     iwwc: &crate::gui::app::IcedWaylandWidgetCenter,
     window_info: String,
 ) -> iced::widget::Container<'_, crate::gui::app::Message> {
-    if let Some(container) = iwwc.config.containers.get(window_info.as_str()) {
+    let element_id = &iwwc.config.widgets.get(&window_info).unwrap().element;
+    if let Some(container) = iwwc.config.containers.get(element_id.as_str()) {
         let child_content = build_child_element(iwwc, &container.child);
 
         return iced::widget::container(child_content)
@@ -15,7 +16,7 @@ pub fn body(
     }
     // Should not be reached, better way to handle this?
     log::warn!("Container not found: {window_info}");
-    iced::widget::container(iced::widget::space::horizontal())
+    iced::widget::container(iced::widget::horizontal_space())
 }
 
 fn build_child_element<'a>(

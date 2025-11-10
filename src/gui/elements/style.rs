@@ -17,6 +17,7 @@ pub fn notification_style(
         background: Some(iced::Background::Color(
             config.notifications.background_color,
         )),
-        snap: false,
+        // FIXME: missing `icon_color`
+        ..Default::default()
     }
 }

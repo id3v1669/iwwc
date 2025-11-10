@@ -62,27 +62,27 @@ pub fn allinment_horizontal(allinment: Option<String>) -> iced::alignment::Horiz
         .unwrap_or(iced::alignment::Horizontal::Center)
 }
 
-pub fn parse_anchor(locations: Option<Vec<String>>) -> iced_layershell::reexport::Anchor {
+pub fn parse_anchor(locations: Option<Vec<String>>) -> iced::platform_specific::shell::commands::subsurface::Anchor {
     let mut anchor =
-        iced_layershell::reexport::Anchor::Top | iced_layershell::reexport::Anchor::Right;
+        iced::platform_specific::shell::commands::subsurface::Anchor::TOP | iced::platform_specific::shell::commands::subsurface::Anchor::RIGHT;
 
     if let Some(locations) = locations {
-        anchor = iced_layershell::reexport::Anchor::empty();
+        anchor = iced::platform_specific::shell::commands::subsurface::Anchor::empty();
         for location_str in locations.iter() {
             anchor |= match location_str.to_lowercase().as_str() {
-                "top" => iced_layershell::reexport::Anchor::Top,
-                "bottom" => iced_layershell::reexport::Anchor::Bottom,
-                "left" => iced_layershell::reexport::Anchor::Left,
-                "right" => iced_layershell::reexport::Anchor::Right,
+                "top" => iced::platform_specific::shell::commands::subsurface::Anchor::TOP,
+                "bottom" => iced::platform_specific::shell::commands::subsurface::Anchor::BOTTOM,
+                "left" => iced::platform_specific::shell::commands::subsurface::Anchor::LEFT,
+                "right" => iced::platform_specific::shell::commands::subsurface::Anchor::RIGHT,
                 _ => {
                     log::warn!("Unknown notification anchor: {location_str}, ignoring");
-                    iced_layershell::reexport::Anchor::empty()
+                    iced::platform_specific::shell::commands::subsurface::Anchor::empty()
                 }
             };
         }
-        if anchor == iced_layershell::reexport::Anchor::empty() {
+        if anchor == iced::platform_specific::shell::commands::subsurface::Anchor::empty() {
             anchor =
-                iced_layershell::reexport::Anchor::Top | iced_layershell::reexport::Anchor::Right;
+                iced::platform_specific::shell::commands::subsurface::Anchor::TOP | iced::platform_specific::shell::commands::subsurface::Anchor::RIGHT;
         }
     }
     anchor

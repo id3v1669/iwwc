@@ -2,83 +2,84 @@ use crate::data::config::wraper::ConfigRead;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 
-// Final
+use iced::platform_specific::shell::commands::layer_surface::{
+    Anchor, KeyboardInteractivity, Layer,
+};
+
 #[derive(Debug, Clone)]
 pub struct WidgetWindow {
-    pub settings: iced_layershell::reexport::NewLayerShellSettings,
+    //pub size: Option<(Option<u32>, Option<u32>)>,
+    pub size: (u32, u32),
+    pub layer: Layer,
+    pub anchor: Anchor,
+    pub exclusive_zone: i32,
+    //pub output: IcedOutput,
+    //pub margin: (i32, i32, i32, i32),
+    pub keyboard_interactivity: KeyboardInteractivity,
+    pub namespace: String,
     pub timeout: Option<i32>, // 0 or None for no timeout
     pub element: String,      // ID of WidgetElement
 }
 
-// Semi-final, fix lib for output_option
 impl WidgetWindow {
     pub fn from_wrapper(window_raw: crate::data::config::wraper::WidgetWindowWraper) -> Self {
         Self {
-            settings: iced_layershell::reexport::NewLayerShellSettings {
-                size: Some(window_raw.size),
-                layer: match window_raw.layer {
-                    Some(value) => match value.to_lowercase().as_str() {
-                        "background" => iced_layershell::reexport::Layer::Background,
-                        "bottom" => iced_layershell::reexport::Layer::Bottom,
-                        "top" => iced_layershell::reexport::Layer::Top,
-                        "overlay" => iced_layershell::reexport::Layer::Overlay,
-                        _ => {
-                            log::warn!("Unknown layer: {value}, defaulting to Overlay");
-                            iced_layershell::reexport::Layer::Overlay
-                        }
-                    },
-                    None => iced_layershell::reexport::Layer::Overlay,
-                },
-                anchor: match window_raw.location {
-                    Some(loc) => {
-                        let mut anchor = iced_layershell::reexport::Anchor::empty();
-                        for location_str in loc.iter() {
-                            anchor |= match location_str.to_lowercase().as_str() {
-                                "top" => iced_layershell::reexport::Anchor::Top,
-                                "bottom" => iced_layershell::reexport::Anchor::Bottom,
-                                "left" => iced_layershell::reexport::Anchor::Left,
-                                "right" => iced_layershell::reexport::Anchor::Right,
-                                _ => {
-                                    log::warn!("Unknown anchor: {location_str}, ignoring");
-                                    continue;
-                                }
-                            };
-                        }
-                        if anchor == iced_layershell::reexport::Anchor::empty() {
-                            log::warn!("No valid anchors found, defaulting to Top|Right");
-                            iced_layershell::reexport::Anchor::Top
-                                | iced_layershell::reexport::Anchor::Right
-                        } else {
-                            anchor
-                        }
-                    }
-                    None => {
-                        iced_layershell::reexport::Anchor::Top
-                            | iced_layershell::reexport::Anchor::Right
+            //size: Some((Some(window_raw.size.0), Some(window_raw.size.1))),
+            size: window_raw.size,
+            layer: match window_raw.layer {
+                Some(value) => match value.to_lowercase().as_str() {
+                    "background" => Layer::Background,
+                    "bottom" => Layer::Bottom,
+                    "top" => Layer::Top,
+                    "overlay" => Layer::Overlay,
+                    _ => {
+                        log::warn!("Unknown layer: {value}, defaulting to Overlay");
+                        Layer::Overlay
                     }
                 },
-                exclusive_zone: window_raw.exclusive,
-                margin: window_raw.margin,
-                keyboard_interactivity: match window_raw.focus {
-                    Some(value) => match value.to_lowercase().as_str() {
-                        "none" => iced_layershell::reexport::KeyboardInteractivity::None,
-                        "exclusive" => iced_layershell::reexport::KeyboardInteractivity::Exclusive,
-                        "on_demand" | "ondemand" => {
-                            iced_layershell::reexport::KeyboardInteractivity::OnDemand
-                        }
-                        _ => {
-                            log::warn!(
-                                "Unknown keyboard interactivity: {value}, defaulting to None"
-                            );
-                            iced_layershell::reexport::KeyboardInteractivity::None
-                        }
-                    },
-                    None => iced_layershell::reexport::KeyboardInteractivity::None,
-                },
-                output_option: iced_layershell::reexport::OutputOption::LastOutput, // TODO: fix lib
-                events_transparent: window_raw.events_transparent.unwrap_or(false),
-                namespace: Some(window_raw.name),
+                None => Layer::Overlay,
             },
+            anchor: match window_raw.location {
+                Some(loc) => {
+                    let mut anchor = Anchor::empty();
+                    for location_str in loc.iter() {
+                        anchor |= match location_str.to_lowercase().as_str() {
+                            "top" => Anchor::TOP,
+                            "bottom" => Anchor::BOTTOM,
+                            "left" => Anchor::LEFT,
+                            "right" => Anchor::RIGHT,
+                            _ => {
+                                log::warn!("Unknown anchor: {location_str}, ignoring");
+                                continue;
+                            }
+                        };
+                    }
+                    if anchor == Anchor::empty() {
+                        log::warn!("No valid anchors found, defaulting to Top|Right");
+                        Anchor::TOP | Anchor::RIGHT
+                    } else {
+                        anchor
+                    }
+                }
+                None => Anchor::TOP | Anchor::RIGHT,
+            },
+            exclusive_zone: window_raw.exclusive.unwrap_or(0),
+            //margin: window_raw.margin,
+            keyboard_interactivity: match window_raw.focus {
+                Some(value) => match value.to_lowercase().as_str() {
+                    "none" => KeyboardInteractivity::None,
+                    "exclusive" => KeyboardInteractivity::Exclusive,
+                    "on_demand" | "ondemand" => KeyboardInteractivity::OnDemand,
+                    _ => {
+                        log::warn!(
+                            "Unknown keyboard interactivity: {value}, defaulting to None"
+                        );
+                        KeyboardInteractivity::None
+                    }
+                },
+                None => KeyboardInteractivity::None,
+            },
+            namespace: window_raw.name,
             timeout: window_raw.timeout,
             element: window_raw.element,
         }
@@ -159,7 +160,8 @@ impl Container {
                     blur_radius: 0.0,
                 }
             }),
-            snap: container_style.map(|s| s.snap).unwrap_or(false),
+            // FIXME: missing `icon_color`
+            ..Default::default()
         }
     }
 }
@@ -283,7 +285,8 @@ impl Button {
                     blur_radius: 0.0,
                 }
             }),
-            snap: button_style.map(|s| s.snap).unwrap_or(false),
+            // FIXME: missing `border_color`, `border_radius`, `border_width` and 1 other field
+            ..Default::default()
         }
     }
 }
@@ -295,7 +298,6 @@ pub struct ContainerButtonStyle {
     pub background_color: Option<iced::Background>,
     pub border: iced::Border,
     pub shadow: iced::Shadow,
-    pub snap: bool,
 }
 
 // Final
@@ -331,7 +333,6 @@ impl ContainerButtonStyle {
                     offset: iced::Vector { x: 0.0, y: 0.0 },
                     blur_radius: 0.0,
                 }),
-            snap: s.snap.unwrap_or(false),
         }
     }
 }
@@ -344,7 +345,7 @@ pub struct Text {
     pub height: iced::Length,
     pub align_x: iced::alignment::Horizontal,
     pub align_y: iced::alignment::Vertical,
-    pub font_size: u32,
+    pub font_size: iced::Pixels,
     pub color: iced::Color,
     pub font: iced::Font,
 }
@@ -361,11 +362,12 @@ impl Text {
             height: crate::data::config::helper::parse_length(t.height, "height"),
             align_x: crate::data::config::helper::allinment_horizontal(t.align_x),
             align_y: crate::data::config::helper::allinment_vertical(t.align_y),
-            font_size: t.font_size.unwrap_or(16),
+            font_size: iced::Pixels(t.font_size.unwrap_or(16.0)),
             color: t
                 .font_color
                 .and_then(|c| iced::Color::parse(&c))
                 .unwrap_or_else(|| {
+                    //TODO: separate invalid color from missing color
                     log::warn!("Invalid font color, defaulting to white");
                     iced::Color::WHITE
                 }),
@@ -391,7 +393,7 @@ pub struct Global {
 #[derive(Debug, Clone)]
 pub struct NotificationConfig {
     pub enable: bool,
-    pub location: iced_layershell::reexport::Anchor,
+    pub location: iced::platform_specific::shell::commands::subsurface::Anchor,
     pub local_expire_timeout: i32, //in seconds
     pub max_notifications: i32,    //0 for unlimited
     pub height: u32,
@@ -412,7 +414,7 @@ pub struct NotificationConfig {
 impl NotificationConfig {
     pub fn from_wrapper(notif_cfg: crate::data::config::wraper::NotificationConfig) -> Self {
         Self {
-            enable: notif_cfg.enable.unwrap_or(true),
+            enable: notif_cfg.enable.unwrap_or(false),
             location: crate::data::config::helper::parse_anchor(notif_cfg.location),
             local_expire_timeout: notif_cfg.local_expire_timeout.unwrap_or(7),
             max_notifications: notif_cfg.max_notifications.unwrap_or(5),
@@ -456,8 +458,8 @@ impl Default for NotificationConfig {
     fn default() -> Self {
         Self {
             enable: true,
-            location: iced_layershell::reexport::Anchor::Top
-                | iced_layershell::reexport::Anchor::Right,
+            location: iced::platform_specific::shell::commands::subsurface::Anchor::TOP
+                | iced::platform_specific::shell::commands::subsurface::Anchor::RIGHT,
             local_expire_timeout: 7,
             max_notifications: 5,
             height: 85, // to be min 65
@@ -496,7 +498,7 @@ impl Config {
             p
         } else {
             let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-            PathBuf::from(format!("{home}/.config/iwwc/config.yml"))
+            PathBuf::from(format!("{home}/.config/iwwc/config.json"))
         };
         let config: ConfigRead = if !path_buf.exists() {
             log::warn!("Config file not found at: {path_buf:#?}");
@@ -505,7 +507,7 @@ impl Config {
             //TODO: implement propper default file creation
         } else {
             match fs::read_to_string(path_buf) {
-                Ok(content) => serde_yml::from_str(&content).unwrap(),
+                Ok(content) => serde_json::from_str(&content).unwrap(),
                 Err(e) => {
                     eprintln!("Error reading config file: {e}");
                     log::error!("Falling back to default config");
@@ -533,7 +535,7 @@ impl Config {
             widgets: cfg
                 .widgets
                 .unwrap_or_else(|| {
-                    log::warn!("No widgets found in config");
+                    log::debug!("No widgets found in config");
                     vec![]
                 })
                 .into_iter()
@@ -542,7 +544,7 @@ impl Config {
             containers: cfg
                 .containers
                 .unwrap_or_else(|| {
-                    log::warn!("No containers found in config");
+                    log::debug!("No containers found in config");
                     vec![]
                 })
                 .into_iter()
@@ -556,7 +558,7 @@ impl Config {
             rows: cfg
                 .rows
                 .unwrap_or_else(|| {
-                    log::warn!("No rows found in config");
+                    log::debug!("No rows found in config");
                     vec![]
                 })
                 .into_iter()
@@ -565,7 +567,7 @@ impl Config {
             columns: cfg
                 .columns
                 .unwrap_or_else(|| {
-                    log::warn!("No columns found in config");
+                    log::debug!("No columns found in config");
                     vec![]
                 })
                 .into_iter()
@@ -574,7 +576,7 @@ impl Config {
             buttons: cfg
                 .buttons
                 .unwrap_or_else(|| {
-                    log::warn!("No buttons found in config");
+                    log::debug!("No buttons found in config");
                     vec![]
                 })
                 .into_iter()
@@ -588,7 +590,7 @@ impl Config {
             texts: cfg
                 .texts
                 .unwrap_or_else(|| {
-                    log::warn!("No texts found in config");
+                    log::debug!("No texts found in config");
                     vec![]
                 })
                 .into_iter()
@@ -603,7 +605,7 @@ impl Config {
         cfg.shadow_styles
             .clone()
             .unwrap_or_else(|| {
-                log::warn!("No shadow styles found in config");
+                log::debug!("No shadow styles found in config");
                 vec![]
             })
             .into_iter()
@@ -633,7 +635,7 @@ impl Config {
         cfg.border_styles
             .clone()
             .unwrap_or_else(|| {
-                log::warn!("No border styles found in config");
+                log::debug!("No border styles found in config");
                 vec![]
             })
             .into_iter()

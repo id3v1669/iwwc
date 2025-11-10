@@ -12,23 +12,32 @@ env_logger = "0.11.8"
 tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = "0.1.17"
 once_cell = "1.21.3"
-toml = "0.9.5"
 serde = { version = "1.0", features = ["derive"] }
-serde_yml = "0.0.12"
+serde_json = "1.0.145"
 
 # backend deps
-zbus = "5.10.0"
+zbus = "5.12.0"
 
 # frontend deps
-iced = { version = "0.14.0-dev", git = "https://github.com/iced-rs/iced.git", default-features = false, features = ["tokio","svg","wgpu"]}
-iced_layershell = { version = "0.14.0-dev", git = "https://github.com/waycrate/exwlshelleventloop.git", rev = "0b8361f33891078e7a58ee6c3fbafd699c542ff0" }
+iced = { git = "https://github.com/pop-os/iced", branch = "master", default-features = false, features = [
+  "tokio",
+  "advanced",
+  "multi-window",
+  "wgpu",
+  "winit",
+  "wayland",
+  "image",
+  "svg"
+] }
+wayland-client = "0.31.5"
+wayland-protocols = { version = "0.32.3", features = ["client", "unstable"] }
 futures = "0.3.31"
 indexmap = "2.11.0"
 
-[profile.release]
-opt-level = "z"
-lto = true          # Enable Link Time Optimization
-codegen-units = 1   # Reduce number of codegen units to increase optimizations.
-strip = true  
+#[profile.release]
+#opt-level = "z"
+#lto = true          # Enable Link Time Optimization
+#codegen-units = 1   # Reduce number of codegen units to increase optimizations.
+#strip = true  
 
 
