@@ -1,0 +1,94 @@
+var ff="0xProto"
+var ffn="Nerd Font"
+var lang="󰇧 en"
+var wss="1 2 3"
+var recsym="󰑊"
+
+pull datetime="date '+%a, %d. %b  %H:%M'" i="1s" default="…"
+pull battery="cat /sys/class/power_supply/BAT0/capacity" i="30s" default="?"
+pull cputemp="awk '{printf \"%d\", $1/1000}' /sys/class/thermal/thermal_zone0/temp" i="5s" default="?"
+pull disk="df -h / | awk 'NR==2{print $4}'" i="60s" default="?"
+pull soundvol="wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{print int($2*100)}'" i="2s" default="--"
+
+border round20 radius=20
+style pill bg="282828" text="e3cd92" border=round20
+style pillhover bg="3c3836" text="e7d4a2" border=round20
+style musicbtn bg="transparent" text="e3cd92" border=round20
+style musichover bg="3c3836" text="e7d4a2" border=round20
+
+// ===================== LEFT GROUP =====================
+button launcher text="" action="anyrun" font="${ff}" style=pill style:hover=pillhover {
+  padding 5 13
+}
+button lang text="${lang}" font="${ff}" style=pill {
+  padding 5 12
+}
+button usageinfo text="${round(iwwc.ram.used / 1073741824).1}/${round(iwwc.ram.total / 1073741824).1}G │ ${cputemp}°C │ ${disk}" action="kitty btop" font="${ff}" style=pill style:hover=pillhover {
+  padding 5 15
+}
+button workspaces text="${wss}" font="${ff}" style=pill {
+  padding 5 18
+}
+row leftgrp spacing=6 align=c {
+  children launcher lang usageinfo workspaces
+}
+
+// ===================== CENTER GROUP =====================
+button clock text="${datetime}" action="true" font="${ff}" style=pill style:hover=pillhover {
+  padding 5 16
+}
+row centergrp align=c {
+  children clock
+}
+
+// ===================== RIGHT GROUP =====================
+button mprev text="󰙤" action="playerctl previous" font="${ff}" style=musicbtn style:hover=musichover {
+  padding 2 7
+}
+button mplay text="󰐎" action="playerctl play-pause" font="${ff}" style=musicbtn style:hover=musichover {
+  padding 2 7
+}
+button mnext text="󰙢" action="playerctl next" font="${ff}" style=musicbtn style:hover=musichover {
+  padding 2 7
+}
+row musicrow spacing=8 align=b {
+  children mprev mplay mnext
+}
+container music style=pill child=musicrow {
+  padding 2 8
+}
+
+button replay text="${recsym}" action="sp-play-pause" font="${ff}" style=pill style:hover=pillhover {
+  padding 5 12
+}
+
+apptray icon_size=18 spacing=6 swap_buttons=#false bg="282828" border=round20 padding=5 \
+    menu_width=240 row_height=28 menu_bg="282828" menu_text="e3cd92" menu_disabled="928374"
+
+button sound text="󰕾 ${soundvol}" action="pwvucontrol" font="${ff}" style=pill style:hover=pillhover {
+  padding 4 14
+}
+button mic text="󰍬" action="wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle" font="${ff}" style=pill style:hover=pillhover {
+  padding 5 15
+}
+button battery text="${battery}%" font="${ff}" style=pill {
+  padding 5 13
+}
+button power text="󰐥" action="true" font="${ff}" style=pill style:hover=pillhover {
+  padding 5 15
+}
+row rightgrp spacing=6 align=c {
+  children music replay apptray sound mic battery power
+}
+
+// ===================== BAR (full width: top + left + right) =====================
+container leftbox w=fill align_x=l child=leftgrp
+container centerbox w=fill align_x=c child=centergrp
+container rightbox w=fill align_x=r child=rightgrp
+
+row barrow w=fill align=c {
+  children leftbox centerbox rightbox
+}
+widget bar layer=top anchor="t | l | r" h=30 exclusive=#true child=barrow {
+  margin 5 8 0 8
+}
