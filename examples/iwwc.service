@@ -2,7 +2,7 @@
 WantedBy=graphical-session.target
 
 [Service]
-ExecStart=/usr/bin/iwwc
+ExecStart="/usr/bin/iwwc daemon"
 Restart=on-failure
 
 [Unit]
