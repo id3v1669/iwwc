@@ -194,7 +194,7 @@ mod tests {
     fn lex_numbers() {
         assert_eq!(tokens_of("0"), vec![Token::Int(0)]);
         assert_eq!(tokens_of("42"), vec![Token::Int(42)]);
-        assert_eq!(tokens_of("3.14"), vec![Token::Float(3.14)]);
+        assert_eq!(tokens_of("3.12"), vec![Token::Float(3.12)]);
         assert_eq!(tokens_of("0.5"), vec![Token::Float(0.5)]);
     }
 

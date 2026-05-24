@@ -76,7 +76,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let p = dir.path().join("icon.png");
         fs::write(&p, b"x").unwrap();
-        let got = resolve_icon("firefox", "Firefox", Some(p.to_str().unwrap()), 48, true, None, dir.path());
+        let got = resolve_icon(
+            "firefox",
+            "Firefox",
+            Some(p.to_str().unwrap()),
+            48,
+            true,
+            None,
+            dir.path(),
+        );
         assert_eq!(got, p);
     }
 
@@ -103,8 +111,14 @@ mod tests {
     fn unknown_name_returns_default() {
         let dir = tempfile::tempdir().unwrap();
         let got = resolve_icon(
-            "definitely-not-an-icon-zzz-12345", "also-not-real-app-zzz",
-            None, 48, true, None, dir.path());
+            "definitely-not-an-icon-zzz-12345",
+            "also-not-real-app-zzz",
+            None,
+            48,
+            true,
+            None,
+            dir.path(),
+        );
         assert_eq!(got, dir.path().join("default.svg"));
     }
 
@@ -129,6 +143,9 @@ mod tests {
     #[test]
     fn default_icon_path_joins_config_dir() {
         let dir = tempfile::tempdir().unwrap();
-        assert_eq!(default_icon_path(dir.path()), dir.path().join("default.svg"));
+        assert_eq!(
+            default_icon_path(dir.path()),
+            dir.path().join("default.svg")
+        );
     }
 }

@@ -1,0 +1,87 @@
+var ff="0xProto"
+var lang="󰇧"
+
+border round20 radius=20
+style pill bg="282828" text="e3cd92" border=round20
+style pillhover bg="3c3836" text="e7d4a2" border=round20
+style musicbtn bg="transparent" text="e3cd92" border=round20
+style musichover bg="3c3836" text="e7d4a2" border=round20
+
+// ===================== TOP GROUP =====================
+button launcher text="" action="anyrun" font="${ff}" style=pill style:hover=pillhover {
+  padding 6 6
+}
+button lang text="${lang}" font="${ff}" style=pill {
+  padding 6 6
+}
+column topgrp spacing=6 align=c {
+  children apptray launcher lang
+}
+
+// ===================== CENTER GROUP =====================
+button mprev text="󰙤" action="playerctl previous" font="${ff}" style=musicbtn style:hover=musichover {
+  padding 6 6
+}
+button mplay text="󰐎" action="playerctl play-pause" font="${ff}" style=musicbtn style:hover=musichover {
+  padding 6 6
+}
+button mnext text="󰙢" action="playerctl next" font="${ff}" style=musicbtn style:hover=musichover {
+  padding 6 6
+}
+column centergrp spacing=8 align=c {
+  children mprev mplay mnext
+}
+
+// ===================== BOTTOM GROUP =====================
+apptray icon_size=18 spacing=6 vertical=#true swap_buttons=#false bg="282828" border=round20 padding=5 \
+    menu_width=240 row_height=28 menu_bg="282828" menu_text="e3cd92" menu_disabled="928374"
+
+button sound text="󰕾" action="pwvucontrol" font="${ff}" style=pill style:hover=pillhover {
+  padding 6 6
+}
+button mic text="󰍬" action="wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle" font="${ff}" style=pill style:hover=pillhover {
+  padding 6 6
+}
+button battery text="󰁹" font="${ff}" style=pill {
+  padding 6 6
+}
+button power text="󰐥" action="true" font="${ff}" style=pill style:hover=pillhover {
+  padding 6 6
+}
+column bottomgrp spacing=6 align=c {
+  children apptray sound mic battery power
+}
+
+// ===================== SIDEBAR (left: top + left + bottom) =====================
+// Vertical analog of a full-width bar: a column with three h=fill boxes that
+// pin their content to the top, center, and bottom of the sidebar.
+container topbox h=fill align_y=t child=topgrp
+container centerbox h=fill align_y=c child=centergrp
+container bottombox h=fill align_y=b child=bottomgrp
+
+column sidecol h=fill align=c {
+  children topbox centerbox bottombox
+}
+widget sidebar layer=top anchor="t | l | b" w=30 exclusive=#true child=sidecol {
+  margin 5 8 0 8
+}
+widget rsidebar layer=top anchor="t | r | b" w=30 exclusive=#true child=sidecol {
+  margin 5 8 0 8
+}
+
+notification width=400 height=90 \
+      primary_text="#e7d4a2" \
+      secondary_text="#e3cd92" \
+      bg="#3c3836" \
+      border="notif_border" \
+      font="JetBrains Mono" \
+      anchor="t | r" \
+      gap=8 \
+      max=5 \
+      timeout=5000 \
+      respect_notification_icon=#true \
+      margin=12
+
+border notif_border radius=10 color="#d65d0e" w=2
+
+icon_theme "Gruvbox-Plus-Dark"

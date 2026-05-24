@@ -1307,6 +1307,7 @@ pub(crate) fn build_apptray_settings(
         bg: field_color("bg", node, source, errs),
         border: field_id_ref("border", node, source, errs),
         swap_buttons: field_bool("swap_buttons", node, source, errs),
+        vertical: field_bool("vertical", node, source, errs),
         menu_bg: field_color("menu_bg", node, source, errs),
         menu_text: field_color("menu_text", node, source, errs),
         menu_disabled: field_color("menu_disabled", node, source, errs),
@@ -1559,8 +1560,8 @@ mod tests {
             parse_length_keyword("shrink"),
             Some(Length::Shrink)
         ));
-        assert!(matches!(parse_length_keyword("portion"), None));
-        assert!(matches!(parse_length_keyword("xyz"), None));
+        assert!(parse_length_keyword("portion").is_none());
+        assert!(parse_length_keyword("xyz").is_none());
     }
 
     #[test]

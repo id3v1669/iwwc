@@ -254,14 +254,24 @@ fn build_apptray(s: &ResolvedApptraySettings, ctx: &RenderCtx) -> Element<'stati
             });
         items.push(area.into());
     }
-    let mut row = Row::with_children(items).spacing(s.spacing);
-    if let Some(p) = s.padding {
-        row = row.padding(convert::padding(p));
-    }
+    let pad = s.padding;
+    let inner: Element<'static, UiMessage> = if s.vertical {
+        let mut col = Column::with_children(items).spacing(s.spacing);
+        if let Some(p) = pad {
+            col = col.padding(convert::padding(p));
+        }
+        col.into()
+    } else {
+        let mut row = Row::with_children(items).spacing(s.spacing);
+        if let Some(p) = pad {
+            row = row.padding(convert::padding(p));
+        }
+        row.into()
+    };
     let bg = s.bg;
     let border = s.border.clone();
     if bg.is_some() || border.is_some() {
-        iced::widget::container(row)
+        iced::widget::container(inner)
             .style(move |_| iced::widget::container::Style {
                 background: bg.map(style::background),
                 border: border.as_ref().map(style::border).unwrap_or_default(),
@@ -269,7 +279,7 @@ fn build_apptray(s: &ResolvedApptraySettings, ctx: &RenderCtx) -> Element<'stati
             })
             .into()
     } else {
-        row.into()
+        inner
     }
 }
 

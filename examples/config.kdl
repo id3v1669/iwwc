@@ -30,7 +30,7 @@ button workspaces text="${wss}" font="${ff}" style=pill {
   padding 5 18
 }
 row leftgrp spacing=6 align=c {
-  children launcher lang usageinfo workspaces
+  children apptray launcher lang usageinfo workspaces
 }
 
 // ===================== CENTER GROUP =====================
@@ -90,6 +90,9 @@ row barrow w=fill align=c {
   children leftbox centerbox rightbox
 }
 widget bar layer=top anchor="t | l | r" h=30 exclusive=#true child=barrow {
+  margin 5 8 0 8
+}
+widget bbar layer=top anchor="b | l | r" h=30 exclusive=#true child=barrow {
   margin 5 8 0 8
 }
 
