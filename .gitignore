@@ -1,7 +1,7 @@
 result
 target
 .direnv
-TODO.md
 snippets.rs
+examples/default.svg
 
 test.json

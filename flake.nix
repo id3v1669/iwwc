@@ -1,5 +1,5 @@
 {
-  description = "Crosshair";
+  description = "Iced Wayland Widget Center";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";

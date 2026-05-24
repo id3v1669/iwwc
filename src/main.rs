@@ -1,5 +1,6 @@
 pub mod config;
 pub mod daemon;
+pub mod iconlookup;
 pub mod ipc;
 pub mod notification;
 pub mod render;
@@ -55,7 +56,7 @@ pub fn main() {
 fn init_logger(debug: bool) {
     //let level = if debug { "debug" } else { "warn" };
     let level = if debug {
-        "debug, iced_layershell=off, naga=off, zbus=off, iced_wgpu=off, cosmic_text=off, wgpu_core=off, wgpu_hal=off"
+        "debug, sctk=off, iced_layershell=off, naga=off, zbus=off, iced_wgpu=off, cosmic_text=off, wgpu_core=off, wgpu_hal=off"
     } else {
         "info"
     };
@@ -162,6 +163,13 @@ fn run_daemon(config: Option<PathBuf>) {
             }
         }
     }
+
+    let config_dir = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .map(std::path::Path::to_path_buf)
+        .unwrap_or_else(|| std::path::PathBuf::from("."));
+    crate::notification::icons::ensure_default_svg(&config_dir);
 
     if let Err(e) = crate::daemon::run(store, path) {
         eprintln!("daemon error: {e}");

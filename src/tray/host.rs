@@ -10,7 +10,12 @@ fn split_entry(entry: &str) -> (String, String) {
     }
 }
 
-pub async fn build_item(conn: &Connection, entry: &str, icon_size: u16) -> Option<TrayItem> {
+pub async fn build_item(
+    conn: &Connection,
+    entry: &str,
+    icon_size: u16,
+    icon_theme: Option<&str>,
+) -> Option<TrayItem> {
     let (bus_name, object_path) = split_entry(entry);
     let proxy = StatusNotifierItemProxy::builder(conn)
         .destination(bus_name.clone())
@@ -30,7 +35,8 @@ pub async fn build_item(conn: &Connection, entry: &str, icon_size: u16) -> Optio
     let theme_path = proxy.icon_theme_path().await.unwrap_or_default();
     let pixmaps = proxy.icon_pixmap().await.unwrap_or_default();
     let menu_path = proxy.menu().await.ok().map(|p| p.as_str().to_string());
-    let icon = crate::tray::icons::resolve_icon(&icon_name, &theme_path, &pixmaps, icon_size);
+    let icon =
+        crate::tray::icons::resolve_icon(&icon_name, &theme_path, &pixmaps, icon_size, icon_theme);
     Some(TrayItem {
         bus_name,
         object_path,
@@ -42,10 +48,15 @@ pub async fn build_item(conn: &Connection, entry: &str, icon_size: u16) -> Optio
     })
 }
 
-pub async fn snapshot(conn: &Connection, entries: &[String], icon_size: u16) -> Vec<TrayItem> {
+pub async fn snapshot(
+    conn: &Connection,
+    entries: &[String],
+    icon_size: u16,
+    icon_theme: Option<&str>,
+) -> Vec<TrayItem> {
     let mut out = Vec::new();
     for e in entries {
-        if let Some(item) = build_item(conn, e, icon_size).await {
+        if let Some(item) = build_item(conn, e, icon_size, icon_theme).await {
             out.push(item);
         }
     }

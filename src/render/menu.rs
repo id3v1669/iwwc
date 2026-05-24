@@ -72,7 +72,7 @@ pub fn view_menu(
                         .width(16.0)
                         .height(16.0)
                         .into()
-                } else if let Some(found) = cosmic_freedesktop_icons::lookup(n)
+                } else if let Some(found) = nix_freedesktop_icons::lookup(n)
                     .with_size(16)
                     .with_cache()
                     .find()

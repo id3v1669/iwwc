@@ -34,7 +34,7 @@ wayland-client = "0.31.14"
 wayland-protocols = { version = "0.32.12", features = ["client", "unstable"] }
 futures = "0.3.32"
 indexmap = "2.14"
-cosmic-freedesktop-icons = { git = "https://github.com/id3v1669/freedesktop-icons", branch = "main" }
+nix-freedesktop-icons = { git = "https://github.com/id3v1669/nix-freedesktop-icons", branch = "master" }
 xdg = "3.0"
 
 [dev-dependencies]

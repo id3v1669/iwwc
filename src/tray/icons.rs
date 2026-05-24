@@ -24,6 +24,7 @@ pub fn resolve_icon(
     theme_path: &str,
     pixmaps: &[(i32, i32, Vec<u8>)],
     size: u16,
+    icon_theme: Option<&str>,
 ) -> TrayIcon {
     if !icon_name.is_empty() {
         if !theme_path.is_empty() {
@@ -36,11 +37,8 @@ pub fn resolve_icon(
                 return TrayIcon::Path(svg);
             }
         }
-        if let Some(p) = cosmic_freedesktop_icons::lookup(icon_name)
-            .with_size(size)
-            .with_cache()
-            .find()
-        {
+        let theme = crate::iconlookup::effective_theme(icon_theme);
+        if let Some(p) = crate::iconlookup::lookup_named(icon_name, size, &theme) {
             return TrayIcon::Path(p);
         }
     }
