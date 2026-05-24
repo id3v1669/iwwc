@@ -133,6 +133,7 @@ pub struct ResolvedApptraySettings {
     pub bg: Option<Color>,
     pub border: Option<ResolvedBorder>,
     pub swap_buttons: bool,
+    pub vertical: bool,
     pub menu_bg: Color,
     pub menu_text: Color,
     pub menu_disabled: Color,
@@ -149,6 +150,7 @@ impl Default for ResolvedApptraySettings {
             bg: None,
             border: None,
             swap_buttons: false,
+            vertical: false,
             menu_bg: Color {
                 r: 0x22,
                 g: 0x22,

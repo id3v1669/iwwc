@@ -47,6 +47,11 @@ pub enum Message {
         x: f32,
         y: f32,
     },
+    WindowSize {
+        window: WindowId,
+        w: f32,
+        h: f32,
+    },
     NotifRightClick(WindowId),
     PullTick(String),
     PullResult {
@@ -68,6 +73,8 @@ pub struct App {
     menu_windows: HashMap<WindowId, usize>,
     menu_overlay: Option<WindowId>,
     cursor: HashMap<WindowId, (f32, f32)>,
+    probe: Option<WindowId>,
+    screen_size: Option<(f32, f32)>,
 }
 
 struct NotifState {
@@ -129,6 +136,8 @@ impl App {
             menu_windows: HashMap::new(),
             menu_overlay: None,
             cursor: HashMap::new(),
+            probe: None,
+            screen_size: None,
         }
     }
 
@@ -193,6 +202,9 @@ impl App {
             }
             Message::WindowClosed(id) => {
                 self.windows.remove(&id);
+                if self.probe == Some(id) {
+                    self.probe = None;
+                }
                 if let Some(nid) = self.notif_windows.remove(&id) {
                     self.notifications.shift_remove(&nid);
                     return self.restack();
@@ -251,6 +263,26 @@ impl App {
             Message::MenuCloseAll => self.close_menus(),
             Message::CursorMoved { window, x, y } => {
                 self.cursor.insert(window, (x, y));
+                match self.probe {
+                    Some(p) if self.screen_size.is_none() => {
+                        iced::window::size(p).map(move |s| Message::WindowSize {
+                            window: p,
+                            w: s.width,
+                            h: s.height,
+                        })
+                    }
+                    _ => Task::none(),
+                }
+            }
+            Message::WindowSize { window, w, h } => {
+                if self.probe == Some(window) {
+                    log::info!("[menu] probe screen size -> ({w}, {h})");
+                    if w > 0.0 && h > 0.0 {
+                        self.screen_size = Some((w, h));
+                        self.probe = None;
+                        return Task::done(Message::RemoveWindow(window));
+                    }
+                }
                 Task::none()
             }
             Message::PullTick(name) => match self.store.pulls().get(&name) {
@@ -295,18 +327,19 @@ impl App {
                 if self.windows.values().any(|n| n == &window) {
                     return (Response::Ok, Task::none());
                 }
-                match self.store.resolved().widgets.get(&window) {
-                    Some(w) => {
-                        let settings = window::layer_settings_for(w);
-                        let (id, task) = Message::layershell_open(settings);
-                        self.windows.insert(id, window);
-                        (Response::Ok, task)
+                let settings = match self.store.resolved().widgets.get(&window) {
+                    Some(w) => window::layer_settings_for(w),
+                    None => {
+                        return (
+                            Response::Error(format!("no such widget \"{window}\"")),
+                            Task::none(),
+                        );
                     }
-                    None => (
-                        Response::Error(format!("no such widget \"{window}\"")),
-                        Task::none(),
-                    ),
-                }
+                };
+                let (id, task) = Message::layershell_open(settings);
+                self.windows.insert(id, window);
+                let probe = self.ensure_probe();
+                (Response::Ok, Task::batch([task, probe]))
             }
             Command::Close { window } => {
                 match self
@@ -467,6 +500,15 @@ impl App {
         Task::batch(tasks)
     }
 
+    fn ensure_probe(&mut self) -> Task<Message> {
+        if self.screen_size.is_some() || self.probe.is_some() {
+            return Task::none();
+        }
+        let (id, task) = Message::layershell_open(probe_settings());
+        self.probe = Some(id);
+        task
+    }
+
     fn menu_anchor_ctx(&self, window: WindowId) -> crate::daemon::menu::AnchorCtx {
         let cursor = self.cursor.get(&window).copied().unwrap_or((0.0, 0.0));
         let bar = self
@@ -478,6 +520,8 @@ impl App {
             bar_margin: bar.and_then(|w| w.margin),
             bar_w: bar.and_then(|w| w.w).unwrap_or(0.0),
             bar_h: bar.and_then(|w| w.h).unwrap_or(0.0),
+            screen_w: self.screen_size.map(|(w, _)| w).unwrap_or(0.0),
+            screen_h: self.screen_size.map(|(_, h)| h).unwrap_or(0.0),
             cursor,
         }
     }
@@ -544,6 +588,7 @@ impl App {
                 decl.default.clone(),
             ));
         }
+        tasks.push(self.ensure_probe());
         Task::batch(tasks)
     }
 
@@ -809,6 +854,23 @@ fn overlay_settings() -> iced_layershell::reexport::NewLayerShellSettings {
         output_option: OutputOption::LastOutput,
         events_transparent: false,
         namespace: Some("iwwc".to_string()),
+    }
+}
+
+fn probe_settings() -> iced_layershell::reexport::NewLayerShellSettings {
+    use iced_layershell::reexport::{
+        Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
+    };
+    NewLayerShellSettings {
+        size: Some((0, 0)),
+        layer: Layer::Background,
+        anchor: Anchor::Top | Anchor::Bottom | Anchor::Left | Anchor::Right,
+        exclusive_zone: Some(-1),
+        margin: Some((0, 0, 0, 0)),
+        keyboard_interactivity: KeyboardInteractivity::None,
+        output_option: OutputOption::LastOutput,
+        events_transparent: true,
+        namespace: Some("iwwc-probe".to_string()),
     }
 }
 

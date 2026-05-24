@@ -271,6 +271,7 @@ pub struct ApptraySettings {
     pub bg: Option<FieldValue<Color>>,
     pub border: Option<FieldValue<String>>,
     pub swap_buttons: Option<FieldValue<bool>>,
+    pub vertical: Option<FieldValue<bool>>,
     pub menu_bg: Option<FieldValue<Color>>,
     pub menu_text: Option<FieldValue<Color>>,
     pub menu_disabled: Option<FieldValue<Color>>,

@@ -44,6 +44,8 @@ pub struct AnchorCtx {
     pub bar_margin: Option<Edges>,
     pub bar_w: f32,
     pub bar_h: f32,
+    pub screen_w: f32,
+    pub screen_h: f32,
     pub cursor: (f32, f32),
 }
 
@@ -90,18 +92,34 @@ pub fn place_root(ctx: &AnchorCtx, width: u32, height: u32) -> Placement {
     });
     let m = ctx.bar_margin.unwrap_or(Edges::all(0.0));
     let (cx, cy) = ctx.cursor;
-    let top = !a.bottom || a.top;
-    let left = !a.right || a.left;
-    let v_margin = if top {
-        m.top + cy
+    let bar_left = if a.left {
+        m.left
+    } else if a.right {
+        ctx.screen_w - m.right - ctx.bar_w
     } else {
-        m.bottom + (ctx.bar_h - cy)
+        (ctx.screen_w - ctx.bar_w) / 2.0
     };
-    let h_margin = if left {
-        m.left + cx
+    let bar_top = if a.top {
+        m.top
+    } else if a.bottom {
+        ctx.screen_h - m.bottom - ctx.bar_h
     } else {
-        m.right + (ctx.bar_w - cx)
+        (ctx.screen_h - ctx.bar_h) / 2.0
     };
+
+    let (left, h_margin) = fit_axis(
+        !a.right || a.left,
+        bar_left + cx,
+        width as f32,
+        ctx.screen_w,
+    );
+    let (top, v_margin) = fit_axis(
+        !a.bottom || a.top,
+        bar_top + cy,
+        height as f32,
+        ctx.screen_h,
+    );
+
     Placement {
         top,
         left,
@@ -109,6 +127,31 @@ pub fn place_root(ctx: &AnchorCtx, width: u32, height: u32) -> Placement {
         h_margin: h_margin.max(0.0) as i32,
         width,
         height,
+    }
+}
+
+fn fit_axis(prefer_high: bool, cursor: f32, size: f32, screen: f32) -> (bool, f32) {
+    let fits_high = screen <= 0.0 || cursor + size <= screen;
+    let fits_low = screen <= 0.0 || cursor - size >= 0.0;
+    let grow_high = if prefer_high {
+        if fits_high {
+            true
+        } else if fits_low {
+            false
+        } else {
+            (screen - cursor) >= cursor
+        }
+    } else if fits_low {
+        false
+    } else if fits_high {
+        true
+    } else {
+        (screen - cursor) >= cursor
+    };
+    if grow_high {
+        (true, cursor)
+    } else {
+        (false, screen - cursor)
     }
 }
 
@@ -154,6 +197,8 @@ mod tests {
             bar_margin: Some(Edges::all(8.0)),
             bar_w: 400.0,
             bar_h: 36.0,
+            screen_w: 2000.0,
+            screen_h: 2000.0,
             cursor,
         }
     }
@@ -232,5 +277,90 @@ mod tests {
         };
         let c = place_child(&parent, 26, 180, 80);
         assert_eq!(c.v_margin, 30 + 100 - 26 - 80);
+    }
+
+    #[test]
+    fn full_width_bar_flips_menu_left_near_right_edge() {
+        let c = AnchorCtx {
+            bar_anchor: Some(CfgAnchor {
+                top: true,
+                bottom: false,
+                left: true,
+                right: true,
+            }),
+            bar_margin: Some(Edges::all(8.0)),
+            bar_w: 0.0,
+            bar_h: 30.0,
+            screen_w: 1000.0,
+            screen_h: 1000.0,
+            cursor: (950.0, 10.0),
+        };
+        let p = place_root(&c, 200, 300);
+        assert!(!p.left);
+        assert_eq!(p.h_margin, 1000 - (8 + 950));
+    }
+
+    #[test]
+    fn full_height_sidebar_flips_menu_up_near_bottom_edge() {
+        let c = AnchorCtx {
+            bar_anchor: Some(CfgAnchor {
+                top: true,
+                bottom: true,
+                left: true,
+                right: false,
+            }),
+            bar_margin: Some(Edges::all(8.0)),
+            bar_w: 30.0,
+            bar_h: 0.0,
+            screen_w: 1000.0,
+            screen_h: 1000.0,
+            cursor: (10.0, 950.0),
+        };
+        let p = place_root(&c, 240, 300);
+        assert!(!p.top);
+        assert_eq!(p.v_margin, 1000 - (8 + 950));
+        assert!(p.left);
+    }
+
+    #[test]
+    fn full_height_sidebar_top_tray_expands_down() {
+        let c = AnchorCtx {
+            bar_anchor: Some(CfgAnchor {
+                top: true,
+                bottom: true,
+                left: true,
+                right: false,
+            }),
+            bar_margin: Some(Edges::all(8.0)),
+            bar_w: 30.0,
+            bar_h: 0.0,
+            screen_w: 1000.0,
+            screen_h: 1000.0,
+            cursor: (10.0, 20.0),
+        };
+        let p = place_root(&c, 240, 300);
+        assert!(p.top);
+        assert_eq!(p.v_margin, 8 + 20);
+    }
+
+    #[test]
+    fn unknown_screen_uses_natural_direction() {
+        let c = AnchorCtx {
+            bar_anchor: Some(CfgAnchor {
+                top: true,
+                bottom: false,
+                left: true,
+                right: true,
+            }),
+            bar_margin: Some(Edges::all(8.0)),
+            bar_w: 0.0,
+            bar_h: 30.0,
+            screen_w: 0.0,
+            screen_h: 0.0,
+            cursor: (950.0, 10.0),
+        };
+        let p = place_root(&c, 200, 300);
+        assert!(p.left);
+        assert_eq!(p.h_margin, 8 + 950);
     }
 }

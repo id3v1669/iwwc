@@ -167,7 +167,7 @@ mod facade_tests {
 
     #[test]
     fn format_float_tagged_in_interpolation() {
-        let v = run("${round(x).1}!", &store(&[("x", VarValue::Float(3.14))]));
+        let v = run("${round(x).1}!", &store(&[("x", VarValue::Float(3.12))]));
         assert_eq!(v, Value::Str("3.1!".into()));
     }
 
@@ -217,11 +217,11 @@ mod facade_tests {
                 expect: Expect::ErrMsg("math ops cannot be applied to strings"),
             },
             Case {
-                label: "test5: 3.14 * 2 -> 6.28 (no precision tag)",
+                label: "test5: 3.12 * 2 -> 6.24 (no precision tag)",
                 input: "${x*2}",
-                vars: &[("x", VarValueLit::Float(3.14))],
+                vars: &[("x", VarValueLit::Float(3.12))],
                 expect: Expect::FloatTagged {
-                    value: 6.28,
+                    value: 6.24,
                     prec: u8::MAX,
                 },
             },
@@ -262,9 +262,9 @@ mod facade_tests {
                 expect: Expect::Str("Result: 6 items"),
             },
             Case {
-                label: "test12: round(3.14).1 -> 3.1",
+                label: "test12: round(3.12).1 -> 3.1",
                 input: "${round(x).1}",
-                vars: &[("x", VarValueLit::Float(3.14))],
+                vars: &[("x", VarValueLit::Float(3.12))],
                 expect: Expect::FloatTagged {
                     value: 3.1,
                     prec: 1,

@@ -511,6 +511,9 @@ pub(crate) fn resolve_apptray_settings(ctx: &mut Ctx) -> ResolvedApptraySettings
     ) {
         out.swap_buttons = v;
     }
+    if let Some(v) = resolve_field(&a.vertical, "vertical", &span, coerce::coerce_bool, ctx) {
+        out.vertical = v;
+    }
     if let Some(v) = resolve_field(&a.menu_bg, "menu_bg", &span, coerce::coerce_color, ctx) {
         out.menu_bg = v;
     }

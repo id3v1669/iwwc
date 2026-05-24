@@ -233,7 +233,7 @@ mod tests {
     #[test]
     fn literals_and_vars() {
         assert_eq!(parse_str("42").unwrap(), Expr::Int(42));
-        assert_eq!(parse_str("3.14").unwrap(), Expr::Float(3.14));
+        assert_eq!(parse_str("3.12").unwrap(), Expr::Float(3.12));
         assert_eq!(parse_str("x").unwrap(), Expr::Var("x".into()));
     }
 

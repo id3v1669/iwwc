@@ -364,11 +364,11 @@ mod tests {
 
     #[test]
     fn literal_float() {
-        let v = eval(&float(3.14), &store(&[])).unwrap();
+        let v = eval(&float(3.12), &store(&[])).unwrap();
         assert_eq!(
             v,
             Value::Float(Decimal {
-                value: 3.14,
+                value: 3.12,
                 precision: None
             })
         );
@@ -416,9 +416,9 @@ mod tests {
 
     #[test]
     fn float_mul() {
-        let v = eval(&binop(BinaryOp::Mul, float(3.14), int(2)), &store(&[])).unwrap();
+        let v = eval(&binop(BinaryOp::Mul, float(3.12), int(2)), &store(&[])).unwrap();
         if let Value::Float(d) = v {
-            assert!((d.value - 6.28).abs() < 1e-9);
+            assert!((d.value - 6.24).abs() < 1e-9);
             assert_eq!(d.precision, None);
         } else {
             panic!("expected Float");
@@ -506,7 +506,7 @@ mod tests {
     #[test]
     fn round_with_precision() {
         let v = eval(
-            &call(Function::Round, vec![float(3.14)], Some(1)),
+            &call(Function::Round, vec![float(3.12)], Some(1)),
             &store(&[]),
         )
         .unwrap();
@@ -520,7 +520,7 @@ mod tests {
 
     #[test]
     fn round_missing_precision() {
-        let err = eval(&call(Function::Round, vec![float(3.14)], None), &store(&[])).unwrap_err();
+        let err = eval(&call(Function::Round, vec![float(3.12)], None), &store(&[])).unwrap_err();
         assert_eq!(err.kind, EvalErrorKind::MissingPrecision);
     }
 
