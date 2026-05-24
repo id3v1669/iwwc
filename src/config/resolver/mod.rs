@@ -89,6 +89,7 @@ pub fn resolve(config: &ParsedConfig) -> (Option<ResolvedConfig>, Vec<ConfigErro
             });
         }
     }
+    let icon_theme = config.icon_theme.clone();
 
     let has_error = errs.iter().any(|e| e.severity == Severity::Error);
     if has_error {
@@ -100,6 +101,7 @@ pub fn resolve(config: &ParsedConfig) -> (Option<ResolvedConfig>, Vec<ConfigErro
                 notification,
                 apptray,
                 smart_polls,
+                icon_theme,
             }),
             errs,
         )
@@ -184,6 +186,15 @@ fn resolve_notification(
         elements::resolve_field(&ns.layer, "layer", span, coerce::coerce_layer, &mut ctx)
     {
         out.layer = v;
+    }
+    if let Some(v) = elements::resolve_field(
+        &ns.respect_notification_icon,
+        "respect_notification_icon",
+        span,
+        coerce::coerce_bool,
+        &mut ctx,
+    ) {
+        out.respect_icon = v;
     }
     out
 }

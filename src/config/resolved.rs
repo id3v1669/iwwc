@@ -9,6 +9,7 @@ pub struct ResolvedConfig {
     pub notification: ResolvedNotificationSettings,
     pub apptray: ResolvedApptraySettings,
     pub smart_polls: Vec<(String, std::time::Duration)>,
+    pub icon_theme: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -187,6 +188,7 @@ pub struct ResolvedNotificationSettings {
     pub max: u32,
     pub timeout_ms: i32,
     pub layer: Layer,
+    pub respect_icon: bool,
 }
 
 impl Default for ResolvedNotificationSettings {
@@ -225,6 +227,7 @@ impl Default for ResolvedNotificationSettings {
             max: 5,
             timeout_ms: 5000,
             layer: Layer::Overlay,
+            respect_icon: true,
         }
     }
 }

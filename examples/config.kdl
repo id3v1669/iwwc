@@ -92,3 +92,21 @@ row barrow w=fill align=c {
 widget bar layer=top anchor="t | l | r" h=30 exclusive=#true child=barrow {
   margin 5 8 0 8
 }
+
+notification width=400 height=90 \
+      primary_text="#e7d4a2" \
+      secondary_text="#e3cd92" \
+      bg="#3c3836" \
+      border="notif_border" \
+      font="JetBrains Mono" \
+      anchor="t | r" \
+      gap=8 \
+      max=5 \
+      timeout=5000 \
+      respect_notification_icon=#true \
+      margin=12
+
+border notif_border radius=10 color="#d65d0e" w=2
+
+icon_theme "Gruvbox-Plus-Dark"
+

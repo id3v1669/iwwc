@@ -309,6 +309,29 @@ pub(crate) fn parse_document(
                     out.apptray = Some(a);
                 }
             }
+            "icon_theme" => match first_positional_string(node) {
+                Some(_) if out.icon_theme.is_some() => errs.push(ConfigError {
+                    kind: ConfigErrorKind::DuplicateElement,
+                    span: Span {
+                        source: source.clone(),
+                        span: node.span(),
+                    },
+                    message: "icon_theme is defined twice, using first".into(),
+                    severity: Severity::Warning,
+                }),
+                Some(theme) => out.icon_theme = Some(theme),
+                None => errs.push(ConfigError {
+                    kind: ConfigErrorKind::MissingRequiredField,
+                    span: Span {
+                        source: source.clone(),
+                        span: node.span(),
+                    },
+                    message:
+                        "icon_theme requires a string value, e.g. icon_theme \"Gruvbox-Plus-Dark\""
+                            .into(),
+                    severity: Severity::Warning,
+                }),
+            },
             "pull" => {
                 if let Some((id, decl)) = build_pull(node, &source, &mut errs) {
                     if out.vars.contains_key(&id) || out.pulls.contains_key(&id) {
@@ -1324,6 +1347,7 @@ pub(crate) fn build_notification(
         max: field_f32("max", node, source, errs),
         timeout: field_f32("timeout", node, source, errs),
         layer: field_layer("layer", node, source, errs),
+        respect_notification_icon: field_bool("respect_notification_icon", node, source, errs),
         span: Span {
             source: source.clone(),
             span: node.span(),

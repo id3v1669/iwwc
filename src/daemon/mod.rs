@@ -72,7 +72,7 @@ pub struct App {
 
 struct NotifState {
     notification: Notification,
-    icon: Option<std::path::PathBuf>,
+    icon: std::path::PathBuf,
     precalc: PreCalc,
     window: Option<WindowId>,
 }
@@ -147,7 +147,7 @@ impl App {
         let mut subs = vec![
             ipc_bridge::subscription(),
             crate::notification::subscription::subscription(),
-            crate::tray::subscription::subscription(),
+            crate::tray::subscription::subscription(self.store.resolved().icon_theme.clone()),
             iced::window::close_events().map(Message::WindowClosed),
             iced::keyboard::listen().map(|ev| match ev {
                 iced::keyboard::Event::KeyPressed {
@@ -357,10 +357,21 @@ impl App {
     fn on_notify(&mut self, n: Notification) -> Task<Message> {
         let id = n.notification_id;
         let settings = self.store.resolved().notification.clone();
+        let theme = self.store.resolved().icon_theme.clone();
+        let config_dir = self
+            .config_path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .map(std::path::Path::to_path_buf)
+            .unwrap_or_else(|| std::path::PathBuf::from("."));
         let icon = crate::notification::icons::resolve_icon(
             &n.app_icon,
+            &n.app_name,
             n.image_path.as_deref(),
             settings.height as u16,
+            settings.respect_icon,
+            theme.as_deref(),
+            &config_dir,
         );
         let precalc = PreCalc::generate(&settings);
         let timer = timeout_task(id, n.expire_timeout, &settings);
@@ -650,7 +661,7 @@ impl App {
                     &settings,
                     &st.precalc,
                     &st.notification,
-                    st.icon.as_deref(),
+                    &st.icon,
                 )
                 .map(Message::Ui);
             }

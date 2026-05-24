@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use iced::widget::{Space, button, column, container, image, row, svg, text};
+use iced::widget::{button, column, container, image, row, svg, text};
 use iced::{Element, Length};
 
 use crate::config::resolved::ResolvedNotificationSettings;
@@ -13,26 +13,22 @@ pub fn view_notification<'a>(
     settings: &ResolvedNotificationSettings,
     precalc: &PreCalc,
     n: &Notification,
-    icon: Option<&Path>,
+    icon: &Path,
 ) -> Element<'a, UiMessage> {
     let id = n.notification_id;
 
-    let icon_el: Element<'a, UiMessage> = match icon {
-        Some(p) if p.extension().and_then(|s| s.to_str()) == Some("svg") => {
-            svg(svg::Handle::from_path(p))
+    let icon_el: Element<'a, UiMessage> =
+        if icon.extension().and_then(|s| s.to_str()) == Some("svg") {
+            svg(svg::Handle::from_path(icon))
                 .width(Length::Fixed(precalc.image_size))
                 .height(Length::Fixed(precalc.image_size))
                 .into()
-        }
-        Some(p) => image(image::Handle::from_path(p))
-            .width(Length::Fixed(precalc.image_size))
-            .height(Length::Fixed(precalc.image_size))
-            .into(),
-        None => Space::new()
-            .width(Length::Fixed(0.0))
-            .height(Length::Fixed(precalc.image_size))
-            .into(),
-    };
+        } else {
+            image(image::Handle::from_path(icon))
+                .width(Length::Fixed(precalc.image_size))
+                .height(Length::Fixed(precalc.image_size))
+                .into()
+        };
 
     let mut summary = text(n.summary.clone())
         .size(precalc.font_size_summary)

@@ -1,7 +1,7 @@
 use std::sync::OnceLock;
 
 use futures::sink::SinkExt;
-use futures::stream::{Stream, StreamExt, select_all};
+use futures::stream::{StreamExt, select_all};
 use iced::Subscription;
 use zbus::Connection;
 
@@ -37,8 +37,9 @@ fn split_entry(entry: &str) -> (String, String) {
     }
 }
 
-fn tray_stream() -> impl Stream<Item = Message> {
-    iced::stream::channel(16, async |mut output| {
+fn tray_stream(icon_theme: &Option<String>) -> futures::stream::BoxStream<'static, Message> {
+    let icon_theme = icon_theme.clone();
+    iced::stream::channel(16, async move |mut output| {
         let conn = match Connection::session().await {
             Ok(c) => c,
             Err(e) => {
@@ -94,7 +95,9 @@ fn tray_stream() -> impl Stream<Item = Message> {
 
         loop {
             let entries = { items.0.lock().unwrap().clone() };
-            let snap = crate::tray::host::snapshot(&conn, &entries, ICON_SIZE).await;
+            let snap =
+                crate::tray::host::snapshot(&conn, &entries, ICON_SIZE, icon_theme.as_deref())
+                    .await;
             if output.send(Message::TrayItems(snap)).await.is_err() {
                 break;
             }
@@ -139,8 +142,9 @@ fn tray_stream() -> impl Stream<Item = Message> {
             }
         }
     })
+    .boxed()
 }
 
-pub fn subscription() -> Subscription<Message> {
-    Subscription::run(tray_stream)
+pub fn subscription(icon_theme: Option<String>) -> Subscription<Message> {
+    Subscription::run_with(icon_theme, tray_stream)
 }

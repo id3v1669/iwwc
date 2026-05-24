@@ -148,6 +148,7 @@ pub struct ParsedConfig {
     pub notification: Option<NotificationSettings>,
     pub apptray: Option<ApptraySettings>,
     pub pulls: IndexMap<String, PullDecl>,
+    pub icon_theme: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -293,5 +294,6 @@ pub struct NotificationSettings {
     pub max: Option<FieldValue<f32>>,
     pub timeout: Option<FieldValue<f32>>,
     pub layer: Option<FieldValue<Layer>>,
+    pub respect_notification_icon: Option<FieldValue<bool>>,
     pub span: Span,
 }
