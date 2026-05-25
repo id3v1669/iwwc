@@ -62,8 +62,9 @@ button replay text="${recsym}" action="sp-play-pause" font="${ff}" style=pill st
   padding 5 12
 }
 
-apptray icon_size=18 spacing=6 swap_buttons=#false bg="282828" border=round20 padding=5 \
-    menu_width=240 row_height=28 menu_bg="282828" menu_text="e3cd92" menu_disabled="928374"
+apptray icon_size=18 \
+    spacing=6 padding=5 bg="282828" border=round20 swap_buttons=#true \
+    menu_bg="282828" menu_text="e3cd92" menu_disabled="928374" menu_width=240 row_height=28 
 
 button sound text="󰕾 ${soundvol}" action="pwvucontrol" font="${ff}" style=pill style:hover=pillhover {
   padding 4 14
