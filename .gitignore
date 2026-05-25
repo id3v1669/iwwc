@@ -3,5 +3,7 @@ target
 .direnv
 snippets.rs
 examples/default.svg
+default.svg
+cfg*
 
 test.json
