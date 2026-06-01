@@ -39,18 +39,13 @@ pub enum Message {
         bus_name: String,
         menu_path: String,
         root: crate::tray::menu_types::MenuItem,
-        ctx: crate::daemon::menu::AnchorCtx,
+        anchor: crate::daemon::menu::MenuAnchor,
     },
     MenuCloseAll,
     CursorMoved {
         window: WindowId,
         x: f32,
         y: f32,
-    },
-    WindowSize {
-        window: WindowId,
-        w: f32,
-        h: f32,
     },
     NotifRightClick(WindowId),
     PullTick(String),
@@ -71,10 +66,7 @@ pub struct App {
     tray_items: Vec<crate::tray::types::TrayItem>,
     menus: Vec<crate::daemon::menu::MenuLevel>,
     menu_windows: HashMap<WindowId, usize>,
-    menu_overlay: Option<WindowId>,
     cursor: HashMap<WindowId, (f32, f32)>,
-    probe: Option<WindowId>,
-    screen_size: Option<(f32, f32)>,
 }
 
 struct NotifState {
@@ -134,10 +126,7 @@ impl App {
             tray_items: Vec::new(),
             menus: Vec::new(),
             menu_windows: HashMap::new(),
-            menu_overlay: None,
             cursor: HashMap::new(),
-            probe: None,
-            screen_size: None,
         }
     }
 
@@ -202,14 +191,12 @@ impl App {
             }
             Message::WindowClosed(id) => {
                 self.windows.remove(&id);
-                if self.probe == Some(id) {
-                    self.probe = None;
-                }
+                self.cursor.remove(&id);
                 if let Some(nid) = self.notif_windows.remove(&id) {
                     self.notifications.shift_remove(&nid);
                     return self.restack();
                 }
-                if self.menu_overlay == Some(id) || self.menu_windows.contains_key(&id) {
+                if self.menu_windows.contains_key(&id) {
                     return self.close_menus();
                 }
                 Task::none()
@@ -229,8 +216,8 @@ impl App {
                 match self.tray_items.get(idx) {
                     Some(item) => match item.menu_path.clone() {
                         Some(path) => {
-                            let ctx = self.menu_anchor_ctx(window);
-                            menu_fetch_task(item.bus_name.clone(), path, ctx)
+                            let anchor = self.menu_anchor(window);
+                            menu_fetch_task(item.bus_name.clone(), path, anchor)
                         }
                         None => self.tray_call(idx, TrayMethod::ContextMenu),
                     },
@@ -258,31 +245,11 @@ impl App {
                 bus_name,
                 menu_path,
                 root,
-                ctx,
-            } => self.open_root_menu(bus_name, menu_path, root, ctx),
+                anchor,
+            } => self.open_root_menu(bus_name, menu_path, root, anchor),
             Message::MenuCloseAll => self.close_menus(),
             Message::CursorMoved { window, x, y } => {
                 self.cursor.insert(window, (x, y));
-                match self.probe {
-                    Some(p) if self.screen_size.is_none() => {
-                        iced::window::size(p).map(move |s| Message::WindowSize {
-                            window: p,
-                            w: s.width,
-                            h: s.height,
-                        })
-                    }
-                    _ => Task::none(),
-                }
-            }
-            Message::WindowSize { window, w, h } => {
-                if self.probe == Some(window) {
-                    log::info!("[menu] probe screen size -> ({w}, {h})");
-                    if w > 0.0 && h > 0.0 {
-                        self.screen_size = Some((w, h));
-                        self.probe = None;
-                        return Task::done(Message::RemoveWindow(window));
-                    }
-                }
                 Task::none()
             }
             Message::PullTick(name) => match self.store.pulls().get(&name) {
@@ -338,8 +305,7 @@ impl App {
                 };
                 let (id, task) = Message::layershell_open(settings);
                 self.windows.insert(id, window);
-                let probe = self.ensure_probe();
-                (Response::Ok, Task::batch([task, probe]))
+                (Response::Ok, task)
             }
             Command::Close { window } => {
                 match self
@@ -500,29 +466,10 @@ impl App {
         Task::batch(tasks)
     }
 
-    fn ensure_probe(&mut self) -> Task<Message> {
-        if self.screen_size.is_some() || self.probe.is_some() {
-            return Task::none();
-        }
-        let (id, task) = Message::layershell_open(probe_settings());
-        self.probe = Some(id);
-        task
-    }
-
-    fn menu_anchor_ctx(&self, window: WindowId) -> crate::daemon::menu::AnchorCtx {
-        let cursor = self.cursor.get(&window).copied().unwrap_or((0.0, 0.0));
-        let bar = self
-            .windows
-            .get(&window)
-            .and_then(|name| self.store.resolved().widgets.get(name));
-        crate::daemon::menu::AnchorCtx {
-            bar_anchor: bar.and_then(|w| w.anchor),
-            bar_margin: bar.and_then(|w| w.margin),
-            bar_w: bar.and_then(|w| w.w).unwrap_or(0.0),
-            bar_h: bar.and_then(|w| w.h).unwrap_or(0.0),
-            screen_w: self.screen_size.map(|(w, _)| w).unwrap_or(0.0),
-            screen_h: self.screen_size.map(|(_, h)| h).unwrap_or(0.0),
-            cursor,
+    fn menu_anchor(&self, window: WindowId) -> crate::daemon::menu::MenuAnchor {
+        crate::daemon::menu::MenuAnchor {
+            parent: window,
+            cursor: self.cursor.get(&window).copied().unwrap_or((0.0, 0.0)),
         }
     }
 
@@ -531,40 +478,49 @@ impl App {
         bus_name: String,
         menu_path: String,
         root: crate::tray::menu_types::MenuItem,
-        ctx: crate::daemon::menu::AnchorCtx,
+        anchor: crate::daemon::menu::MenuAnchor,
     ) -> Task<Message> {
+        use iced_layershell::actions::IcedNewPopupSettings;
+        use iced_layershell::reexport::{PopupAnchor, PopupConstraintAdjustment, PopupGravity};
+
         let close = self.close_menus();
         let settings = self.store.resolved().apptray.clone();
         let items: Vec<_> = root.children.into_iter().filter(|i| i.visible).collect();
         let width = crate::render::menu::menu_pixel_width(&items, &settings) as u32;
         let height = crate::daemon::menu::menu_height(&items, settings.row_height);
-        let placement = crate::daemon::menu::place_root(&ctx, width, height);
-        let mut tasks = vec![close];
-        let (oid, otask) = Message::layershell_open(overlay_settings());
-        self.menu_overlay = Some(oid);
-        tasks.push(otask);
-        let (wid, mtask) = Message::layershell_open(menu_surface_settings(placement, true));
+        let (cx, cy) = anchor.cursor;
+
+        let popup = IcedNewPopupSettings {
+            size: (width, height),
+            parent: anchor.parent,
+            anchor_rect: crate::daemon::menu::root_anchor_rect(cx, cy),
+            anchor: PopupAnchor::BottomLeft,
+            gravity: PopupGravity::BottomRight,
+            constraint_adjustment: PopupConstraintAdjustment::FlipX
+                | PopupConstraintAdjustment::FlipY
+                | PopupConstraintAdjustment::SlideX
+                | PopupConstraintAdjustment::SlideY,
+        };
+        let (wid, mtask) = Message::popup_open(popup);
         self.menu_windows.insert(wid, 0);
         self.menus.push(crate::daemon::menu::MenuLevel {
             window: wid,
             bus_name,
             menu_path,
             items,
-            placement,
+            width,
+            height,
         });
-        tasks.push(mtask);
-        Task::batch(tasks)
+        Task::batch(vec![close, mtask])
     }
 
     fn close_menus(&mut self) -> Task<Message> {
         let mut tasks = Vec::new();
-        for lvl in self.menus.drain(..) {
+        let levels: Vec<_> = self.menus.drain(..).collect();
+        for lvl in levels.into_iter().rev() {
             tasks.push(Task::done(Message::RemoveWindow(lvl.window)));
         }
         self.menu_windows.clear();
-        if let Some(o) = self.menu_overlay.take() {
-            tasks.push(Task::done(Message::RemoveWindow(o)));
-        }
         Task::batch(tasks)
     }
 
@@ -588,7 +544,6 @@ impl App {
                 decl.default.clone(),
             ));
         }
-        tasks.push(self.ensure_probe());
         Task::batch(tasks)
     }
 
@@ -609,7 +564,8 @@ impl App {
     fn close_from(&mut self, level: usize) -> Task<Message> {
         let mut tasks = Vec::new();
         if level < self.menus.len() {
-            for lvl in self.menus.split_off(level) {
+            let removed: Vec<_> = self.menus.split_off(level);
+            for lvl in removed.into_iter().rev() {
                 self.menu_windows.remove(&lvl.window);
                 tasks.push(Task::done(Message::RemoveWindow(lvl.window)));
             }
@@ -618,6 +574,9 @@ impl App {
     }
 
     fn open_submenu(&mut self, level: usize, id: i32) -> Task<Message> {
+        use iced_layershell::actions::IcedNewPopupSettings;
+        use iced_layershell::reexport::{PopupAnchor, PopupConstraintAdjustment, PopupGravity};
+
         let settings = self.store.resolved().apptray.clone();
         let extracted = {
             let Some(parent) = self.menus.get(level) else {
@@ -644,21 +603,31 @@ impl App {
                 children,
                 parent.bus_name.clone(),
                 parent.menu_path.clone(),
-                parent.placement,
+                parent.window,
+                parent.width,
             )
         };
-        let (top_offset, children, bus, path, parent_placement) = extracted;
+        let (top_offset, children, bus, path, parent_window, parent_width) = extracted;
 
-        let mut tasks = Vec::new();
-        for lvl in self.menus.split_off(level + 1) {
-            self.menu_windows.remove(&lvl.window);
-            tasks.push(Task::done(Message::RemoveWindow(lvl.window)));
-        }
+        let close_deeper = self.close_from(level + 1);
+
         let width = crate::render::menu::menu_pixel_width(&children, &settings) as u32;
         let height = crate::daemon::menu::menu_height(&children, settings.row_height);
-        let placement =
-            crate::daemon::menu::place_child(&parent_placement, top_offset, width, height);
-        let (wid, mtask) = Message::layershell_open(menu_surface_settings(placement, false));
+
+        let popup = IcedNewPopupSettings {
+            size: (width, height),
+            parent: parent_window,
+            anchor_rect: crate::daemon::menu::submenu_anchor_rect(
+                parent_width,
+                top_offset,
+                settings.row_height,
+            ),
+            anchor: PopupAnchor::TopRight,
+            gravity: PopupGravity::BottomRight,
+            constraint_adjustment: PopupConstraintAdjustment::FlipX
+                | PopupConstraintAdjustment::SlideY,
+        };
+        let (wid, mtask) = Message::popup_open(popup);
         let new_level = self.menus.len();
         self.menu_windows.insert(wid, new_level);
         self.menus.push(crate::daemon::menu::MenuLevel {
@@ -666,10 +635,10 @@ impl App {
             bus_name: bus,
             menu_path: path,
             items: children,
-            placement,
+            width,
+            height,
         });
-        tasks.push(mtask);
-        Task::batch(tasks)
+        Task::batch(vec![close_deeper, mtask])
     }
 
     fn tray_call(&self, idx: usize, method: TrayMethod) -> Task<Message> {
@@ -680,17 +649,6 @@ impl App {
     }
 
     fn view(&self, id: WindowId) -> Element<'_, Message> {
-        if self.menu_overlay == Some(id) {
-            let overlay: Element<'_, UiMessage> = iced::widget::mouse_area(
-                iced::widget::container(iced::widget::Space::new())
-                    .width(iced::Length::Fill)
-                    .height(iced::Length::Fill),
-            )
-            .on_press(UiMessage::MenuDismiss)
-            .on_right_press(UiMessage::MenuDismiss)
-            .into();
-            return overlay.map(Message::Ui);
-        }
         if let Some(level) = self.menu_windows.get(&id) {
             if let Some(lvl) = self.menus.get(*level) {
                 let settings = self.store.resolved().apptray.clone();
@@ -732,7 +690,7 @@ impl App {
 fn menu_fetch_task(
     bus: String,
     path: String,
-    ctx: crate::daemon::menu::AnchorCtx,
+    anchor: crate::daemon::menu::MenuAnchor,
 ) -> Task<Message> {
     Task::perform(
         async move {
@@ -755,7 +713,7 @@ fn menu_fetch_task(
                 bus_name,
                 menu_path,
                 root,
-                ctx,
+                anchor,
             },
             None => Message::Noop,
         },
@@ -814,64 +772,6 @@ fn menu_event_task(bus: String, path: String, id: i32) -> Task<Message> {
         },
         |_| Message::Noop,
     )
-}
-
-fn menu_surface_settings(
-    p: crate::daemon::menu::Placement,
-    keyboard: bool,
-) -> iced_layershell::reexport::NewLayerShellSettings {
-    use iced_layershell::reexport::{
-        KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
-    };
-    NewLayerShellSettings {
-        size: Some((p.width, p.height)),
-        layer: Layer::Overlay,
-        anchor: p.anchor(),
-        exclusive_zone: Some(0),
-        margin: Some(p.margin()),
-        keyboard_interactivity: if keyboard {
-            KeyboardInteractivity::OnDemand
-        } else {
-            KeyboardInteractivity::None
-        },
-        output_option: OutputOption::LastOutput,
-        events_transparent: false,
-        namespace: Some("iwwc".to_string()),
-    }
-}
-
-fn overlay_settings() -> iced_layershell::reexport::NewLayerShellSettings {
-    use iced_layershell::reexport::{
-        Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
-    };
-    NewLayerShellSettings {
-        size: Some((0, 0)),
-        layer: Layer::Overlay,
-        anchor: Anchor::Top | Anchor::Bottom | Anchor::Left | Anchor::Right,
-        exclusive_zone: Some(0),
-        margin: Some((0, 0, 0, 0)),
-        keyboard_interactivity: KeyboardInteractivity::None,
-        output_option: OutputOption::LastOutput,
-        events_transparent: false,
-        namespace: Some("iwwc".to_string()),
-    }
-}
-
-fn probe_settings() -> iced_layershell::reexport::NewLayerShellSettings {
-    use iced_layershell::reexport::{
-        Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
-    };
-    NewLayerShellSettings {
-        size: Some((0, 0)),
-        layer: Layer::Background,
-        anchor: Anchor::Top | Anchor::Bottom | Anchor::Left | Anchor::Right,
-        exclusive_zone: Some(-1),
-        margin: Some((0, 0, 0, 0)),
-        keyboard_interactivity: KeyboardInteractivity::None,
-        output_option: OutputOption::LastOutput,
-        events_transparent: true,
-        namespace: Some("iwwc-probe".to_string()),
-    }
 }
 
 enum TrayMethod {
