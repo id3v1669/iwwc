@@ -1,8 +1,9 @@
 use crate::config::math::value::Value;
 use crate::config::primitives;
 use crate::config::types::{
-    AlignX, AlignY, Anchor, ColAlign, Color, Layer, Output, RowAlign, Span,
+    AlignX, AlignY, Anchor, ColAlign, Layer, Output, RowAlign, Span,
 };
+use iced::Color;
 use crate::config::{ConfigError, ConfigErrorKind, Severity};
 
 fn type_err(field: &str, expected: &str, span: &Span) -> ConfigError {

@@ -1,9 +1,5 @@
-use crate::config::types::{AlignX, AlignY, ColAlign, Color, RowAlign};
+use crate::config::types::{AlignX, AlignY, ColAlign, RowAlign};
 use iced::alignment;
-
-pub fn color(c: Color) -> iced::Color {
-    iced::Color::from_rgba8(c.r, c.g, c.b, c.a as f32 / 255.0)
-}
 
 pub fn align_x(a: AlignX) -> alignment::Horizontal {
     match a {

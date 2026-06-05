@@ -439,7 +439,7 @@ pub(crate) fn field_color(
     node: &kdl::KdlNode,
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
-) -> Option<FieldValue<crate::config::types::Color>> {
+) -> Option<FieldValue<iced::Color>> {
     let entry = prop(node, name)?;
     let text = match entry.value() {
         kdl::KdlValue::String(s) => s.clone(),
@@ -1497,64 +1497,6 @@ mod tests {
                 }
             }
         }
-    }
-
-    use crate::config::types::Color;
-
-    fn parse_color_for_test(input: &str) -> Result<Color, ()> {
-        super::parse_color(input).ok_or(())
-    }
-
-    #[test]
-    fn color_parsing() {
-        assert_eq!(
-            parse_color_for_test("ffffff"),
-            Ok(Color {
-                r: 0xff,
-                g: 0xff,
-                b: 0xff,
-                a: 0xff
-            })
-        );
-        assert_eq!(
-            parse_color_for_test("#ffffff"),
-            Ok(Color {
-                r: 0xff,
-                g: 0xff,
-                b: 0xff,
-                a: 0xff
-            })
-        );
-        assert_eq!(
-            parse_color_for_test("ffffffff"),
-            Ok(Color {
-                r: 0xff,
-                g: 0xff,
-                b: 0xff,
-                a: 0xff
-            })
-        );
-        assert_eq!(
-            parse_color_for_test("#ffffffff"),
-            Ok(Color {
-                r: 0xff,
-                g: 0xff,
-                b: 0xff,
-                a: 0xff
-            })
-        );
-        assert_eq!(parse_color_for_test("transparent"), Ok(Color::TRANSPARENT));
-        assert_eq!(
-            parse_color_for_test("000000"),
-            Ok(Color {
-                r: 0,
-                g: 0,
-                b: 0,
-                a: 0xff
-            })
-        );
-        assert_eq!(parse_color_for_test("xyz"), Err(()));
-        assert_eq!(parse_color_for_test("fffff"), Err(()));
     }
 
     #[test]

@@ -1,52 +1,7 @@
-use crate::config::resolved::{ResolvedBorder, ResolvedShadow, ResolvedStyle};
-use crate::config::types::Color;
-use crate::render::convert;
-use iced::widget::{button, container};
-use iced::{Background, Border, Color as IcedColor, Shadow, Vector};
+use iced::Background;
 
-pub fn background(c: Color) -> Background {
-    Background::Color(convert::color(c))
-}
-
-pub fn border(b: &ResolvedBorder) -> Border {
-    Border {
-        color: b
-            .color
-            .map(convert::color)
-            .unwrap_or(IcedColor::TRANSPARENT),
-        width: b.w.unwrap_or(0.0),
-        radius: b.radius.unwrap_or_default(),
-    }
-}
-
-pub fn shadow(s: &ResolvedShadow) -> Shadow {
-    Shadow {
-        color: s
-            .color
-            .unwrap_or(IcedColor::TRANSPARENT),
-        offset: s.offset.map(|(x, y)| Vector { x, y }).unwrap_or_default(),
-        blur_radius: s.blur_radius.unwrap_or(0.0),
-    }
-}
-
-pub fn container_style(s: &ResolvedStyle) -> container::Style {
-    container::Style {
-        text_color: s.text.map(convert::color),
-        background: s.bg.map(background),
-        border: s.border.as_ref().map(border).unwrap_or_default(),
-        shadow: s.shadow.as_ref().map(shadow).unwrap_or_default(),
-        snap: s.snap.unwrap_or_default(),
-    }
-}
-
-pub fn button_style(s: &ResolvedStyle) -> button::Style {
-    button::Style {
-        background: s.bg.map(background),
-        text_color: s.text.map(convert::color).unwrap_or(IcedColor::BLACK),
-        border: s.border.as_ref().map(border).unwrap_or_default(),
-        shadow: s.shadow.as_ref().map(shadow).unwrap_or_default(),
-        snap: s.snap.unwrap_or_default(),
-    }
+pub fn background(c: iced::Color) -> Background {
+    Background::Color(c)
 }
 
 #[cfg(test)]

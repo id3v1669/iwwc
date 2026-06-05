@@ -32,14 +32,14 @@ pub fn view_notification<'a>(
 
     let mut summary = text(n.summary.clone())
         .size(precalc.font_size_summary)
-        .color(convert::color(settings.primary_text));
+        .color(settings.primary_text);
     if let Some(f) = &settings.font {
         summary = summary.font(convert::font(f));
     }
 
     let mut body = text(n.body.clone())
         .size(precalc.font_size_body)
-        .color(convert::color(settings.secondary_text));
+        .color(settings.secondary_text);
     if let Some(f) = &settings.font {
         body = body.font(convert::font(f));
     }
@@ -72,14 +72,14 @@ pub fn view_notification<'a>(
     let inner: Element<'a, UiMessage> = content.width(Length::Fill).height(Length::Fill).into();
 
     let bg = settings.bg;
-    let border = settings.border.clone();
+    let border = settings.border;
     container(inner)
         .padding(precalc.general_padding)
         .width(Length::Fill)
         .height(Length::Fill)
         .style(move |_| container::Style {
             background: Some(style::background(bg)),
-            border: border.as_ref().map(style::border).unwrap_or_default(),
+            border: border.unwrap_or_default(),
             ..Default::default()
         })
         .into()

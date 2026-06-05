@@ -1,6 +1,6 @@
 use crate::config::math::{self, value::Value};
-use crate::config::resolved::{ ResolvedButton, ResolvedColumn, ResolvedContainer, ResolvedElement,
-    ResolvedRow, ResolvedShadow, ResolvedStyle, ResolvedText, ResolvedWidget,
+use crate::config::resolved::{ PreResolvedStyle, ResolvedButton, ResolvedColumn, ResolvedContainer,
+    ResolvedElement, ResolvedRow, ResolvedText, ResolvedWidget,
 };
 use crate::config::resolver::coerce;
 use crate::config::resolver::vars::FlatEnv;
@@ -273,7 +273,7 @@ fn resolve_container(
         align_x: resolve_field(&c.align_x, "align_x", &c.span, coerce::coerce_align_x, ctx),
         align_y: resolve_field(&c.align_y, "align_y", &c.span, coerce::coerce_align_y, ctx),
         clip: resolve_field(&c.clip, "clip", &c.span, coerce::coerce_bool, ctx),
-        style: resolve_style_ref(&c.style, &c.span, ctx),
+        style: resolve_style_ref(&c.style, &c.span, ctx).map(|p| p.to_container()),
         child,
         span: c.span.clone(),
     })
@@ -286,10 +286,10 @@ fn resolve_button(b: &Button, ctx: &mut Ctx) -> ResolvedButton {
         padding: resolve_field(&b.padding, "padding", &b.span, coerce::coerce_padding, ctx),
         action: resolve_field(&b.action, "action", &b.span, coerce::coerce_string, ctx),
         clip: resolve_field(&b.clip, "clip", &b.span, coerce::coerce_bool, ctx),
-        style: resolve_style_ref(&b.style, &b.span, ctx),
-        style_hover: resolve_style_ref(&b.style_hover, &b.span, ctx),
-        style_active: resolve_style_ref(&b.style_active, &b.span, ctx),
-        style_disabled: resolve_style_ref(&b.style_disabled, &b.span, ctx),
+        style: resolve_style_ref(&b.style, &b.span, ctx).map(|p| p.to_button()),
+        style_hover: resolve_style_ref(&b.style_hover, &b.span, ctx).map(|p| p.to_button()),
+        style_active: resolve_style_ref(&b.style_active, &b.span, ctx).map(|p| p.to_button()),
+        style_disabled: resolve_style_ref(&b.style_disabled, &b.span, ctx).map(|p| p.to_button()),
         text: resolve_field(&b.text, "text", &b.span, coerce::coerce_string, ctx),
         font: resolve_field(&b.font, "font", &b.span, coerce::coerce_string, ctx),
         span: b.span.clone(),
@@ -401,7 +401,7 @@ fn resolve_style_ref(
     id_field: &Option<FieldValue<String>>,
     span: &Span,
     ctx: &mut Ctx,
-) -> Option<ResolvedStyle> {
+) -> Option<PreResolvedStyle> {
     let id = literal_or_eval_id(id_field, span, ctx)?;
     if !ctx.config.styles.contains_key(&id) {
         ctx.errs.push(ConfigError {
@@ -417,8 +417,8 @@ fn resolve_style_ref(
     Some(resolve_style(&style, span, ctx))
 }
 
-fn resolve_style(s: &Style, span: &Span, ctx: &mut Ctx) -> ResolvedStyle {
-    ResolvedStyle {
+fn resolve_style(s: &Style, span: &Span, ctx: &mut Ctx) -> PreResolvedStyle {
+    PreResolvedStyle {
         text: resolve_field(&s.text, "text", &s.span, coerce::coerce_color, ctx),
         bg: resolve_field(&s.bg, "bg", &s.span, coerce::coerce_color, ctx),
         border: resolve_border_ref(&s.border, span, ctx),
@@ -431,7 +431,7 @@ pub(crate) fn resolve_border_ref(
     id_field: &Option<FieldValue<String>>,
     span: &Span,
     ctx: &mut Ctx,
-) -> Option<ResolvedBorder> {
+) -> Option<iced::Border> {
     let id = literal_or_eval_id(id_field, span, ctx)?;
     if !ctx.config.borders.contains_key(&id) {
         ctx.errs.push(ConfigError {
@@ -444,10 +444,12 @@ pub(crate) fn resolve_border_ref(
     }
     let b = ctx.config.borders.get(&id).unwrap().clone();
     ctx.used.insert(id);
-    Some(ResolvedBorder {
-        color: resolve_field(&b.color, "color", &b.span, coerce::coerce_color, ctx),
-        w: resolve_field(&b.w, "w", &b.span, coerce::coerce_f32, ctx),
-        radius: resolve_field(&b.radius, "radius", &b.span, coerce::coerce_radius, ctx),
+    Some(iced::Border {
+        color: resolve_field(&b.color, "color", &b.span, coerce::coerce_color, ctx)
+            .unwrap_or(iced::Color::TRANSPARENT),
+        width: resolve_field(&b.w, "w", &b.span, coerce::coerce_f32, ctx).unwrap_or(0.0),
+        radius: resolve_field(&b.radius, "radius", &b.span, coerce::coerce_radius, ctx)
+            .unwrap_or_default(),
     })
 }
 
@@ -455,7 +457,7 @@ fn resolve_shadow_ref(
     id_field: &Option<FieldValue<String>>,
     span: &Span,
     ctx: &mut Ctx,
-) -> Option<ResolvedShadow> {
+) -> Option<iced::Shadow> {
     let id = literal_or_eval_id(id_field, span, ctx)?;
     if !ctx.config.shadows.contains_key(&id) {
         ctx.errs.push(ConfigError {
@@ -472,16 +474,18 @@ fn resolve_shadow_ref(
         Some(FieldValue::Literal(o)) => Some(*o),
         _ => None,
     };
-    Some(ResolvedShadow {
-        color: resolve_field(&sh.color, "color", &sh.span, coerce::coerce_color, ctx),
-        offset,
+    Some(iced::Shadow {
+        color: resolve_field(&sh.color, "color", &sh.span, coerce::coerce_color, ctx)
+            .unwrap_or(iced::Color::TRANSPARENT),
+        offset: offset.map(|(x, y)| iced::Vector::new(x, y)).unwrap_or_default(),
         blur_radius: resolve_field(
             &sh.blur_radius,
             "blur_radius",
             &sh.span,
             coerce::coerce_f32,
             ctx,
-        ),
+        )
+        .unwrap_or(0.0),
     })
 }
 
@@ -518,7 +522,7 @@ pub(crate) fn resolve_apptray_settings(ctx: &mut Ctx) -> ResolvedApptraySettings
         resolve_field(&a.menu_bg, "menu_bg", &span, coerce::coerce_color, ctx),
         out.menu.menu_container_style.as_mut(),
     ) {
-        s.bg = Some(v);
+        s.background = Some(iced::Background::Color(v));
     }
     // Transitional: menu_text recolors only the normal button text; hover/active
     // keep their defaults. (raw `menu_width` is intentionally no longer consumed.)
@@ -527,7 +531,7 @@ pub(crate) fn resolve_apptray_settings(ctx: &mut Ctx) -> ResolvedApptraySettings
         resolve_field(&a.menu_text, "menu_text", &span, coerce::coerce_color, ctx),
         out.menu.button_style.as_mut(),
     ) {
-        s.text = Some(v);
+        s.text_color = v;
     }
     if let (Some(v), Some(s)) = (
         resolve_field(
@@ -539,7 +543,7 @@ pub(crate) fn resolve_apptray_settings(ctx: &mut Ctx) -> ResolvedApptraySettings
         ),
         out.menu.button_style_disabled.as_mut(),
     ) {
-        s.text = Some(v);
+        s.text_color = v;
     }
     if let Some(v) = resolve_field(&a.row_height, "row_height", &span, coerce::coerce_f32, ctx) {
         out.menu.row_height = v;
