@@ -1,30 +1,16 @@
 use crate::config::types::{
-    AlignX, AlignY, Anchor, ColAlign, Color, Layer, Output, RowAlign,
+    AlignX, AlignY, Anchor, ColAlign, Layer, Output, RowAlign,
 };
+use iced::Color;
+use std::str::FromStr;
 
 pub fn parse_color(input: &str) -> Option<Color> {
     if input == "transparent" {
         return Some(Color::TRANSPARENT);
     }
-    let hex = input.strip_prefix('#').unwrap_or(input);
-    if !hex.chars().all(|c| c.is_ascii_hexdigit()) {
-        return None;
-    }
-    match hex.len() {
-        6 => {
-            let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
-            let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
-            let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
-            Some(Color { r, g, b, a: 0xff })
-        }
-        8 => {
-            let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
-            let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
-            let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
-            let a = u8::from_str_radix(&hex[6..8], 16).ok()?;
-            Some(Color { r, g, b, a })
-        }
-        _ => None,
+    match Color::from_str(input) {
+        Ok(c) => Some(c),
+        Err(_) => None,
     }
 }
 

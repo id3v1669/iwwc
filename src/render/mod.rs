@@ -74,7 +74,7 @@ fn build_text(t: &ResolvedText, _ctx: &RenderCtx) -> Element<'static, UiMessage>
         el = el.height(h);
     }
     if let Some(c) = t.color {
-        el = el.color(convert::color(c));
+        el = el.color(c);
     }
     if let Some(f) = &t.font {
         el = el.font(convert::font(f));
@@ -108,9 +108,8 @@ fn build_container(c: &ResolvedContainer, ctx: &RenderCtx) -> Element<'static, U
     if let Some(clip) = c.clip {
         el = el.clip(clip);
     }
-    if let Some(s) = &c.style {
-        let s = s.clone();
-        el = el.style(move |_theme| style::container_style(&s));
+    if let Some(s) = c.style {
+        el = el.style(move |_theme| s);
     }
     el.into()
 }
@@ -135,10 +134,10 @@ fn build_button(b: &ResolvedButton, _ctx: &RenderCtx) -> Element<'static, UiMess
     }
     el = el.on_press_maybe(b.action.clone().map(UiMessage::Action));
 
-    let base = b.style.clone();
-    let hover = b.style_hover.clone();
-    let active = b.style_active.clone();
-    let disabled = b.style_disabled.clone();
+    let base = b.style;
+    let hover = b.style_hover;
+    let active = b.style_active;
+    let disabled = b.style_disabled;
     el = el.style(move |_theme, status| {
         let chosen = match status {
             button::Status::Hovered => hover.as_ref().or(base.as_ref()),
@@ -146,10 +145,7 @@ fn build_button(b: &ResolvedButton, _ctx: &RenderCtx) -> Element<'static, UiMess
             button::Status::Disabled => disabled.as_ref().or(base.as_ref()),
             button::Status::Active => base.as_ref(),
         };
-        match chosen {
-            Some(s) => style::button_style(s),
-            None => button::Style::default(),
-        }
+        chosen.cloned().unwrap_or_default()
     });
     el.into()
 }
@@ -269,12 +265,12 @@ fn build_apptray(s: &ResolvedApptraySettings, ctx: &RenderCtx) -> Element<'stati
         row.into()
     };
     let bg = s.bg;
-    let border = s.border.clone();
+    let border = s.border;
     if bg.is_some() || border.is_some() {
         iced::widget::container(inner)
             .style(move |_| iced::widget::container::Style {
                 background: bg.map(style::background),
-                border: border.as_ref().map(style::border).unwrap_or_default(),
+                border: border.unwrap_or_default(),
                 ..Default::default()
             })
             .into()

@@ -2,7 +2,7 @@ use iced::widget::{Space, column, container, image, mouse_area, row, text};
 use iced::{Element, Length};
 
 use crate::config::resolved::ResolvedMenu;
-use crate::render::{UiMessage, style};
+use crate::render::UiMessage;
 #[cfg(test)]
 use crate::render::convert;
 use crate::tray::menu_types::{MenuIcon, MenuItem, Toggle};
@@ -47,8 +47,7 @@ fn row_text(item: &MenuItem) -> String {
 fn container_border_width(m: &ResolvedMenu) -> f32 {
     m.menu_container_style
         .as_ref()
-        .and_then(|s| s.border.as_ref())
-        .and_then(|b| b.w)
+        .map(|s| s.border.width)
         .unwrap_or(0.0)
 }
 
@@ -87,7 +86,7 @@ pub fn menu_button_style(
             Status::Active => &m.button_style,
         }
     };
-    slot.as_ref().map(style::button_style).unwrap_or_default()
+    (*slot).unwrap_or_default()
 }
 
 pub fn view_menu(
@@ -173,15 +172,13 @@ pub fn view_menu(
         col = col.push(area);
     }
 
-    let container_style = m
-        .menu_container_style
-        .as_ref()
-        .map(style::container_style)
-        .unwrap_or_default();
+    let container_style = m.menu_container_style.unwrap_or_default();
     let surface = container(col)
-        .width(Length::Fixed(width+10.0))
+        .width(Length::Fixed(
+            width + m.menu_container_padding.left + m.menu_container_padding.right,
+        ))
         .height(Length::Shrink)
-        .padding(iced::Padding::from(10))
+        .padding(m.menu_container_padding)
         .style(move |_| container_style);
     if level >= 1 {
         mouse_area(surface).on_exit(UiMessage::MenuLeave { level }).into()
