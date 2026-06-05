@@ -1,6 +1,7 @@
 use indexmap::IndexMap;
 use miette::SourceSpan;
 use std::sync::Arc;
+use iced::{Color,Padding,border::Radius};
 
 #[derive(Debug, Clone)]
 pub struct SourceText {
@@ -33,39 +34,12 @@ impl Span {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Edges {
-    pub top: f32,
-    pub right: f32,
-    pub bottom: f32,
-    pub left: f32,
-}
-
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Anchor {
     pub top: bool,
     pub bottom: bool,
     pub left: bool,
     pub right: bool,
-}
-
-impl Edges {
-    pub const fn all(v: f32) -> Self {
-        Self {
-            top: v,
-            right: v,
-            bottom: v,
-            left: v,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Color {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-    pub a: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -108,15 +82,6 @@ pub enum ColAlign {
 pub enum Output {
     Last,
     Specific(String),
-}
-
-impl Color {
-    pub const TRANSPARENT: Color = Color {
-        r: 0,
-        g: 0,
-        b: 0,
-        a: 0,
-    };
 }
 
 #[derive(Debug, Clone)]
@@ -172,7 +137,7 @@ pub struct Widget {
     pub layer: Option<FieldValue<Layer>>,
     pub anchor: Option<FieldValue<Anchor>>,
     pub exclusive: Option<FieldValue<bool>>,
-    pub margin: Option<FieldValue<Edges>>,
+    pub margin: Option<FieldValue<(f32,f32,f32,f32)>>,
     pub output: Option<FieldValue<Output>>,
     pub keyboard: Option<FieldValue<bool>>,
     pub transparent: Option<FieldValue<bool>>,
@@ -183,7 +148,7 @@ pub struct Widget {
 pub struct Container {
     pub w: Option<FieldValue<iced::Length>>,
     pub h: Option<FieldValue<iced::Length>>,
-    pub padding: Option<FieldValue<Edges>>,
+    pub padding: Option<FieldValue<Padding>>,
     pub align_x: Option<FieldValue<AlignX>>,
     pub align_y: Option<FieldValue<AlignY>>,
     pub clip: Option<FieldValue<bool>>,
@@ -195,7 +160,7 @@ pub struct Container {
 pub struct Button {
     pub w: Option<FieldValue<iced::Length>>,
     pub h: Option<FieldValue<iced::Length>>,
-    pub padding: Option<FieldValue<Edges>>,
+    pub padding: Option<FieldValue<Padding>>,
     pub action: Option<FieldValue<String>>,
     pub clip: Option<FieldValue<bool>>,
     pub style: Option<FieldValue<String>>,
@@ -211,7 +176,7 @@ pub struct Row {
     pub children: Option<FieldValue<Vec<String>>>,
     pub w: Option<FieldValue<iced::Length>>,
     pub h: Option<FieldValue<iced::Length>>,
-    pub padding: Option<FieldValue<Edges>>,
+    pub padding: Option<FieldValue<Padding>>,
     pub spacing: Option<FieldValue<f32>>,
     pub clip: Option<FieldValue<bool>>,
     pub align: Option<FieldValue<RowAlign>>,
@@ -222,7 +187,7 @@ pub struct Column {
     pub children: Option<FieldValue<Vec<String>>>,
     pub w: Option<FieldValue<iced::Length>>,
     pub h: Option<FieldValue<iced::Length>>,
-    pub padding: Option<FieldValue<Edges>>,
+    pub padding: Option<FieldValue<Padding>>,
     pub spacing: Option<FieldValue<f32>>,
     pub clip: Option<FieldValue<bool>>,
     pub align: Option<FieldValue<ColAlign>>,
@@ -252,7 +217,7 @@ pub struct Style {
 pub struct Border {
     pub color: Option<FieldValue<Color>>,
     pub w: Option<FieldValue<f32>>,
-    pub radius: Option<FieldValue<Edges>>,
+    pub radius: Option<FieldValue<Radius>>,
     pub span: Span,
 }
 #[derive(Debug, Clone)]
@@ -267,7 +232,7 @@ pub struct Shadow {
 pub struct ApptraySettings {
     pub icon_size: Option<FieldValue<f32>>,
     pub spacing: Option<FieldValue<f32>>,
-    pub padding: Option<FieldValue<Edges>>,
+    pub padding: Option<FieldValue<Padding>>,
     pub bg: Option<FieldValue<Color>>,
     pub border: Option<FieldValue<String>>,
     pub swap_buttons: Option<FieldValue<bool>>,
@@ -290,7 +255,7 @@ pub struct NotificationSettings {
     pub border: Option<FieldValue<String>>,
     pub font: Option<FieldValue<String>>,
     pub anchor: Option<FieldValue<Anchor>>,
-    pub margin: Option<FieldValue<Edges>>,
+    pub margin: Option<FieldValue<(f32,f32,f32,f32)>>,
     pub gap: Option<FieldValue<f32>>,
     pub max: Option<FieldValue<f32>>,
     pub timeout: Option<FieldValue<f32>>,
