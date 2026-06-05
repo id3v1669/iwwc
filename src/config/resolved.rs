@@ -1,10 +1,10 @@
-use crate::config::types::{
-    AlignX, AlignY, Anchor, ColAlign, Layer, Output, RowAlign, Span,
-};
+use crate::config::types::{ Output, Span };
 use iced::{Background, Border, Color, Padding, Shadow, border::Radius};
 use iced::widget::{button, container};
+use iced::alignment::{Horizontal,Vertical};
 use indexmap::IndexMap;
 use std::str::FromStr;
+use iced_layershell::reexport::{Anchor,Layer};
 
 #[derive(Debug, Clone)]
 pub struct ResolvedConfig {
@@ -45,8 +45,8 @@ pub struct ResolvedContainer {
     pub w: Option<iced::Length>,
     pub h: Option<iced::Length>,
     pub padding: Option<Padding>,
-    pub align_x: Option<AlignX>,
-    pub align_y: Option<AlignY>,
+    pub align_x: Option<Horizontal>,
+    pub align_y: Option<Vertical>,
     pub clip: Option<bool>,
     pub style: Option<container::Style>,
     pub child: Box<ResolvedElement>,
@@ -77,7 +77,7 @@ pub struct ResolvedRow {
     pub padding: Option<Padding>,
     pub spacing: Option<f32>,
     pub clip: Option<bool>,
-    pub align: Option<RowAlign>,
+    pub align: Option<Vertical>,
     pub span: Span,
 }
 
@@ -89,7 +89,7 @@ pub struct ResolvedColumn {
     pub padding: Option<Padding>,
     pub spacing: Option<f32>,
     pub clip: Option<bool>,
-    pub align: Option<ColAlign>,
+    pub align: Option<Horizontal>,
     pub span: Span,
 }
 
@@ -97,8 +97,8 @@ pub struct ResolvedColumn {
 pub struct ResolvedText {
     pub w: Option<iced::Length>,
     pub h: Option<iced::Length>,
-    pub align_x: Option<AlignX>,
-    pub align_y: Option<AlignY>,
+    pub align_x: Option<iced::advanced::text::Alignment>,
+    pub align_y: Option<Vertical>,
     pub color: Option<Color>,
     pub font: Option<String>,
     pub content: Option<String>,
@@ -250,12 +250,7 @@ impl Default for ResolvedNotificationSettings {
                 radius: Radius::from(10.0),
             }),
             font: None,
-            anchor: Anchor {
-                top: true,
-                bottom: false,
-                left: false,
-                right: true,
-            },
+            anchor: Anchor::Top | Anchor::Right,
             margin: (12.0, 12.0, 12.0, 12.0),
             gap: 8.0,
             max: 5,

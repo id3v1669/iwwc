@@ -2,6 +2,8 @@ use indexmap::IndexMap;
 use miette::SourceSpan;
 use std::sync::Arc;
 use iced::{Color,Padding,border::Radius};
+use iced::alignment::{Horizontal, Vertical};
+use iced_layershell::reexport::{Anchor, Layer};
 
 #[derive(Debug, Clone)]
 pub struct SourceText {
@@ -32,50 +34,6 @@ impl Span {
         }
         (line, col)
     }
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct Anchor {
-    pub top: bool,
-    pub bottom: bool,
-    pub left: bool,
-    pub right: bool,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Layer {
-    Top,
-    Bottom,
-    Background,
-    Overlay,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AlignX {
-    Left,
-    Center,
-    Right,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AlignY {
-    Top,
-    Center,
-    Bottom,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RowAlign {
-    Top,
-    Center,
-    Bottom,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ColAlign {
-    Left,
-    Center,
-    Right,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,8 +107,8 @@ pub struct Container {
     pub w: Option<FieldValue<iced::Length>>,
     pub h: Option<FieldValue<iced::Length>>,
     pub padding: Option<FieldValue<Padding>>,
-    pub align_x: Option<FieldValue<AlignX>>,
-    pub align_y: Option<FieldValue<AlignY>>,
+    pub align_x: Option<FieldValue<Horizontal>>,
+    pub align_y: Option<FieldValue<Vertical>>,
     pub clip: Option<FieldValue<bool>>,
     pub style: Option<FieldValue<String>>,
     pub child: Option<FieldValue<String>>,
@@ -179,7 +137,7 @@ pub struct Row {
     pub padding: Option<FieldValue<Padding>>,
     pub spacing: Option<FieldValue<f32>>,
     pub clip: Option<FieldValue<bool>>,
-    pub align: Option<FieldValue<RowAlign>>,
+    pub align: Option<FieldValue<Vertical>>,
     pub span: Span,
 }
 #[derive(Debug, Clone)]
@@ -190,15 +148,15 @@ pub struct Column {
     pub padding: Option<FieldValue<Padding>>,
     pub spacing: Option<FieldValue<f32>>,
     pub clip: Option<FieldValue<bool>>,
-    pub align: Option<FieldValue<ColAlign>>,
+    pub align: Option<FieldValue<Horizontal>>,
     pub span: Span,
 }
 #[derive(Debug, Clone)]
 pub struct TextEl {
     pub w: Option<FieldValue<iced::Length>>,
     pub h: Option<FieldValue<iced::Length>>,
-    pub align_x: Option<FieldValue<AlignX>>,
-    pub align_y: Option<FieldValue<AlignY>>,
+    pub align_x: Option<FieldValue<iced::advanced::text::Alignment>>,
+    pub align_y: Option<FieldValue<Vertical>>,
     pub color: Option<FieldValue<Color>>,
     pub font: Option<FieldValue<String>>,
     pub content: Option<FieldValue<String>>,

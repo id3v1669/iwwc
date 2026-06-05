@@ -1,9 +1,10 @@
 use crate::config::math::value::Value;
 use crate::config::primitives;
-use crate::config::types::{
-    AlignX, AlignY, Anchor, ColAlign, Layer, Output, RowAlign, Span,
-};
+use crate::config::types::{Output, Span };
 use iced::Color;
+use iced::alignment::{Horizontal,Vertical};
+use iced::advanced::text::Alignment as TextAlignment;
+use iced_layershell::reexport::{Anchor, Layer};
 use crate::config::{ConfigError, ConfigErrorKind, Severity};
 
 fn type_err(field: &str, expected: &str, span: &Span) -> ConfigError {
@@ -98,7 +99,7 @@ pub fn coerce_layer(v: Value, field: &str, span: &Span) -> Result<Layer, ConfigE
     }
 }
 
-pub fn coerce_align_x(v: Value, field: &str, span: &Span) -> Result<AlignX, ConfigError> {
+pub fn coerce_align_x(v: Value, field: &str, span: &Span) -> Result<Horizontal, ConfigError> {
     match v {
         Value::Str(s) => {
             primitives::parse_align_x(&s).ok_or_else(|| type_err(field, "a valid align_x", span))
@@ -107,7 +108,19 @@ pub fn coerce_align_x(v: Value, field: &str, span: &Span) -> Result<AlignX, Conf
     }
 }
 
-pub fn coerce_align_y(v: Value, field: &str, span: &Span) -> Result<AlignY, ConfigError> {
+pub fn coerce_text_align_x(
+    v: Value,
+    field: &str,
+    span: &Span,
+) -> Result<TextAlignment, ConfigError> {
+    match v {
+        Value::Str(s) => primitives::parse_text_align_x(&s)
+            .ok_or_else(|| type_err(field, "a valid align_x", span)),
+        _ => Err(type_err(field, "an align_x string", span)),
+    }
+}
+
+pub fn coerce_align_y(v: Value, field: &str, span: &Span) -> Result<Vertical, ConfigError> {
     match v {
         Value::Str(s) => {
             primitives::parse_align_y(&s).ok_or_else(|| type_err(field, "a valid align_y", span))
@@ -123,17 +136,17 @@ pub fn coerce_output(v: Value, field: &str, span: &Span) -> Result<Output, Confi
     }
 }
 
-pub fn coerce_row_align(v: Value, field: &str, span: &Span) -> Result<RowAlign, ConfigError> {
+pub fn coerce_row_align(v: Value, field: &str, span: &Span) -> Result<Vertical, ConfigError> {
     match v {
-        Value::Str(s) => primitives::parse_row_align(&s)
+        Value::Str(s) => primitives::parse_align_y(&s)
             .ok_or_else(|| type_err(field, "a valid row align", span)),
         _ => Err(type_err(field, "a row align string", span)),
     }
 }
 
-pub fn coerce_col_align(v: Value, field: &str, span: &Span) -> Result<ColAlign, ConfigError> {
+pub fn coerce_col_align(v: Value, field: &str, span: &Span) -> Result<Horizontal, ConfigError> {
     match v {
-        Value::Str(s) => primitives::parse_col_align(&s)
+        Value::Str(s) => primitives::parse_align_x(&s)
             .ok_or_else(|| type_err(field, "a valid column align", span)),
         _ => Err(type_err(field, "a column align string", span)),
     }

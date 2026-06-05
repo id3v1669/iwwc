@@ -1,42 +1,3 @@
-use crate::config::types::{AlignX, AlignY, ColAlign, RowAlign};
-use iced::alignment;
-
-pub fn align_x(a: AlignX) -> alignment::Horizontal {
-    match a {
-        AlignX::Left => alignment::Horizontal::Left,
-        AlignX::Center => alignment::Horizontal::Center,
-        AlignX::Right => alignment::Horizontal::Right,
-    }
-}
-
-pub fn align_y(a: AlignY) -> alignment::Vertical {
-    match a {
-        AlignY::Top => alignment::Vertical::Top,
-        AlignY::Center => alignment::Vertical::Center,
-        AlignY::Bottom => alignment::Vertical::Bottom,
-    }
-}
-
-pub fn row_align(a: RowAlign) -> alignment::Vertical {
-    match a {
-        RowAlign::Top => alignment::Vertical::Top,
-        RowAlign::Center => alignment::Vertical::Center,
-        RowAlign::Bottom => alignment::Vertical::Bottom,
-    }
-}
-
-pub fn col_align(a: ColAlign) -> alignment::Horizontal {
-    match a {
-        ColAlign::Left => alignment::Horizontal::Left,
-        ColAlign::Center => alignment::Horizontal::Center,
-        ColAlign::Right => alignment::Horizontal::Right,
-    }
-}
-
-pub fn text_align_x(a: AlignX) -> iced::widget::text::Alignment {
-    iced::widget::text::Alignment::from(align_x(a))
-}
-
 pub fn font(name: &str) -> iced::Font {
     iced::Font::with_name(Box::leak(name.to_string().into_boxed_str()))
 }
@@ -64,30 +25,6 @@ mod tests {
             a: 0,
         });
         assert!((t.a - 0.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn align_maps() {
-        assert!(matches!(
-            align_x(AlignX::Center),
-            alignment::Horizontal::Center
-        ));
-        assert!(matches!(
-            align_y(AlignY::Bottom),
-            alignment::Vertical::Bottom
-        ));
-        assert!(matches!(row_align(RowAlign::Top), alignment::Vertical::Top));
-        assert!(matches!(
-            col_align(ColAlign::Right),
-            alignment::Horizontal::Right
-        ));
-    }
-
-    #[test]
-    fn text_align_x_from_horizontal() {
-        let a = text_align_x(AlignX::Center);
-        let expected = iced::widget::text::Alignment::from(alignment::Horizontal::Center);
-        assert_eq!(a, expected);
     }
 
     #[test]

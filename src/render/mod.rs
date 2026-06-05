@@ -80,10 +80,10 @@ fn build_text(t: &ResolvedText, _ctx: &RenderCtx) -> Element<'static, UiMessage>
         el = el.font(convert::font(f));
     }
     if let Some(ax) = t.align_x {
-        el = el.align_x(convert::text_align_x(ax));
+        el = el.align_x(ax);
     }
     if let Some(ay) = t.align_y {
-        el = el.align_y(convert::align_y(ay));
+        el = el.align_y(ay);
     }
     el.into()
 }
@@ -100,10 +100,10 @@ fn build_container(c: &ResolvedContainer, ctx: &RenderCtx) -> Element<'static, U
         el = el.padding(p);
     }
     if let Some(ax) = c.align_x {
-        el = el.align_x(convert::align_x(ax));
+        el = el.align_x(ax);
     }
     if let Some(ay) = c.align_y {
-        el = el.align_y(convert::align_y(ay));
+        el = el.align_y(ay);
     }
     if let Some(clip) = c.clip {
         el = el.clip(clip);
@@ -170,7 +170,7 @@ fn build_row(r: &ResolvedRow, ctx: &RenderCtx) -> Element<'static, UiMessage> {
         el = el.clip(clip);
     }
     if let Some(a) = r.align {
-        el = el.align_y(convert::row_align(a));
+        el = el.align_y(a);
     }
     el.into()
 }
@@ -195,7 +195,7 @@ fn build_column(c: &ResolvedColumn, ctx: &RenderCtx) -> Element<'static, UiMessa
         el = el.clip(clip);
     }
     if let Some(a) = c.align {
-        el = el.align_x(convert::col_align(a));
+        el = el.align_x(a);
     }
     el.into()
 }

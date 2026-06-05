@@ -1,7 +1,6 @@
 use crate::config::resolved::ResolvedNotificationSettings;
-use crate::config::types::{Anchor as CfgAnchor, Layer as CfgLayer};
 use iced_layershell::reexport::{
-    Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
+    Anchor, KeyboardInteractivity, NewLayerShellSettings, OutputOption,
 };
 
 pub fn margin_for_slot(s: &ResolvedNotificationSettings, slot: usize) -> (i32, i32, i32, i32) {
@@ -13,7 +12,7 @@ pub fn margin_for_slot(s: &ResolvedNotificationSettings, slot: usize) -> (i32, i
         base.2 as i32,
         base.3 as i32,
     );
-    if s.anchor.bottom && !s.anchor.top {
+    if s.anchor.contains(Anchor::Bottom) && !s.anchor.contains(Anchor::Top) {
         bottom += step;
     } else {
         top += step;
@@ -27,44 +26,14 @@ pub fn notif_layer_settings(
 ) -> NewLayerShellSettings {
     NewLayerShellSettings {
         size: Some((s.width as u32, s.height as u32)),
-        layer: to_layer(s.layer),
-        anchor: to_anchor(s.anchor),
+        layer: s.layer,
+        anchor: s.anchor,
         exclusive_zone: Some(0),
         margin: Some(margin_for_slot(s, slot)),
         keyboard_interactivity: KeyboardInteractivity::None,
         output_option: OutputOption::LastOutput,
         events_transparent: false,
         namespace: Some("iwwc".to_string()),
-    }
-}
-
-fn to_layer(l: CfgLayer) -> Layer {
-    match l {
-        CfgLayer::Background => Layer::Background,
-        CfgLayer::Bottom => Layer::Bottom,
-        CfgLayer::Overlay => Layer::Overlay,
-        CfgLayer::Top => Layer::Top,
-    }
-}
-
-fn to_anchor(a: CfgAnchor) -> Anchor {
-    let mut out = Anchor::empty();
-    if a.top {
-        out |= Anchor::Top;
-    }
-    if a.bottom {
-        out |= Anchor::Bottom;
-    }
-    if a.left {
-        out |= Anchor::Left;
-    }
-    if a.right {
-        out |= Anchor::Right;
-    }
-    if out.is_empty() {
-        Anchor::Top | Anchor::Right
-    } else {
-        out
     }
 }
 

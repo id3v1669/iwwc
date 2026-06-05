@@ -1,4 +1,5 @@
 use crate::config::types::VarValue;
+use iced_layershell::reexport::Anchor;
 
 fn parse_value(raw: &str) -> VarValue {
     if let Ok(i) = raw.parse::<i128>() {
@@ -117,8 +118,12 @@ impl Store {
         for (name, w) in &self.resolved.widgets {
             let ew = w.w.map(|v| v as u32).unwrap_or(0);
             let eh = w.h.map(|v| v as u32).unwrap_or(0);
-            let lr = w.anchor.is_some_and(|a| a.left && a.right);
-            let tb = w.anchor.is_some_and(|a| a.top && a.bottom);
+            let lr = w
+                .anchor
+                .is_some_and(|a| a.contains(Anchor::Left) && a.contains(Anchor::Right));
+            let tb = w
+                .anchor
+                .is_some_and(|a| a.contains(Anchor::Top) && a.contains(Anchor::Bottom));
             if ew == 0 && !lr {
                 errs.push(ConfigError {
                     kind: ConfigErrorKind::MissingSizeAnchor,
