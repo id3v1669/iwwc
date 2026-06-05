@@ -1,5 +1,4 @@
-use crate::config::types::{Output};
-use iced_layershell::reexport::{Anchor, Layer};
+use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 use iced::Color;
 use iced::alignment::{Horizontal,Vertical};
 use iced::advanced::text::Alignment as TextAlignment;
@@ -82,11 +81,11 @@ pub fn parse_text_align_x(s: &str) -> Option<TextAlignment> {
     }
 }
 
-pub fn parse_output(s: &str) -> Output {
+pub fn parse_output(s: &str) -> OutputOption {
     if s == "last" {
-        Output::Last
+        OutputOption::LastOutput
     } else {
-        Output::Specific(s.to_string())
+        OutputOption::OutputName(s.to_string())
     }
 }
 
