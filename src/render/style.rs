@@ -15,15 +15,7 @@ pub fn border(b: &ResolvedBorder) -> Border {
             .map(convert::color)
             .unwrap_or(IcedColor::TRANSPARENT),
         width: b.w.unwrap_or(0.0),
-        radius: b
-            .radius
-            .map(|e| iced::border::Radius {
-                top_left: e.top,
-                top_right: e.right,
-                bottom_right: e.bottom,
-                bottom_left: e.left,
-            })
-            .unwrap_or_default(),
+        radius: b.radius.unwrap_or_default(),
     }
 }
 
@@ -31,7 +23,6 @@ pub fn shadow(s: &ResolvedShadow) -> Shadow {
     Shadow {
         color: s
             .color
-            .map(convert::color)
             .unwrap_or(IcedColor::TRANSPARENT),
         offset: s.offset.map(|(x, y)| Vector { x, y }).unwrap_or_default(),
         blur_radius: s.blur_radius.unwrap_or(0.0),
@@ -61,7 +52,6 @@ pub fn button_style(s: &ResolvedStyle) -> button::Style {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::types::Edges;
 
     fn empty_style() -> ResolvedStyle {
         ResolvedStyle {
@@ -94,11 +84,11 @@ mod tests {
                 a: 255,
             }),
             w: Some(2.0),
-            radius: Some(Edges {
-                top: 1.0,
-                right: 2.0,
-                bottom: 3.0,
-                left: 4.0,
+            radius: Some(iced::border::Radius {
+                top_left: 1.0,
+                top_right: 2.0,
+                bottom_right: 3.0,
+                bottom_left: 4.0,
             }),
         });
         assert_eq!(b.width, 2.0);

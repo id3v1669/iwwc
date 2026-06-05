@@ -1,5 +1,5 @@
 use crate::config::types::{
-    AlignX, AlignY, Anchor, ColAlign, Color, Edges, Layer, Output, RowAlign,
+    AlignX, AlignY, Anchor, ColAlign, Color, Layer, Output, RowAlign,
 };
 
 pub fn parse_color(input: &str) -> Option<Color> {
@@ -32,25 +32,6 @@ pub fn parse_length_keyword(s: &str) -> Option<iced::Length> {
     match s {
         "fill" => Some(iced::Length::Fill),
         "shrink" => Some(iced::Length::Shrink),
-        _ => None,
-    }
-}
-
-pub fn expand_edges(vals: &[f32]) -> Option<Edges> {
-    match vals {
-        [a] => Some(Edges::all(*a)),
-        [v, h] => Some(Edges {
-            top: *v,
-            right: *h,
-            bottom: *v,
-            left: *h,
-        }),
-        [t, r, b, l] => Some(Edges {
-            top: *t,
-            right: *r,
-            bottom: *b,
-            left: *l,
-        }),
         _ => None,
     }
 }

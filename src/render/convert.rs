@@ -1,17 +1,8 @@
-use crate::config::types::{AlignX, AlignY, ColAlign, Color, Edges, RowAlign};
+use crate::config::types::{AlignX, AlignY, ColAlign, Color, RowAlign};
 use iced::alignment;
 
 pub fn color(c: Color) -> iced::Color {
     iced::Color::from_rgba8(c.r, c.g, c.b, c.a as f32 / 255.0)
-}
-
-pub fn padding(e: Edges) -> iced::Padding {
-    iced::Padding {
-        top: e.top,
-        right: e.right,
-        bottom: e.bottom,
-        left: e.left,
-    }
 }
 
 pub fn align_x(a: AlignX) -> alignment::Horizontal {
@@ -77,17 +68,6 @@ mod tests {
             a: 0,
         });
         assert!((t.a - 0.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn padding_maps_field_for_field() {
-        let p = padding(Edges {
-            top: 1.0,
-            right: 2.0,
-            bottom: 3.0,
-            left: 4.0,
-        });
-        assert_eq!((p.top, p.right, p.bottom, p.left), (1.0, 2.0, 3.0, 4.0));
     }
 
     #[test]

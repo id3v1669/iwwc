@@ -486,8 +486,8 @@ impl App {
         let close = self.close_menus();
         let settings = self.store.resolved().apptray.clone();
         let items: Vec<_> = root.children.into_iter().filter(|i| i.visible).collect();
-        let width = crate::render::menu::menu_pixel_width(&items, &settings) as u32;
-        let height = crate::daemon::menu::menu_height(&items, settings.row_height);
+        let width = crate::render::menu::menu_pixel_width(&items, &settings.menu) as u32;
+        let height = crate::daemon::menu::menu_height(&items, settings.menu.row_height);
         let (cx, cy) = anchor.cursor;
 
         let popup = IcedNewPopupSettings {
@@ -510,6 +510,7 @@ impl App {
             items,
             width,
             height,
+            active_child: None,
         });
         Task::batch(vec![close, mtask])
     }
@@ -570,6 +571,11 @@ impl App {
                 tasks.push(Task::done(Message::RemoveWindow(lvl.window)));
             }
         }
+        if level >= 1 {
+            if let Some(parent) = self.menus.get_mut(level - 1) {
+                parent.active_child = None;
+            }
+        }
         Task::batch(tasks)
     }
 
@@ -597,7 +603,7 @@ impl App {
                 return Task::none();
             }
             let top_offset =
-                crate::daemon::menu::row_top_offset(&parent.items, item_index, settings.row_height);
+                crate::daemon::menu::row_top_offset(&parent.items, item_index, settings.menu.row_height);
             (
                 top_offset,
                 children,
@@ -611,8 +617,12 @@ impl App {
 
         let close_deeper = self.close_from(level + 1);
 
-        let width = crate::render::menu::menu_pixel_width(&children, &settings) as u32;
-        let height = crate::daemon::menu::menu_height(&children, settings.row_height);
+        if let Some(parent) = self.menus.get_mut(level) {
+            parent.active_child = Some(id);
+        }
+
+        let width = crate::render::menu::menu_pixel_width(&children, &settings.menu) as u32;
+        let height = crate::daemon::menu::menu_height(&children, settings.menu.row_height);
 
         let popup = IcedNewPopupSettings {
             size: (width, height),
@@ -620,7 +630,7 @@ impl App {
             anchor_rect: crate::daemon::menu::submenu_anchor_rect(
                 parent_width,
                 top_offset,
-                settings.row_height,
+                settings.menu.row_height,
             ),
             anchor: PopupAnchor::TopRight,
             gravity: PopupGravity::BottomRight,
@@ -637,6 +647,7 @@ impl App {
             items: children,
             width,
             height,
+            active_child: None,
         });
         Task::batch(vec![close_deeper, mtask])
     }
@@ -652,7 +663,7 @@ impl App {
         if let Some(level) = self.menu_windows.get(&id) {
             if let Some(lvl) = self.menus.get(*level) {
                 let settings = self.store.resolved().apptray.clone();
-                return crate::render::menu::view_menu(&lvl.items, *level, &settings)
+                return crate::render::menu::view_menu(&lvl.items, *level, lvl.active_child, &settings.menu)
                     .map(Message::Ui);
             }
             return iced::widget::text("").into();

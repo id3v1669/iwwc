@@ -1,7 +1,9 @@
 use crate::config::primitives::{
-    AnchorError, expand_edges, parse_align_x, parse_align_y, parse_anchor, parse_col_align,
+    AnchorError, parse_align_x, parse_align_y, parse_anchor, parse_col_align,
     parse_color, parse_interval, parse_layer, parse_output, parse_row_align,
 };
+use iced::Padding;
+use iced::border::Radius;
 use crate::config::types::PullDecl;
 use crate::config::types::{AlignX, AlignY, ColAlign, Layer, Output, RowAlign};
 use crate::config::types::{FieldValue, ParsedConfig, SourceText, Span};
@@ -629,14 +631,25 @@ pub(crate) fn field_output(
     }
 }
 
-pub(crate) fn field_edges(
+fn collect_f32_vals(child: &kdl::KdlNode) -> Vec<f32> {
+    child
+        .entries()
+        .iter()
+        .filter(|e| e.name().is_none())
+        .filter_map(|e| match e.value() {
+            kdl::KdlValue::Integer(i) => Some(*i as f32),
+            kdl::KdlValue::Float(f) => Some(*f as f32),
+            _ => None,
+        })
+        .collect()
+}
+
+pub(crate) fn field_margin(
     name: &str,
     node: &kdl::KdlNode,
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
-    arity_kind: ConfigErrorKind,
-    arity_msg: &str,
-) -> Option<FieldValue<crate::config::types::Edges>> {
+) -> Option<FieldValue<(f32, f32, f32, f32)>> {
     if let Some(entry) = prop(node, name) {
         let v = match entry.value() {
             kdl::KdlValue::Integer(i) => *i as f32,
@@ -646,41 +659,149 @@ pub(crate) fn field_edges(
             }
             _ => {
                 errs.push(ConfigError {
-                    kind: arity_kind,
+                    kind: ConfigErrorKind::InvalidMarginArity,
                     span: span_of_entry(entry, source),
-                    message: arity_msg.into(),
+                    message: "margin accepts 1, 2, or 4 values".into(),
                     severity: Severity::Error,
                 });
                 return None;
             }
         };
-        return Some(FieldValue::Literal(crate::config::types::Edges::all(v)));
+        return Some(FieldValue::Literal((v, v, v, v)));
     }
     if let Some(children) = node.children() {
         for child in children.nodes() {
             if child.name().value() != name {
                 continue;
             }
-            let vals: Vec<f32> = child
-                .entries()
-                .iter()
-                .filter(|e| e.name().is_none())
-                .filter_map(|e| match e.value() {
-                    kdl::KdlValue::Integer(i) => Some(*i as f32),
-                    kdl::KdlValue::Float(f) => Some(*f as f32),
-                    _ => None,
-                })
-                .collect();
-            return match expand_edges(&vals) {
-                Some(e) => Some(FieldValue::Literal(e)),
-                None => {
+            let vals = collect_f32_vals(child);
+            return match vals.as_slice() {
+                [a] => Some(FieldValue::Literal((*a, *a, *a, *a))),
+                [v, h] => Some(FieldValue::Literal((*v, *h, *v, *h))),
+                [t, r, b, l] => Some(FieldValue::Literal((*t, *r, *b, *l))),
+                _ => {
                     errs.push(ConfigError {
-                        kind: arity_kind,
+                        kind: ConfigErrorKind::InvalidMarginArity,
                         span: Span {
                             source: source.clone(),
                             span: child.span(),
                         },
-                        message: arity_msg.into(),
+                        message: "margin accepts 1, 2, or 4 values".into(),
+                        severity: Severity::Error,
+                    });
+                    None
+                }
+            };
+        }
+    }
+    None
+}
+
+pub(crate) fn field_padding(
+    name: &str,
+    node: &kdl::KdlNode,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) -> Option<FieldValue<Padding>> {
+    if let Some(entry) = prop(node, name) {
+        let v = match entry.value() {
+            kdl::KdlValue::Integer(i) => *i as f32,
+            kdl::KdlValue::Float(f) => *f as f32,
+            kdl::KdlValue::String(s) if looks_like_expr(s) => {
+                return Some(FieldValue::Expr(s.clone()));
+            }
+            _ => {
+                errs.push(ConfigError {
+                    kind: ConfigErrorKind::InvalidPaddingArity,
+                    span: span_of_entry(entry, source),
+                    message: "padding accepts 1, 2, or 4 values".into(),
+                    severity: Severity::Error,
+                });
+                return None;
+            }
+        };
+        return Some(FieldValue::Literal(Padding::from(v)));
+    }
+    if let Some(children) = node.children() {
+        for child in children.nodes() {
+            if child.name().value() != name {
+                continue;
+            }
+            let vals = collect_f32_vals(child);
+            return match vals.as_slice() {
+                [a] => Some(FieldValue::Literal(Padding::from(*a))),
+                [v, h] => Some(FieldValue::Literal(Padding::from([*v, *h]))),
+                [t, r, b, l] => Some(FieldValue::Literal(Padding {
+                    top: *t,
+                    right: *r,
+                    bottom: *b,
+                    left: *l,
+                })),
+                _ => {
+                    errs.push(ConfigError {
+                        kind: ConfigErrorKind::InvalidPaddingArity,
+                        span: Span {
+                            source: source.clone(),
+                            span: child.span(),
+                        },
+                        message: "padding accepts 1, 2, or 4 values".into(),
+                        severity: Severity::Error,
+                    });
+                    None
+                }
+            };
+        }
+    }
+    None
+}
+
+pub(crate) fn field_radius(
+    name: &str,
+    node: &kdl::KdlNode,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) -> Option<FieldValue<Radius>> {
+    if let Some(entry) = prop(node, name) {
+        let v = match entry.value() {
+            kdl::KdlValue::Integer(i) => *i as f32,
+            kdl::KdlValue::Float(f) => *f as f32,
+            kdl::KdlValue::String(s) if looks_like_expr(s) => {
+                return Some(FieldValue::Expr(s.clone()));
+            }
+            _ => {
+                errs.push(ConfigError {
+                    kind: ConfigErrorKind::InvalidRadiusArity,
+                    span: span_of_entry(entry, source),
+                    message: "radius accepts 1 or 4 values".into(),
+                    severity: Severity::Error,
+                });
+                return None;
+            }
+        };
+        return Some(FieldValue::Literal(Radius::from(v)));
+    }
+    if let Some(children) = node.children() {
+        for child in children.nodes() {
+            if child.name().value() != name {
+                continue;
+            }
+            let vals = collect_f32_vals(child);
+            return match vals.as_slice() {
+                [a] => Some(FieldValue::Literal(Radius::from(*a))),
+                [tl, tr, br, bl] => Some(FieldValue::Literal(Radius {
+                    top_left: *tl,
+                    top_right: *tr,
+                    bottom_right: *br,
+                    bottom_left: *bl,
+                })),
+                _ => {
+                    errs.push(ConfigError {
+                        kind: ConfigErrorKind::InvalidRadiusArity,
+                        span: Span {
+                            source: source.clone(),
+                            span: child.span(),
+                        },
+                        message: "radius accepts 1 or 4 values".into(),
                         severity: Severity::Error,
                     });
                     None
@@ -852,14 +973,7 @@ pub(crate) fn build_widget(
         layer: field_layer("layer", node, source, errs),
         anchor: field_anchor("anchor", node, source, errs),
         exclusive: field_bool("exclusive", node, source, errs),
-        margin: field_edges(
-            "margin",
-            node,
-            source,
-            errs,
-            ConfigErrorKind::InvalidMarginArity,
-            "margin accepts 1, 2, or 4 values",
-        ),
+        margin: field_margin("margin", node, source, errs),
         output: field_output("output", node, source, errs),
         keyboard: field_bool("keyboard", node, source, errs),
         transparent: field_bool("transparent", node, source, errs),
@@ -895,14 +1009,7 @@ pub(crate) fn build_container(
     let c = Container {
         w: field_length("w", node, source, errs),
         h: field_length("h", node, source, errs),
-        padding: field_edges(
-            "padding",
-            node,
-            source,
-            errs,
-            ConfigErrorKind::InvalidPaddingArity,
-            "padding accepts 1, 2, or 4 values",
-        ),
+        padding: field_padding("padding", node, source, errs),
         align_x: field_align_x("align_x", node, source, errs),
         align_y: field_align_y("align_y", node, source, errs),
         clip: field_bool("clip", node, source, errs),
@@ -949,14 +1056,7 @@ pub(crate) fn build_border(
     let b = Border {
         color: field_color("color", node, source, errs),
         w: field_f32("w", node, source, errs),
-        radius: field_edges(
-            "radius",
-            node,
-            source,
-            errs,
-            ConfigErrorKind::InvalidRadiusArity,
-            "radius accepts 1, 2, or 4 values",
-        ),
+        radius: field_radius("radius", node, source, errs),
         span: Span {
             source: source.clone(),
             span: node.span(),
@@ -1120,14 +1220,7 @@ pub(crate) fn build_button(
     let b = Button {
         w: field_length("w", node, source, errs),
         h: field_length("h", node, source, errs),
-        padding: field_edges(
-            "padding",
-            node,
-            source,
-            errs,
-            ConfigErrorKind::InvalidPaddingArity,
-            "padding accepts 1, 2, or 4 values",
-        ),
+        padding: field_padding("padding", node, source, errs),
         action: field_string("action", node, source, errs),
         clip: field_bool("clip", node, source, errs),
         style: field_id_ref("style", node, source, errs),
@@ -1174,14 +1267,7 @@ pub(crate) fn build_row(
         children,
         w: field_length("w", node, source, errs),
         h: field_length("h", node, source, errs),
-        padding: field_edges(
-            "padding",
-            node,
-            source,
-            errs,
-            ConfigErrorKind::InvalidPaddingArity,
-            "padding accepts 1, 2, or 4 values",
-        ),
+        padding: field_padding("padding", node, source, errs),
         spacing: field_f32("spacing", node, source, errs),
         clip: field_bool("clip", node, source, errs),
         align: field_row_align("align", node, source, errs),
@@ -1223,14 +1309,7 @@ pub(crate) fn build_column(
         children,
         w: field_length("w", node, source, errs),
         h: field_length("h", node, source, errs),
-        padding: field_edges(
-            "padding",
-            node,
-            source,
-            errs,
-            ConfigErrorKind::InvalidPaddingArity,
-            "padding accepts 1, 2, or 4 values",
-        ),
+        padding: field_padding("padding", node, source, errs),
         spacing: field_f32("spacing", node, source, errs),
         clip: field_bool("clip", node, source, errs),
         align: field_col_align("align", node, source, errs),
@@ -1296,14 +1375,7 @@ pub(crate) fn build_apptray_settings(
     ApptraySettings {
         icon_size: field_f32("icon_size", node, source, errs),
         spacing: field_f32("spacing", node, source, errs),
-        padding: field_edges(
-            "padding",
-            node,
-            source,
-            errs,
-            ConfigErrorKind::InvalidPaddingArity,
-            "padding accepts 1, 2, or 4 values",
-        ),
+        padding: field_padding("padding", node, source, errs),
         bg: field_color("bg", node, source, errs),
         border: field_id_ref("border", node, source, errs),
         swap_buttons: field_bool("swap_buttons", node, source, errs),
@@ -1336,14 +1408,7 @@ pub(crate) fn build_notification(
         border: field_id_ref("border", node, source, errs),
         font: field_string("font", node, source, errs),
         anchor: field_anchor("anchor", node, source, errs),
-        margin: field_edges(
-            "margin",
-            node,
-            source,
-            errs,
-            ConfigErrorKind::InvalidMarginArity,
-            "margin accepts 1, 2, or 4 values",
-        ),
+        margin: field_margin("margin", node, source, errs),
         gap: field_f32("gap", node, source, errs),
         max: field_f32("max", node, source, errs),
         timeout: field_f32("timeout", node, source, errs),
@@ -1435,7 +1500,6 @@ mod tests {
     }
 
     use crate::config::types::Color;
-    use crate::config::types::Edges;
 
     fn parse_color_for_test(input: &str) -> Result<Color, ()> {
         super::parse_color(input).ok_or(())
@@ -1491,33 +1555,6 @@ mod tests {
         );
         assert_eq!(parse_color_for_test("xyz"), Err(()));
         assert_eq!(parse_color_for_test("fffff"), Err(()));
-    }
-
-    #[test]
-    fn edges_expansion() {
-        use super::expand_edges;
-        assert_eq!(expand_edges(&[5.0]), Some(Edges::all(5.0)));
-        assert_eq!(
-            expand_edges(&[5.0, 10.0]),
-            Some(Edges {
-                top: 5.0,
-                right: 10.0,
-                bottom: 5.0,
-                left: 10.0
-            })
-        );
-        assert_eq!(
-            expand_edges(&[5.0, 10.0, 5.0, 10.0]),
-            Some(Edges {
-                top: 5.0,
-                right: 10.0,
-                bottom: 5.0,
-                left: 10.0
-            })
-        );
-        assert_eq!(expand_edges(&[]), None);
-        assert_eq!(expand_edges(&[5.0, 10.0, 5.0]), None);
-        assert_eq!(expand_edges(&[1.0, 2.0, 3.0, 4.0, 5.0]), None);
     }
 
     #[test]
@@ -2064,7 +2101,7 @@ mod tests {
             Case {
                 label: "radius 2",
                 kdl: "border b1 {\n  radius 5 10\n}",
-                expect: Expect::Ok,
+                expect: Expect::Err("radius accepts 1 or 4 values"),
             },
             Case {
                 label: "radius 4",
@@ -2074,7 +2111,7 @@ mod tests {
             Case {
                 label: "radius 3 invalid",
                 kdl: "border b1 {\n  radius 5 10 5\n}",
-                expect: Expect::Err("radius accepts 1, 2, or 4 values"),
+                expect: Expect::Err("radius accepts 1 or 4 values"),
             },
         ]);
     }

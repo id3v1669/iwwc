@@ -97,7 +97,7 @@ fn build_container(c: &ResolvedContainer, ctx: &RenderCtx) -> Element<'static, U
         el = el.height(h);
     }
     if let Some(p) = c.padding {
-        el = el.padding(convert::padding(p));
+        el = el.padding(p);
     }
     if let Some(ax) = c.align_x {
         el = el.align_x(convert::align_x(ax));
@@ -128,7 +128,7 @@ fn build_button(b: &ResolvedButton, _ctx: &RenderCtx) -> Element<'static, UiMess
         el = el.height(h);
     }
     if let Some(p) = b.padding {
-        el = el.padding(convert::padding(p));
+        el = el.padding(p);
     }
     if let Some(clip) = b.clip {
         el = el.clip(clip);
@@ -165,7 +165,7 @@ fn build_row(r: &ResolvedRow, ctx: &RenderCtx) -> Element<'static, UiMessage> {
         el = el.height(h);
     }
     if let Some(p) = r.padding {
-        el = el.padding(convert::padding(p));
+        el = el.padding(p);
     }
     if let Some(sp) = r.spacing {
         el = el.spacing(sp);
@@ -190,7 +190,7 @@ fn build_column(c: &ResolvedColumn, ctx: &RenderCtx) -> Element<'static, UiMessa
         el = el.height(h);
     }
     if let Some(p) = c.padding {
-        el = el.padding(convert::padding(p));
+        el = el.padding(p);
     }
     if let Some(sp) = c.spacing {
         el = el.spacing(sp);
@@ -258,13 +258,13 @@ fn build_apptray(s: &ResolvedApptraySettings, ctx: &RenderCtx) -> Element<'stati
     let inner: Element<'static, UiMessage> = if s.vertical {
         let mut col = Column::with_children(items).spacing(s.spacing);
         if let Some(p) = pad {
-            col = col.padding(convert::padding(p));
+            col = col.padding(p);
         }
         col.into()
     } else {
         let mut row = Row::with_children(items).spacing(s.spacing);
         if let Some(p) = pad {
-            row = row.padding(convert::padding(p));
+            row = row.padding(p);
         }
         row.into()
     };

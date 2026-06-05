@@ -1,7 +1,7 @@
 use crate::config::math::value::Value;
 use crate::config::primitives;
 use crate::config::types::{
-    AlignX, AlignY, Anchor, ColAlign, Color, Edges, Layer, Output, RowAlign, Span,
+    AlignX, AlignY, Anchor, ColAlign, Color, Layer, Output, RowAlign, Span,
 };
 use crate::config::{ConfigError, ConfigErrorKind, Severity};
 
@@ -33,10 +33,32 @@ pub fn coerce_length(v: Value, field: &str, span: &Span) -> Result<iced::Length,
     }
 }
 
-pub fn coerce_edges(v: Value, field: &str, span: &Span) -> Result<Edges, ConfigError> {
+pub fn coerce_margin(v: Value, field: &str, span: &Span) -> Result<(f32, f32, f32, f32), ConfigError> {
     match v {
-        Value::Int(i) => Ok(Edges::all(i as f32)),
-        Value::Float(d) => Ok(Edges::all(d.value as f32)),
+        Value::Int(i) => {
+            let f = i as f32;
+            Ok((f, f, f, f))
+        }
+        Value::Float(d) => {
+            let f = d.value as f32;
+            Ok((f, f, f, f))
+        }
+        _ => Err(type_err(field, "a number", span)),
+    }
+}
+
+pub fn coerce_padding(v: Value, field: &str, span: &Span) -> Result<iced::Padding, ConfigError> {
+    match v {
+        Value::Int(i) => Ok(iced::Padding::from(i as f32)),
+        Value::Float(d) => Ok(iced::Padding::from(d.value as f32)),
+        _ => Err(type_err(field, "a number", span)),
+    }
+}
+
+pub fn coerce_radius(v: Value, field: &str, span: &Span) -> Result<iced::border::Radius, ConfigError> {
+    match v {
+        Value::Int(i) => Ok(iced::border::Radius::from(i as f32)),
+        Value::Float(d) => Ok(iced::border::Radius::from(d.value as f32)),
         _ => Err(type_err(field, "a number", span)),
     }
 }
@@ -162,11 +184,6 @@ mod tests {
         assert!(
             matches!(coerce_length(int(200), "w", &span()).unwrap(), iced::Length::Fixed(v) if v == 200.0)
         );
-    }
-    #[test]
-    fn edges_from_number() {
-        let e = coerce_edges(int(5), "padding", &span()).unwrap();
-        assert_eq!(e, crate::config::types::Edges::all(5.0));
     }
     #[test]
     fn bool_strict() {

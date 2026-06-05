@@ -9,6 +9,7 @@ pub struct MenuLevel {
     pub items: Vec<MenuItem>,
     pub width: u32,
     pub height: u32,
+    pub active_child: Option<i32>,
 }
 
 fn item_height(item: &MenuItem, row_height: f32) -> f32 {
@@ -50,3 +51,4 @@ pub struct MenuAnchor {
     pub parent: WindowId,
     pub cursor: (f32, f32),
 }
+

@@ -8,10 +8,10 @@ pub fn margin_for_slot(s: &ResolvedNotificationSettings, slot: usize) -> (i32, i
     let base = s.margin;
     let step = (s.height + s.gap) as i32 * slot as i32;
     let (mut top, right, mut bottom, left) = (
-        base.top as i32,
-        base.right as i32,
-        base.bottom as i32,
-        base.left as i32,
+        base.0 as i32,
+        base.1 as i32,
+        base.2 as i32,
+        base.3 as i32,
     );
     if s.anchor.bottom && !s.anchor.top {
         bottom += step;
@@ -78,7 +78,7 @@ mod tests {
         let mut s = ResolvedNotificationSettings::default();
         s.height = 100.0;
         s.gap = 10.0;
-        s.margin = crate::config::types::Edges::all(12.0);
+        s.margin = (12.0, 12.0, 12.0, 12.0);
         s.anchor = anchor;
         s
     }

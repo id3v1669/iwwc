@@ -1,6 +1,5 @@
 use crate::config::math::{self, value::Value};
-use crate::config::resolved::{
-    ResolvedBorder, ResolvedButton, ResolvedColumn, ResolvedContainer, ResolvedElement,
+use crate::config::resolved::{ ResolvedButton, ResolvedColumn, ResolvedContainer, ResolvedElement,
     ResolvedRow, ResolvedShadow, ResolvedStyle, ResolvedText, ResolvedWidget,
 };
 use crate::config::resolver::coerce;
@@ -10,6 +9,7 @@ use crate::config::types::{
 };
 use crate::config::{ConfigError, ConfigErrorKind, Severity};
 use std::collections::HashSet;
+
 
 pub(crate) struct Ctx<'a> {
     pub config: &'a ParsedConfig,
@@ -81,7 +81,7 @@ pub(crate) fn resolve_widget(_name: &str, w: &Widget, ctx: &mut Ctx) -> Resolved
         layer: resolve_field(&w.layer, "layer", &w.span, coerce::coerce_layer, ctx),
         anchor: resolve_field(&w.anchor, "anchor", &w.span, coerce::coerce_anchor, ctx),
         exclusive: resolve_field(&w.exclusive, "exclusive", &w.span, coerce::coerce_bool, ctx),
-        margin: resolve_field(&w.margin, "margin", &w.span, coerce::coerce_edges, ctx),
+        margin: resolve_field(&w.margin, "margin", &w.span, coerce::coerce_margin, ctx),
         output: resolve_field(&w.output, "output", &w.span, coerce::coerce_output, ctx),
         keyboard: resolve_field(&w.keyboard, "keyboard", &w.span, coerce::coerce_bool, ctx),
         transparent: resolve_field(
@@ -269,7 +269,7 @@ fn resolve_container(
     Some(ResolvedContainer {
         w: resolve_field(&c.w, "w", &c.span, coerce::coerce_length, ctx),
         h: resolve_field(&c.h, "h", &c.span, coerce::coerce_length, ctx),
-        padding: resolve_field(&c.padding, "padding", &c.span, coerce::coerce_edges, ctx),
+        padding: resolve_field(&c.padding, "padding", &c.span, coerce::coerce_padding, ctx),
         align_x: resolve_field(&c.align_x, "align_x", &c.span, coerce::coerce_align_x, ctx),
         align_y: resolve_field(&c.align_y, "align_y", &c.span, coerce::coerce_align_y, ctx),
         clip: resolve_field(&c.clip, "clip", &c.span, coerce::coerce_bool, ctx),
@@ -283,7 +283,7 @@ fn resolve_button(b: &Button, ctx: &mut Ctx) -> ResolvedButton {
     ResolvedButton {
         w: resolve_field(&b.w, "w", &b.span, coerce::coerce_length, ctx),
         h: resolve_field(&b.h, "h", &b.span, coerce::coerce_length, ctx),
-        padding: resolve_field(&b.padding, "padding", &b.span, coerce::coerce_edges, ctx),
+        padding: resolve_field(&b.padding, "padding", &b.span, coerce::coerce_padding, ctx),
         action: resolve_field(&b.action, "action", &b.span, coerce::coerce_string, ctx),
         clip: resolve_field(&b.clip, "clip", &b.span, coerce::coerce_bool, ctx),
         style: resolve_style_ref(&b.style, &b.span, ctx),
@@ -321,7 +321,7 @@ fn resolve_row(r: &Row, ctx: &mut Ctx, visited: &mut HashSet<String>) -> Resolve
         children,
         w: resolve_field(&r.w, "w", &r.span, coerce::coerce_length, ctx),
         h: resolve_field(&r.h, "h", &r.span, coerce::coerce_length, ctx),
-        padding: resolve_field(&r.padding, "padding", &r.span, coerce::coerce_edges, ctx),
+        padding: resolve_field(&r.padding, "padding", &r.span, coerce::coerce_padding, ctx),
         spacing: resolve_field(&r.spacing, "spacing", &r.span, coerce::coerce_f32, ctx),
         clip: resolve_field(&r.clip, "clip", &r.span, coerce::coerce_bool, ctx),
         align: resolve_field(&r.align, "align", &r.span, coerce::coerce_row_align, ctx),
@@ -335,7 +335,7 @@ fn resolve_column(c: &Column, ctx: &mut Ctx, visited: &mut HashSet<String>) -> R
         children,
         w: resolve_field(&c.w, "w", &c.span, coerce::coerce_length, ctx),
         h: resolve_field(&c.h, "h", &c.span, coerce::coerce_length, ctx),
-        padding: resolve_field(&c.padding, "padding", &c.span, coerce::coerce_edges, ctx),
+        padding: resolve_field(&c.padding, "padding", &c.span, coerce::coerce_padding, ctx),
         spacing: resolve_field(&c.spacing, "spacing", &c.span, coerce::coerce_f32, ctx),
         clip: resolve_field(&c.clip, "clip", &c.span, coerce::coerce_bool, ctx),
         align: resolve_field(&c.align, "align", &c.span, coerce::coerce_col_align, ctx),
@@ -447,7 +447,7 @@ pub(crate) fn resolve_border_ref(
     Some(ResolvedBorder {
         color: resolve_field(&b.color, "color", &b.span, coerce::coerce_color, ctx),
         w: resolve_field(&b.w, "w", &b.span, coerce::coerce_f32, ctx),
-        radius: resolve_field(&b.radius, "radius", &b.span, coerce::coerce_edges, ctx),
+        radius: resolve_field(&b.radius, "radius", &b.span, coerce::coerce_radius, ctx),
     })
 }
 
@@ -499,7 +499,7 @@ pub(crate) fn resolve_apptray_settings(ctx: &mut Ctx) -> ResolvedApptraySettings
     if let Some(v) = resolve_field(&a.spacing, "spacing", &span, coerce::coerce_f32, ctx) {
         out.spacing = v;
     }
-    out.padding = resolve_field(&a.padding, "padding", &span, coerce::coerce_edges, ctx);
+    out.padding = resolve_field(&a.padding, "padding", &span, coerce::coerce_padding, ctx);
     out.bg = resolve_field(&a.bg, "bg", &span, coerce::coerce_color, ctx);
     out.border = resolve_border_ref(&a.border, &span, ctx);
     if let Some(v) = resolve_field(
@@ -514,26 +514,35 @@ pub(crate) fn resolve_apptray_settings(ctx: &mut Ctx) -> ResolvedApptraySettings
     if let Some(v) = resolve_field(&a.vertical, "vertical", &span, coerce::coerce_bool, ctx) {
         out.vertical = v;
     }
-    if let Some(v) = resolve_field(&a.menu_bg, "menu_bg", &span, coerce::coerce_color, ctx) {
-        out.menu_bg = v;
-    }
-    if let Some(v) = resolve_field(&a.menu_text, "menu_text", &span, coerce::coerce_color, ctx) {
-        out.menu_text = v;
-    }
-    if let Some(v) = resolve_field(
-        &a.menu_disabled,
-        "menu_disabled",
-        &span,
-        coerce::coerce_color,
-        ctx,
+    if let (Some(v), Some(s)) = (
+        resolve_field(&a.menu_bg, "menu_bg", &span, coerce::coerce_color, ctx),
+        out.menu.menu_container_style.as_mut(),
     ) {
-        out.menu_disabled = v;
+        s.bg = Some(v);
     }
-    if let Some(v) = resolve_field(&a.menu_width, "menu_width", &span, coerce::coerce_f32, ctx) {
-        out.menu_width = v;
+    // Transitional: menu_text recolors only the normal button text; hover/active
+    // keep their defaults. (raw `menu_width` is intentionally no longer consumed.)
+    // Full per-state styling comes with the future style-block parser.
+    if let (Some(v), Some(s)) = (
+        resolve_field(&a.menu_text, "menu_text", &span, coerce::coerce_color, ctx),
+        out.menu.button_style.as_mut(),
+    ) {
+        s.text = Some(v);
+    }
+    if let (Some(v), Some(s)) = (
+        resolve_field(
+            &a.menu_disabled,
+            "menu_disabled",
+            &span,
+            coerce::coerce_color,
+            ctx,
+        ),
+        out.menu.button_style_disabled.as_mut(),
+    ) {
+        s.text = Some(v);
     }
     if let Some(v) = resolve_field(&a.row_height, "row_height", &span, coerce::coerce_f32, ctx) {
-        out.row_height = v;
+        out.menu.row_height = v;
     }
     out
 }
@@ -588,12 +597,7 @@ mod tests {
             Some(ResolvedElement::Text(t)) => {
                 assert_eq!(
                     t.color,
-                    Some(crate::config::types::Color {
-                        r: 0xff,
-                        g: 0xff,
-                        b: 0xff,
-                        a: 0xff
-                    })
+                    Some(iced::Color::from("ffffff"))
                 );
             }
             other => panic!("expected text child, got {:?}", other),
@@ -736,7 +740,15 @@ mod tests {
                     })
                 );
                 let border = style.border.as_ref().expect("border inlined");
-                assert_eq!(border.radius, Some(crate::config::types::Edges::all(5.0)));
+                assert_eq!(
+                    border.radius,
+                    Some(iced::border::Radius {
+                        top_left: 5.0,
+                        top_right: 5.0,
+                        bottom_right: 5.0,
+                        bottom_left: 5.0
+                    })
+                );
             }
             other => panic!("expected container, got {:?}", other),
         }

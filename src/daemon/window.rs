@@ -14,7 +14,7 @@ pub fn layer_settings_for(w: &ResolvedWidget) -> NewLayerShellSettings {
         exclusive_zone: Some(exclusive_zone(w)),
         margin: w
             .margin
-            .map(|e| (e.top as i32, e.right as i32, e.bottom as i32, e.left as i32)),
+            .map(|(t, r, b, l)| (t as i32, r as i32, b as i32, l as i32)),
         keyboard_interactivity: match w.keyboard {
             Some(true) => KeyboardInteractivity::Exclusive,
             _ => KeyboardInteractivity::None,

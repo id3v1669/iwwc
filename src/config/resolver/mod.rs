@@ -167,7 +167,7 @@ fn resolve_notification(
         out.anchor = v;
     }
     if let Some(v) =
-        elements::resolve_field(&ns.margin, "margin", span, coerce::coerce_edges, &mut ctx)
+        elements::resolve_field(&ns.margin, "margin", span, coerce::coerce_margin, &mut ctx)
     {
         out.margin = v;
     }
@@ -339,41 +339,40 @@ mod tests {
                 .all(|e| e.severity != crate::config::Severity::Error)
         );
         let a = &rc.unwrap().apptray;
-        assert_eq!(a.menu_width, 220.0);
-        assert_eq!(a.row_height, 26.0);
+        assert_eq!(a.menu.row_height, 26.0);
         assert_eq!(
-            a.menu_bg,
-            crate::config::types::Color {
+            a.menu.menu_container_style.as_ref().unwrap().bg,
+            Some(crate::config::types::Color {
                 r: 0x22,
                 g: 0x22,
                 b: 0x22,
                 a: 0xff
-            }
+            })
         );
         assert_eq!(
-            a.menu_text,
-            crate::config::types::Color {
+            a.menu.button_style.as_ref().unwrap().text,
+            Some(crate::config::types::Color {
                 r: 0xff,
                 g: 0xff,
                 b: 0xff,
                 a: 0xff
-            }
+            })
         );
         assert_eq!(
-            a.menu_disabled,
-            crate::config::types::Color {
+            a.menu.button_style_disabled.as_ref().unwrap().text,
+            Some(crate::config::types::Color {
                 r: 0x88,
                 g: 0x88,
                 b: 0x88,
                 a: 0xff
-            }
+            })
         );
     }
 
     #[test]
     fn apptray_menu_styling_override() {
         let (rc, errs) =
-            resolve_kdl("widget bar child=t1\ntext t1\napptray menu_width=300 menu_bg=000000");
+            resolve_kdl("widget bar child=t1\ntext t1\napptray menu_bg=000000");
         assert!(
             errs.iter()
                 .all(|e| e.severity != crate::config::Severity::Error),
@@ -381,17 +380,16 @@ mod tests {
             errs
         );
         let a = &rc.unwrap().apptray;
-        assert_eq!(a.menu_width, 300.0);
         assert_eq!(
-            a.menu_bg,
-            crate::config::types::Color {
+            a.menu.menu_container_style.as_ref().unwrap().bg,
+            Some(crate::config::types::Color {
                 r: 0,
                 g: 0,
                 b: 0,
                 a: 0xff
-            }
+            })
         );
-        assert_eq!(a.row_height, 26.0);
+        assert_eq!(a.menu.row_height, 26.0);
     }
 
     #[test]
