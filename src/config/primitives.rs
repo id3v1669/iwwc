@@ -1,17 +1,15 @@
-use crate::config::types::{
-    AlignX, AlignY, Anchor, ColAlign, Layer, Output, RowAlign,
-};
+use crate::config::types::{Output};
+use iced_layershell::reexport::{Anchor, Layer};
 use iced::Color;
+use iced::alignment::{Horizontal,Vertical};
+use iced::advanced::text::Alignment as TextAlignment;
 use std::str::FromStr;
 
 pub fn parse_color(input: &str) -> Option<Color> {
     if input == "transparent" {
         return Some(Color::TRANSPARENT);
     }
-    match Color::from_str(input) {
-        Ok(c) => Some(c),
-        Err(_) => None,
-    }
+    Color::from_str(input).ok()
 }
 
 pub fn parse_length_keyword(s: &str) -> Option<iced::Length> {
@@ -33,13 +31,13 @@ pub fn parse_anchor(input: &str) -> Result<Anchor, AnchorError> {
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
         .collect();
-    let mut a = Anchor::default();
+    let mut a = Anchor::empty();
     for tok in tokens {
         match tok {
-            "t" | "top" => a.top = true,
-            "b" | "bottom" => a.bottom = true,
-            "l" | "left" => a.left = true,
-            "r" | "right" => a.right = true,
+            "t" | "top" => a |= Anchor::Top,
+            "b" | "bottom" => a |= Anchor::Bottom,
+            "l" | "left" => a |= Anchor::Left,
+            "r" | "right" => a |= Anchor::Right,
             other => return Err(AnchorError::Unknown(other.into())),
         }
     }
@@ -56,38 +54,30 @@ pub fn parse_layer(s: &str) -> Option<Layer> {
     }
 }
 
-pub fn parse_align_x(s: &str) -> Option<AlignX> {
+pub fn parse_align_x(s: &str) -> Option<Horizontal> {
     match s {
-        "l" | "left" => Some(AlignX::Left),
-        "c" | "center" => Some(AlignX::Center),
-        "r" | "right" => Some(AlignX::Right),
+        "l" | "left" => Some(Horizontal::Left),
+        "c" | "center" => Some(Horizontal::Center),
+        "r" | "right" => Some(Horizontal::Right),
         _ => None,
     }
 }
 
-pub fn parse_align_y(s: &str) -> Option<AlignY> {
+pub fn parse_align_y(s: &str) -> Option<Vertical> {
     match s {
-        "t" | "top" => Some(AlignY::Top),
-        "c" | "center" => Some(AlignY::Center),
-        "b" | "bottom" => Some(AlignY::Bottom),
+        "t" | "top" => Some(Vertical::Top),
+        "c" | "center" => Some(Vertical::Center),
+        "b" | "bottom" => Some(Vertical::Bottom),
         _ => None,
     }
 }
 
-pub fn parse_row_align(s: &str) -> Option<RowAlign> {
+pub fn parse_text_align_x(s: &str) -> Option<TextAlignment> {
     match s {
-        "t" | "top" => Some(RowAlign::Top),
-        "c" | "center" => Some(RowAlign::Center),
-        "b" | "bottom" => Some(RowAlign::Bottom),
-        _ => None,
-    }
-}
-
-pub fn parse_col_align(s: &str) -> Option<ColAlign> {
-    match s {
-        "l" | "left" => Some(ColAlign::Left),
-        "c" | "center" => Some(ColAlign::Center),
-        "r" | "right" => Some(ColAlign::Right),
+        "l" | "left" => Some(TextAlignment::Left),
+        "c" | "center" => Some(TextAlignment::Center),
+        "r" | "right" => Some(TextAlignment::Right),
+        "j" | "justify" | "justified" => Some(TextAlignment::Justified),
         _ => None,
     }
 }

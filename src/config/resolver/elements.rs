@@ -555,7 +555,7 @@ pub(crate) fn resolve_text(t: &TextEl, ctx: &mut Ctx) -> ResolvedText {
     ResolvedText {
         w: resolve_field(&t.w, "w", &t.span, coerce::coerce_length, ctx),
         h: resolve_field(&t.h, "h", &t.span, coerce::coerce_length, ctx),
-        align_x: resolve_field(&t.align_x, "align_x", &t.span, coerce::coerce_align_x, ctx),
+        align_x: resolve_field(&t.align_x, "align_x", &t.span, coerce::coerce_text_align_x, ctx),
         align_y: resolve_field(&t.align_y, "align_y", &t.span, coerce::coerce_align_y, ctx),
         color: resolve_field(&t.color, "color", &t.span, coerce::coerce_color, ctx),
         font: resolve_field(&t.font, "font", &t.span, coerce::coerce_string, ctx),

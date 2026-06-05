@@ -1,11 +1,13 @@
 use crate::config::primitives::{
-    AnchorError, parse_align_x, parse_align_y, parse_anchor, parse_col_align,
-    parse_color, parse_interval, parse_layer, parse_output, parse_row_align,
+    AnchorError, parse_align_x, parse_align_y, parse_anchor,
+    parse_color, parse_interval, parse_layer, parse_output, parse_text_align_x,
 };
 use iced::Padding;
 use iced::border::Radius;
+use iced::alignment::{Horizontal, Vertical};
 use crate::config::types::PullDecl;
-use crate::config::types::{AlignX, AlignY, ColAlign, Layer, Output, RowAlign};
+use crate::config::types::{Output};
+use iced_layershell::reexport::{Anchor, Layer};
 use crate::config::types::{FieldValue, ParsedConfig, SourceText, Span};
 use crate::config::types::{VarDecl, VarValue};
 use crate::config::{ConfigError, ConfigErrorKind, Severity};
@@ -564,7 +566,7 @@ pub(crate) fn field_anchor(
     node: &kdl::KdlNode,
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
-) -> Option<FieldValue<crate::config::types::Anchor>> {
+) -> Option<FieldValue<Anchor>> {
     let entry = prop(node, name)?;
     let text = match entry.value() {
         kdl::KdlValue::String(s) => s.clone(),
@@ -599,7 +601,7 @@ fn push_anchor_err(
     source: &SourceText,
     kind: ConfigErrorKind,
     msg: &str,
-) -> Option<FieldValue<crate::config::types::Anchor>> {
+) -> Option<FieldValue<Anchor>> {
     errs.push(ConfigError {
         kind,
         span: span_of_entry(entry, source),
@@ -879,7 +881,7 @@ pub(crate) fn field_align_x(
     node: &kdl::KdlNode,
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
-) -> Option<FieldValue<AlignX>> {
+) -> Option<FieldValue<Horizontal>> {
     let entry = prop(node, name)?;
     match entry.value() {
         kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
@@ -909,12 +911,36 @@ pub(crate) fn field_align_x(
     }
 }
 
+pub(crate) fn field_text_align_x(
+    name: &str,
+    node: &kdl::KdlNode,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) -> Option<FieldValue<iced::advanced::text::Alignment>> {
+    let entry = prop(node, name)?;
+    let msg = "invalid align_x value, expected one of: l, c, r, j, left, center, right, justified";
+    match entry.value() {
+        kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
+        kdl::KdlValue::String(s) => match parse_text_align_x(s) {
+            Some(a) => Some(FieldValue::Literal(a)),
+            None => {
+                invalid_align(errs, entry, source, "align_x", msg);
+                None
+            }
+        },
+        _ => {
+            invalid_align(errs, entry, source, "align_x", msg);
+            None
+        }
+    }
+}
+
 pub(crate) fn field_align_y(
     name: &str,
     node: &kdl::KdlNode,
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
-) -> Option<FieldValue<AlignY>> {
+) -> Option<FieldValue<Vertical>> {
     let entry = prop(node, name)?;
     match entry.value() {
         kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
@@ -1162,11 +1188,11 @@ pub(crate) fn field_col_align(
     node: &kdl::KdlNode,
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
-) -> Option<FieldValue<ColAlign>> {
+) -> Option<FieldValue<Horizontal>> {
     let entry = prop(node, name)?;
     match entry.value() {
         kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
-        kdl::KdlValue::String(s) => match parse_col_align(s) {
+        kdl::KdlValue::String(s) => match parse_align_x(s) {
             Some(a) => Some(FieldValue::Literal(a)),
             None => {
                 errs.push(ConfigError {
@@ -1187,12 +1213,12 @@ pub(crate) fn field_row_align(
     node: &kdl::KdlNode,
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
-) -> Option<FieldValue<RowAlign>> {
+) -> Option<FieldValue<Vertical>> {
     let entry = prop(node, name)?;
     match entry.value() {
         kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
         kdl::KdlValue::String(s) => {
-            match parse_row_align(s) {
+            match parse_align_y(s) {
                 Some(a) => Some(FieldValue::Literal(a)),
                 None => {
                     errs.push(ConfigError {
@@ -1332,7 +1358,7 @@ pub(crate) fn build_text(
     let t = TextEl {
         w: field_length("w", node, source, errs),
         h: field_length("h", node, source, errs),
-        align_x: field_align_x("align_x", node, source, errs),
+        align_x: field_text_align_x("align_x", node, source, errs),
         align_y: field_align_y("align_y", node, source, errs),
         color: field_color("color", node, source, errs),
         font: field_string("font", node, source, errs),
@@ -1592,29 +1618,21 @@ mod tests {
         assert_eq!(parse_layer("overlay"), Some(Layer::Overlay));
         assert_eq!(parse_layer("middle"), None);
 
-        assert_eq!(parse_align_x("l"), Some(AlignX::Left));
-        assert_eq!(parse_align_x("c"), Some(AlignX::Center));
-        assert_eq!(parse_align_x("r"), Some(AlignX::Right));
-        assert_eq!(parse_align_x("left"), Some(AlignX::Left));
-        assert_eq!(parse_align_x("center"), Some(AlignX::Center));
-        assert_eq!(parse_align_x("right"), Some(AlignX::Right));
+        assert_eq!(parse_align_x("l"), Some(Horizontal::Left));
+        assert_eq!(parse_align_x("c"), Some(Horizontal::Center));
+        assert_eq!(parse_align_x("r"), Some(Horizontal::Right));
+        assert_eq!(parse_align_x("left"), Some(Horizontal::Left));
+        assert_eq!(parse_align_x("center"), Some(Horizontal::Center));
+        assert_eq!(parse_align_x("right"), Some(Horizontal::Right));
         assert_eq!(parse_align_x("middle"), None);
 
-        assert_eq!(parse_align_y("t"), Some(AlignY::Top));
-        assert_eq!(parse_align_y("c"), Some(AlignY::Center));
-        assert_eq!(parse_align_y("b"), Some(AlignY::Bottom));
-        assert_eq!(parse_align_y("top"), Some(AlignY::Top));
-        assert_eq!(parse_align_y("center"), Some(AlignY::Center));
-        assert_eq!(parse_align_y("bottom"), Some(AlignY::Bottom));
+        assert_eq!(parse_align_y("t"), Some(Vertical::Top));
+        assert_eq!(parse_align_y("c"), Some(Vertical::Center));
+        assert_eq!(parse_align_y("b"), Some(Vertical::Bottom));
+        assert_eq!(parse_align_y("top"), Some(Vertical::Top));
+        assert_eq!(parse_align_y("center"), Some(Vertical::Center));
+        assert_eq!(parse_align_y("bottom"), Some(Vertical::Bottom));
         assert_eq!(parse_align_y("mid"), None);
-
-        assert_eq!(parse_row_align("t"), Some(RowAlign::Top));
-        assert_eq!(parse_row_align("center"), Some(RowAlign::Center));
-        assert_eq!(parse_row_align("left"), None);
-
-        assert_eq!(parse_col_align("l"), Some(ColAlign::Left));
-        assert_eq!(parse_col_align("center"), Some(ColAlign::Center));
-        assert_eq!(parse_col_align("top"), None);
 
         assert_eq!(parse_output("last"), Output::Last);
         assert_eq!(

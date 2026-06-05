@@ -1,5 +1,5 @@
 use crate::config::resolved::ResolvedWidget;
-use crate::config::types::{Anchor as CfgAnchor, Layer as CfgLayer, Output};
+use crate::config::types::Output;
 use iced_layershell::reexport::{
     Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
 };
@@ -9,8 +9,8 @@ pub fn layer_settings_for(w: &ResolvedWidget) -> NewLayerShellSettings {
     let height = w.h.map(|v| v as u32).unwrap_or(0);
     NewLayerShellSettings {
         size: Some((width, height)),
-        layer: to_layer(w.layer),
-        anchor: to_anchor(w.anchor),
+        layer: w.layer.unwrap_or(Layer::Top),
+        anchor: w.anchor.unwrap_or(Anchor::Top | Anchor::Left),
         exclusive_zone: Some(exclusive_zone(w)),
         margin: w
             .margin
@@ -28,37 +28,6 @@ pub fn layer_settings_for(w: &ResolvedWidget) -> NewLayerShellSettings {
     }
 }
 
-fn to_layer(l: Option<CfgLayer>) -> Layer {
-    match l {
-        Some(CfgLayer::Background) => Layer::Background,
-        Some(CfgLayer::Bottom) => Layer::Bottom,
-        Some(CfgLayer::Overlay) => Layer::Overlay,
-        Some(CfgLayer::Top) | None => Layer::Top,
-    }
-}
-
-fn to_anchor(a: Option<CfgAnchor>) -> Anchor {
-    match a {
-        None => Anchor::Top | Anchor::Left,
-        Some(a) => {
-            let mut out = Anchor::empty();
-            if a.top {
-                out |= Anchor::Top;
-            }
-            if a.bottom {
-                out |= Anchor::Bottom;
-            }
-            if a.left {
-                out |= Anchor::Left;
-            }
-            if a.right {
-                out |= Anchor::Right;
-            }
-            out
-        }
-    }
-}
-
 fn exclusive_zone(w: &ResolvedWidget) -> i32 {
     if w.exclusive != Some(true) {
         return 0;
@@ -67,8 +36,8 @@ fn exclusive_zone(w: &ResolvedWidget) -> i32 {
     let width = w.w.map(|v| v as i32).unwrap_or(0);
     match w.anchor {
         Some(a) => {
-            let vertical = a.top ^ a.bottom;
-            let horizontal = a.left ^ a.right;
+            let vertical = a.contains(Anchor::Top) ^ a.contains(Anchor::Bottom);
+            let horizontal = a.contains(Anchor::Left) ^ a.contains(Anchor::Right);
             match (vertical, horizontal) {
                 (true, false) => h,
                 (false, true) => width,
