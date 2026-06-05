@@ -3,7 +3,7 @@ use miette::SourceSpan;
 use std::sync::Arc;
 use iced::{Color,Padding,border::Radius};
 use iced::alignment::{Horizontal, Vertical};
-use iced_layershell::reexport::{Anchor, Layer};
+use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 
 #[derive(Debug, Clone)]
 pub struct SourceText {
@@ -34,12 +34,6 @@ impl Span {
         }
         (line, col)
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Output {
-    Last,
-    Specific(String),
 }
 
 #[derive(Debug, Clone)]
@@ -96,7 +90,7 @@ pub struct Widget {
     pub anchor: Option<FieldValue<Anchor>>,
     pub exclusive: Option<FieldValue<bool>>,
     pub margin: Option<FieldValue<(f32,f32,f32,f32)>>,
-    pub output: Option<FieldValue<Output>>,
+    pub output: Option<FieldValue<OutputOption>>,
     pub keyboard: Option<FieldValue<bool>>,
     pub transparent: Option<FieldValue<bool>>,
     pub child: Option<FieldValue<String>>,

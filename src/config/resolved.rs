@@ -1,10 +1,10 @@
-use crate::config::types::{ Output, Span };
+use crate::config::types::{ Span };
 use iced::{Background, Border, Color, Padding, Shadow, border::Radius};
 use iced::widget::{button, container};
 use iced::alignment::{Horizontal,Vertical};
 use indexmap::IndexMap;
 use std::str::FromStr;
-use iced_layershell::reexport::{Anchor,Layer};
+use iced_layershell::reexport::{Anchor,Layer,OutputOption};
 
 #[derive(Debug, Clone)]
 pub struct ResolvedConfig {
@@ -23,7 +23,7 @@ pub struct ResolvedWidget {
     pub anchor: Option<Anchor>,
     pub exclusive: Option<bool>,
     pub margin: Option<(f32,f32,f32,f32)>,
-    pub output: Option<Output>,
+    pub output: OutputOption,
     pub keyboard: Option<bool>,
     pub transparent: Option<bool>,
     pub child: Option<Box<ResolvedElement>>,

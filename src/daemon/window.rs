@@ -1,7 +1,6 @@
 use crate::config::resolved::ResolvedWidget;
-use crate::config::types::Output;
 use iced_layershell::reexport::{
-    Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
+    Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings,
 };
 
 pub fn layer_settings_for(w: &ResolvedWidget) -> NewLayerShellSettings {
@@ -19,10 +18,7 @@ pub fn layer_settings_for(w: &ResolvedWidget) -> NewLayerShellSettings {
             Some(true) => KeyboardInteractivity::Exclusive,
             _ => KeyboardInteractivity::None,
         },
-        output_option: match &w.output {
-            Some(Output::Specific(name)) => OutputOption::OutputName(name.clone()),
-            _ => OutputOption::LastOutput,
-        },
+        output_option: w.output.clone(),
         events_transparent: w.transparent.unwrap_or(false),
         namespace: Some("iwwc".to_string()),
     }

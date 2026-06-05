@@ -1,10 +1,10 @@
 use crate::config::math::value::Value;
 use crate::config::primitives;
-use crate::config::types::{Output, Span };
+use crate::config::types::{Span };
 use iced::Color;
 use iced::alignment::{Horizontal,Vertical};
 use iced::advanced::text::Alignment as TextAlignment;
-use iced_layershell::reexport::{Anchor, Layer};
+use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 use crate::config::{ConfigError, ConfigErrorKind, Severity};
 
 fn type_err(field: &str, expected: &str, span: &Span) -> ConfigError {
@@ -129,7 +129,7 @@ pub fn coerce_align_y(v: Value, field: &str, span: &Span) -> Result<Vertical, Co
     }
 }
 
-pub fn coerce_output(v: Value, field: &str, span: &Span) -> Result<Output, ConfigError> {
+pub fn coerce_output(v: Value, field: &str, span: &Span) -> Result<OutputOption, ConfigError> {
     match v {
         Value::Str(s) => Ok(primitives::parse_output(&s)),
         _ => Err(type_err(field, "an output string", span)),

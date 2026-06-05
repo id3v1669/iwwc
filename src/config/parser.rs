@@ -6,8 +6,7 @@ use iced::Padding;
 use iced::border::Radius;
 use iced::alignment::{Horizontal, Vertical};
 use crate::config::types::PullDecl;
-use crate::config::types::{Output};
-use iced_layershell::reexport::{Anchor, Layer};
+use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 use crate::config::types::{FieldValue, ParsedConfig, SourceText, Span};
 use crate::config::types::{VarDecl, VarValue};
 use crate::config::{ConfigError, ConfigErrorKind, Severity};
@@ -616,7 +615,7 @@ pub(crate) fn field_output(
     node: &kdl::KdlNode,
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
-) -> Option<FieldValue<Output>> {
+) -> Option<FieldValue<OutputOption>> {
     let entry = prop(node, name)?;
     match entry.value() {
         kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
@@ -1634,10 +1633,10 @@ mod tests {
         assert_eq!(parse_align_y("bottom"), Some(Vertical::Bottom));
         assert_eq!(parse_align_y("mid"), None);
 
-        assert_eq!(parse_output("last"), Output::Last);
+        assert_eq!(parse_output("last"), OutputOption::LastOutput);
         assert_eq!(
             parse_output("HDMI-A-1"),
-            Output::Specific("HDMI-A-1".into())
+            OutputOption::OutputName("HDMI-A-1".into())
         );
     }
 
