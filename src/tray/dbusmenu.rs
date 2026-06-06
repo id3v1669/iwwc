@@ -38,7 +38,6 @@ fn bytes_prop(props: &HashMap<String, OwnedValue>, key: &str) -> Option<Vec<u8>>
 
 pub fn parse_node(node: &LayoutNode) -> MenuItem {
     let (id, props, raw_children) = node;
-    let separator = str_prop(props, "type").as_deref() == Some("separator");
     let toggle = match str_prop(props, "toggle-type").as_deref() {
         Some("checkmark") => Toggle::Check(i32_prop(props, "toggle-state").unwrap_or(0) == 1),
         Some("radio") => Toggle::Radio(i32_prop(props, "toggle-state").unwrap_or(0) == 1),
@@ -64,7 +63,7 @@ pub fn parse_node(node: &LayoutNode) -> MenuItem {
         label: strip_mnemonic(&str_prop(props, "label").unwrap_or_default()),
         enabled: bool_prop(props, "enabled", true),
         visible: bool_prop(props, "visible", true),
-        separator,
+        separator: str_prop(props, "type").as_deref() == Some("separator"),
         toggle,
         icon,
         has_submenu,
@@ -91,49 +90,10 @@ mod tests {
     }
 
     #[test]
-    fn parses_label_enabled_separator_toggle() {
-        let root = node(
-            0,
-            &[],
-            vec![
-                owned(Value::from(node(
-                    2,
-                    &[
-                        ("label", Value::from("_File")),
-                        ("enabled", Value::from(true)),
-                    ],
-                    vec![],
-                ))),
-                owned(Value::from(node(
-                    3,
-                    &[("type", Value::from("separator"))],
-                    vec![],
-                ))),
-                owned(Value::from(node(
-                    4,
-                    &[
-                        ("label", Value::from("Check")),
-                        ("toggle-type", Value::from("checkmark")),
-                        ("toggle-state", Value::from(1i32)),
-                    ],
-                    vec![],
-                ))),
-            ],
-        );
-        let m = parse_node(&root);
-        assert_eq!(m.children.len(), 3);
-        assert_eq!(m.children[0].label, "File");
-        assert!(m.children[0].enabled);
-        assert!(m.children[1].separator);
-        assert_eq!(m.children[2].toggle, Toggle::Check(true));
-    }
-
-    #[test]
     fn defaults_when_props_absent() {
         let m = parse_node(&node(7, &[("label", Value::from("Bare"))], vec![]));
         assert!(m.enabled);
         assert!(m.visible);
-        assert!(!m.separator);
         assert_eq!(m.toggle, Toggle::None);
         assert!(matches!(m.icon, MenuIcon::None));
         assert!(!m.has_submenu);

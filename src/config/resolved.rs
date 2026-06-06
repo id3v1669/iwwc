@@ -1,10 +1,10 @@
-use crate::config::types::{ Span };
-use iced::{Background, Border, Color, Padding, Shadow, border::Radius};
+use crate::config::types::Span;
+use iced::alignment::{Horizontal, Vertical};
 use iced::widget::{button, container};
-use iced::alignment::{Horizontal,Vertical};
+use iced::{Background, Border, Color, Padding, Shadow, border::Radius};
+use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 use indexmap::IndexMap;
 use std::str::FromStr;
-use iced_layershell::reexport::{Anchor,Layer,OutputOption};
 
 #[derive(Debug, Clone)]
 pub struct ResolvedConfig {
@@ -22,7 +22,7 @@ pub struct ResolvedWidget {
     pub layer: Option<Layer>,
     pub anchor: Option<Anchor>,
     pub exclusive: Option<bool>,
-    pub margin: Option<(f32,f32,f32,f32)>,
+    pub margin: Option<(f32, f32, f32, f32)>,
     pub output: OutputOption,
     pub keyboard: Option<bool>,
     pub transparent: Option<bool>,
@@ -32,12 +32,12 @@ pub struct ResolvedWidget {
 
 #[derive(Debug, Clone)]
 pub enum ResolvedElement {
-    Container(ResolvedContainer),
+    Container(Box<ResolvedContainer>),
     Button(Box<ResolvedButton>),
     Row(ResolvedRow),
     Column(ResolvedColumn),
     Text(ResolvedText),
-    Apptray(ResolvedApptraySettings),
+    Apptray(Box<ResolvedApptraySettings>),
 }
 
 #[derive(Debug, Clone)]
@@ -141,7 +141,6 @@ impl PreResolvedStyle {
 pub struct ResolvedMenu {
     pub font_name: Option<String>,
     pub font_size: f32,
-    pub row_height: f32,
     pub icon_size: f32,
     pub row_spacing: f32,
     pub menu_container_padding: Padding,
@@ -158,33 +157,62 @@ impl Default for ResolvedMenu {
         ResolvedMenu {
             font_name: None,
             font_size: 16.0,
-            row_height: 26.0,
             icon_size: 16.0,
             row_spacing: 6.0,
             menu_container_padding: Padding::from(10.0),
             menu_container_style: Some(container::Style {
                 background: Some(Background::Color(Color::from_str("3c3836").unwrap())),
+                border: Border {
+                    width: 0.0,
+                    radius: Radius::from(15.0),
+                    ..Default::default()
+                },
+                shadow: Shadow {
+                    color: Color::from_str("665c54").unwrap(),
+                    blur_radius: 4.0,
+                    ..Default::default()
+                },
                 ..Default::default()
             }),
             button_padding: Padding::from([5.0, 2.0]),
             button_style: Some(button::Style {
                 background: Some(Background::Color(Color::from_str("3c3836").unwrap())),
                 text_color: Color::from_str("bdae93").unwrap(),
+                border: Border {
+                    width: 0.0,
+                    radius: Radius::from(15.0),
+                    ..Default::default()
+                },
                 ..Default::default()
             }),
             button_style_hover: Some(button::Style {
                 background: Some(Background::Color(Color::from_str("504945").unwrap())),
-                text_color: Color::from_str("bdae93").unwrap(),
+                text_color: Color::from_str("d65d0e").unwrap(),
+                border: Border {
+                    width: 0.0,
+                    radius: Radius::from(15.0),
+                    ..Default::default()
+                },
                 ..Default::default()
             }),
             button_style_active: Some(button::Style {
                 background: Some(Background::Color(Color::from_str("504945").unwrap())),
-                text_color: Color::from_str("fbf1c7").unwrap(),
+                text_color: Color::from_str("fe8019").unwrap(),
+                border: Border {
+                    width: 0.0,
+                    radius: Radius::from(15.0),
+                    ..Default::default()
+                },
                 ..Default::default()
             }),
             button_style_disabled: Some(button::Style {
                 background: Some(Background::Color(Color::from_str("3c3836").unwrap())),
                 text_color: Color::from_str("bdae93").unwrap(),
+                border: Border {
+                    width: 0.0,
+                    radius: Radius::from(15.0),
+                    ..Default::default()
+                },
                 ..Default::default()
             }),
         }
@@ -228,7 +256,7 @@ pub struct ResolvedNotificationSettings {
     pub border: Option<Border>,
     pub font: Option<String>,
     pub anchor: Anchor,
-    pub margin: (f32,f32,f32,f32),
+    pub margin: (f32, f32, f32, f32),
     pub gap: f32,
     pub max: u32,
     pub timeout_ms: i32,

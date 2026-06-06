@@ -1,7 +1,7 @@
-use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 use iced::Color;
-use iced::alignment::{Horizontal,Vertical};
 use iced::advanced::text::Alignment as TextAlignment;
+use iced::alignment::{Horizontal, Vertical};
+use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 use std::str::FromStr;
 
 pub fn parse_color(input: &str) -> Option<Color> {

@@ -1,11 +1,11 @@
 use crate::config::math::value::Value;
 use crate::config::primitives;
-use crate::config::types::{Span };
-use iced::Color;
-use iced::alignment::{Horizontal,Vertical};
-use iced::advanced::text::Alignment as TextAlignment;
-use iced_layershell::reexport::{Anchor, Layer, OutputOption};
+use crate::config::types::Span;
 use crate::config::{ConfigError, ConfigErrorKind, Severity};
+use iced::Color;
+use iced::advanced::text::Alignment as TextAlignment;
+use iced::alignment::{Horizontal, Vertical};
+use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 
 fn type_err(field: &str, expected: &str, span: &Span) -> ConfigError {
     ConfigError {
@@ -35,7 +35,11 @@ pub fn coerce_length(v: Value, field: &str, span: &Span) -> Result<iced::Length,
     }
 }
 
-pub fn coerce_margin(v: Value, field: &str, span: &Span) -> Result<(f32, f32, f32, f32), ConfigError> {
+pub fn coerce_margin(
+    v: Value,
+    field: &str,
+    span: &Span,
+) -> Result<(f32, f32, f32, f32), ConfigError> {
     match v {
         Value::Int(i) => {
             let f = i as f32;
@@ -57,7 +61,11 @@ pub fn coerce_padding(v: Value, field: &str, span: &Span) -> Result<iced::Paddin
     }
 }
 
-pub fn coerce_radius(v: Value, field: &str, span: &Span) -> Result<iced::border::Radius, ConfigError> {
+pub fn coerce_radius(
+    v: Value,
+    field: &str,
+    span: &Span,
+) -> Result<iced::border::Radius, ConfigError> {
     match v {
         Value::Int(i) => Ok(iced::border::Radius::from(i as f32)),
         Value::Float(d) => Ok(iced::border::Radius::from(d.value as f32)),
@@ -138,8 +146,9 @@ pub fn coerce_output(v: Value, field: &str, span: &Span) -> Result<OutputOption,
 
 pub fn coerce_row_align(v: Value, field: &str, span: &Span) -> Result<Vertical, ConfigError> {
     match v {
-        Value::Str(s) => primitives::parse_align_y(&s)
-            .ok_or_else(|| type_err(field, "a valid row align", span)),
+        Value::Str(s) => {
+            primitives::parse_align_y(&s).ok_or_else(|| type_err(field, "a valid row align", span))
+        }
         _ => Err(type_err(field, "a row align string", span)),
     }
 }
@@ -207,15 +216,7 @@ mod tests {
     #[test]
     fn color_from_string() {
         let c = coerce_color(Value::Str("ffffff".into()), "text", &span()).unwrap();
-        assert_eq!(
-            c,
-            crate::config::types::Color {
-                r: 0xff,
-                g: 0xff,
-                b: 0xff,
-                a: 0xff
-            }
-        );
+        assert_eq!(c, iced::Color::WHITE);
     }
     #[test]
     fn color_rejects_number() {
@@ -224,21 +225,13 @@ mod tests {
     #[test]
     fn anchor_from_string() {
         let a = coerce_anchor(Value::Str("t | r".into()), "anchor", &span()).unwrap();
-        assert_eq!(
-            a,
-            crate::config::types::Anchor {
-                top: true,
-                bottom: false,
-                left: false,
-                right: true
-            }
-        );
+        assert_eq!(a, Anchor::Top | Anchor::Right);
     }
     #[test]
     fn layer_from_string() {
         assert_eq!(
             coerce_layer(Value::Str("top".into()), "layer", &span()).unwrap(),
-            crate::config::types::Layer::Top
+            Layer::Top
         );
     }
     #[test]

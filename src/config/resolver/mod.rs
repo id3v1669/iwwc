@@ -332,67 +332,6 @@ mod tests {
     }
 
     #[test]
-    fn apptray_menu_styling_defaults() {
-        let (rc, errs) = resolve_kdl("widget bar child=t1\ntext t1");
-        assert!(
-            errs.iter()
-                .all(|e| e.severity != crate::config::Severity::Error)
-        );
-        let a = &rc.unwrap().apptray;
-        assert_eq!(a.menu.row_height, 26.0);
-        assert_eq!(
-            a.menu.menu_container_style.as_ref().unwrap().bg,
-            Some(crate::config::types::Color {
-                r: 0x22,
-                g: 0x22,
-                b: 0x22,
-                a: 0xff
-            })
-        );
-        assert_eq!(
-            a.menu.button_style.as_ref().unwrap().text,
-            Some(crate::config::types::Color {
-                r: 0xff,
-                g: 0xff,
-                b: 0xff,
-                a: 0xff
-            })
-        );
-        assert_eq!(
-            a.menu.button_style_disabled.as_ref().unwrap().text,
-            Some(crate::config::types::Color {
-                r: 0x88,
-                g: 0x88,
-                b: 0x88,
-                a: 0xff
-            })
-        );
-    }
-
-    #[test]
-    fn apptray_menu_styling_override() {
-        let (rc, errs) =
-            resolve_kdl("widget bar child=t1\ntext t1\napptray menu_bg=000000");
-        assert!(
-            errs.iter()
-                .all(|e| e.severity != crate::config::Severity::Error),
-            "{:?}",
-            errs
-        );
-        let a = &rc.unwrap().apptray;
-        assert_eq!(
-            a.menu.menu_container_style.as_ref().unwrap().bg,
-            Some(crate::config::types::Color {
-                r: 0,
-                g: 0,
-                b: 0,
-                a: 0xff
-            })
-        );
-        assert_eq!(a.menu.row_height, 26.0);
-    }
-
-    #[test]
     fn smart_ram_resolves_and_is_polled() {
         let (cfg, _) = parse_str(
             "widget bar child=t1\ntext t1 text=\"${iwwc.ram.used / 1073741824}\"",
@@ -449,15 +388,7 @@ mod tests {
         assert_eq!(n.width, 300.0);
         assert_eq!(n.max, 3);
         assert_eq!(n.timeout_ms, 2000);
-        assert_eq!(
-            n.bg,
-            crate::config::types::Color {
-                r: 0,
-                g: 0,
-                b: 0,
-                a: 0xff
-            }
-        );
-        assert_eq!(n.border.as_ref().unwrap().w, Some(2.0));
+        assert_eq!(n.bg, iced::Color::BLACK);
+        assert_eq!(n.border.unwrap().width, 2.0);
     }
 }

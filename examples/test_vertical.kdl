@@ -33,8 +33,7 @@ column centergrp spacing=8 align=c {
 }
 
 // ===================== BOTTOM GROUP =====================
-apptray icon_size=18 spacing=6 vertical=#true swap_buttons=#true bg="282828" border=round20 padding=5 \
-    menu_width=240 row_height=28 menu_bg="282828" menu_text="e3cd92" menu_disabled="928374"
+apptray vertical=#true swap_buttons=#true
 
 button sound text="󰕾" action="pwvucontrol" font="${ff}" style=pill style:hover=pillhover {
   padding 6 6

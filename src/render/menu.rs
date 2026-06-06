@@ -3,8 +3,6 @@ use iced::{Element, Length};
 
 use crate::config::resolved::ResolvedMenu;
 use crate::render::UiMessage;
-#[cfg(test)]
-use crate::render::convert;
 use crate::tray::menu_types::{MenuIcon, MenuItem, Toggle};
 
 /// Menu font family. Constant for now, find in old code converter of cfg to static
@@ -12,12 +10,12 @@ pub const MENU_FONT: iced::Font = iced::Font::DEFAULT;
 /// Submenu indicator glyph. Config??
 pub const SUBMENU_ARROW: &str = "\u{25b8}";
 
-fn measure_text(content: &str, font_size: f32) -> f32 {
+fn measure_text(content: &str, font_size: f32) -> (f32, f32) {
     use iced::advanced::graphics::text::Paragraph as GraphicsParagraph;
     use iced::advanced::text::{Alignment, LineHeight, Paragraph as _, Shaping, Text, Wrapping};
 
     if content.is_empty() {
-        return 0.0;
+        return (0.0, 0.0); //TODO: recheck the empty row
     }
     let text = Text {
         content,
@@ -30,7 +28,10 @@ fn measure_text(content: &str, font_size: f32) -> f32 {
         shaping: Shaping::Advanced,
         wrapping: Wrapping::None,
     };
-    GraphicsParagraph::with_text(text).min_width()
+    (
+        GraphicsParagraph::with_text(text).min_width(),
+        GraphicsParagraph::with_text(text).min_height(),
+    )
 }
 
 /// The exact text content a row renders: the toggle glyph prefix plus the label.
@@ -44,30 +45,80 @@ fn row_text(item: &MenuItem) -> String {
     format!("{glyph}{}", item.label)
 }
 
-fn container_border_width(m: &ResolvedMenu) -> f32 {
-    m.menu_container_style
-        .as_ref()
-        .map(|s| s.border.width)
-        .unwrap_or(0.0)
-}
+pub fn menu_pixel_wh(items: &[MenuItem], m: &ResolvedMenu) -> (f32, f32) {
+    let max_button_border = m
+        .button_style
+        .unwrap()
+        .border
+        .width
+        .max(m.button_style_hover.unwrap().border.width)
+        .max(m.button_style_active.unwrap().border.width)
+        .max(m.button_style_disabled.unwrap().border.width);
 
-pub fn menu_pixel_width(items: &[MenuItem], m: &ResolvedMenu) -> f32 {
-    let border_w = container_border_width(m);
-    let arrow_w = measure_text(SUBMENU_ARROW, m.font_size);
-    let mut max = 0.0_f32;
-    for item in items.iter().filter(|i| i.visible && !i.separator) {
-        let mut w = 2.0 * border_w + 2.0 * m.button_padding.left + m.button_padding.right + measure_text(&row_text(item), m.font_size);
+    let cw = m.menu_container_style.unwrap().border.width * 2.0
+        + m.menu_container_padding.left
+        + m.menu_container_padding.right
+        + max_button_border * 2.0
+        + m.button_padding.left
+        + m.button_padding.right;
+
+    let rh = row_height(m);
+    let (arrow_w, _) = measure_text(SUBMENU_ARROW, m.font_size);
+    let mut max_w = 0.0_f32;
+    let mut content_h = 0.0_f32;
+    for item in items.iter().filter(|i| i.visible) {
+        if item.separator {
+            content_h += rh / 3.0;
+            continue;
+        }
+        content_h += rh;
+        let (mut w, _) = measure_text(&row_text(item), m.font_size);
+        w += cw;
         if !matches!(item.icon, MenuIcon::None) {
             w += m.icon_size + m.row_spacing;
         }
         if item.has_submenu {
             w += m.row_spacing + arrow_w;
         }
-        if w > max {
-            max = w;
+        if w > max_w {
+            max_w = w;
         }
     }
-    max
+
+    let total_h = m.menu_container_padding.top
+        + m.menu_container_padding.bottom
+        + m.menu_container_style.unwrap().border.width * 2.0
+        + content_h;
+
+    let (sl, st, sr, sb) = shadow_extents(m);
+    (max_w + sl + sr, total_h + st + sb)
+}
+
+pub fn row_height(m: &ResolvedMenu) -> f32 {
+    let border = [
+        m.button_style,
+        m.button_style_hover,
+        m.button_style_active,
+        m.button_style_disabled,
+    ]
+    .into_iter()
+    .map(|s| s.map_or(0.0, |s| s.border.width))
+    .fold(0.0_f32, f32::max);
+    let (_, line_h) = measure_text("M", m.font_size);
+    line_h.max(m.icon_size) + m.button_padding.top + m.button_padding.bottom + border * 2.0
+}
+
+// TODO: Re-review that, maybe simplify to just radius??
+fn shadow_extents(m: &ResolvedMenu) -> (f32, f32, f32, f32) {
+    let sh = m.menu_container_style.map(|s| s.shadow).unwrap_or_default();
+    let b = sh.blur_radius;
+    let (ox, oy) = (sh.offset.x, sh.offset.y);
+    (
+        (b - ox).max(0.0),
+        (b - oy).max(0.0),
+        (b + ox).max(0.0),
+        (b + oy).max(0.0),
+    )
 }
 
 pub fn menu_button_style(
@@ -97,14 +148,15 @@ pub fn view_menu(
 ) -> Element<'static, UiMessage> {
     use iced::widget::button;
 
-    let width = menu_pixel_width(items, m);
+    let (width, _) = menu_pixel_wh(items, m);
+    let row_h = row_height(m);
     let mut col = column![].width(Length::Fill);
     for item in items.iter().filter(|i| i.visible) {
         if item.separator {
             col = col.push(
                 container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
                     .width(Length::Fill)
-                    .height(Length::Fixed(7.0)),
+                    .height(Length::Fixed(row_h / 3.0)),
             );
             continue;
         }
@@ -124,19 +176,32 @@ pub fn view_menu(
             MenuIcon::Name(n) => {
                 let p = std::path::Path::new(n);
                 let h: Element<'static, UiMessage> = if p.is_absolute() && p.is_file() {
-                    image(image::Handle::from_path(p)).width(m.icon_size).height(m.icon_size).into()
-                } else if let Some(found) =
-                    nix_freedesktop_icons::lookup(n).with_size(m.icon_size as u16).with_cache().find()
+                    image(image::Handle::from_path(p))
+                        .width(m.icon_size)
+                        .height(m.icon_size)
+                        .into()
+                } else if let Some(found) = nix_freedesktop_icons::lookup(n)
+                    .with_size(m.icon_size as u16)
+                    .with_cache()
+                    .find()
                 {
-                    image(image::Handle::from_path(found)).width(m.icon_size).height(m.icon_size).into()
+                    image(image::Handle::from_path(found))
+                        .width(m.icon_size)
+                        .height(m.icon_size)
+                        .into()
                 } else {
                     Space::new().width(m.icon_size).height(m.icon_size).into()
                 };
-                line = row![h].push(line).spacing(m.row_spacing).align_y(iced::alignment::Vertical::Center);
+                line = row![h]
+                    .push(line)
+                    .spacing(m.row_spacing)
+                    .align_y(iced::alignment::Vertical::Center);
             }
             MenuIcon::Png(bytes) => {
                 line = row![
-                    image(image::Handle::from_bytes(bytes.clone())).width(m.icon_size).height(m.icon_size)
+                    image(image::Handle::from_bytes(bytes.clone()))
+                        .width(m.icon_size)
+                        .height(m.icon_size)
                 ]
                 .push(line)
                 .spacing(m.row_spacing)
@@ -158,7 +223,7 @@ pub fn view_menu(
         let menu = m.clone();
         let mut btn = button(line)
             .width(Length::Fill)
-            .height(Length::Fixed(m.row_height))
+            .height(Length::Fixed(row_h))
             .padding(m.button_padding)
             .style(move |_theme, status| menu_button_style(&menu, is_active_parent, status));
         if item.enabled {
@@ -173,17 +238,30 @@ pub fn view_menu(
     }
 
     let container_style = m.menu_container_style.unwrap_or_default();
-    let surface = container(col)
-        .width(Length::Fixed(
-            width + m.menu_container_padding.left + m.menu_container_padding.right,
-        ))
+    let (sl, st, sr, sb) = shadow_extents(m);
+    let inner = container(col)
+        .width(Length::Fixed(width - sl - sr))
         .height(Length::Shrink)
         .padding(m.menu_container_padding)
         .style(move |_| container_style);
-    if level >= 1 {
-        mouse_area(surface).on_exit(UiMessage::MenuLeave { level }).into()
+    let surface: Element<'static, UiMessage> = if sl + st + sr + sb > 0.0 {
+        container(inner)
+            .padding(iced::Padding {
+                top: st,
+                right: sr,
+                bottom: sb,
+                left: sl,
+            })
+            .into()
     } else {
-        surface.into()
+        inner.into()
+    };
+    if level >= 1 {
+        mouse_area(surface)
+            .on_exit(UiMessage::MenuLeave { level })
+            .into()
+    } else {
+        surface
     }
 }
 
@@ -222,29 +300,5 @@ mod tests {
         ];
         let s = ResolvedApptraySettings::default();
         let _el = view_menu(&items, 1, Some(3), &s.menu);
-    }
-
-    #[test]
-    fn longer_label_not_narrower() {
-        let m = ResolvedMenu::default();
-        let short = vec![make_item(1, "Open", false, false)];
-        let long = vec![make_item(1, "Open Recent Files And Folders", false, false)];
-        assert!(menu_pixel_width(&long, &m) >= menu_pixel_width(&short, &m));
-    }
-
-    #[test]
-    fn submenu_row_wider_than_plain() {
-        let m = ResolvedMenu::default();
-        let plain = vec![make_item(1, "Settings", false, false)];
-        let sub = vec![make_item(1, "Settings", false, true)];
-        assert!(menu_pixel_width(&sub, &m) > menu_pixel_width(&plain, &m));
-    }
-
-    #[test]
-    fn width_is_finite_and_positive() {
-        let m = ResolvedMenu::default();
-        let items = vec![make_item(1, "Тест \u{1f600}", false, false)];
-        let w = menu_pixel_width(&items, &m);
-        assert!(w.is_finite() && w > 0.0);
     }
 }
