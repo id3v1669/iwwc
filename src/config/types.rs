@@ -1,9 +1,9 @@
+use iced::alignment::{Horizontal, Vertical};
+use iced::{Color, Padding, border::Radius};
+use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 use indexmap::IndexMap;
 use miette::SourceSpan;
 use std::sync::Arc;
-use iced::{Color,Padding,border::Radius};
-use iced::alignment::{Horizontal, Vertical};
-use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 
 #[derive(Debug, Clone)]
 pub struct SourceText {
@@ -89,7 +89,7 @@ pub struct Widget {
     pub layer: Option<FieldValue<Layer>>,
     pub anchor: Option<FieldValue<Anchor>>,
     pub exclusive: Option<FieldValue<bool>>,
-    pub margin: Option<FieldValue<(f32,f32,f32,f32)>>,
+    pub margin: Option<FieldValue<(f32, f32, f32, f32)>>,
     pub output: Option<FieldValue<OutputOption>>,
     pub keyboard: Option<FieldValue<bool>>,
     pub transparent: Option<FieldValue<bool>>,
@@ -192,8 +192,6 @@ pub struct ApptraySettings {
     pub menu_bg: Option<FieldValue<Color>>,
     pub menu_text: Option<FieldValue<Color>>,
     pub menu_disabled: Option<FieldValue<Color>>,
-    pub menu_width: Option<FieldValue<f32>>,
-    pub row_height: Option<FieldValue<f32>>,
     pub span: Span,
 }
 
@@ -207,7 +205,7 @@ pub struct NotificationSettings {
     pub border: Option<FieldValue<String>>,
     pub font: Option<FieldValue<String>>,
     pub anchor: Option<FieldValue<Anchor>>,
-    pub margin: Option<FieldValue<(f32,f32,f32,f32)>>,
+    pub margin: Option<FieldValue<(f32, f32, f32, f32)>>,
     pub gap: Option<FieldValue<f32>>,
     pub max: Option<FieldValue<f32>>,
     pub timeout: Option<FieldValue<f32>>,

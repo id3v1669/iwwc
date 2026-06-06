@@ -346,7 +346,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("iwwc.sock");
         {
-            let _l = tokio::net::UnixListener::bind(&path).unwrap();
+            let _l = std::os::unix::net::UnixListener::bind(&path).unwrap();
         } // listener dropped; socket file may linger
         let _ = is_active_at(&path).await; // returns false; cleans up if a stale file is present
         // After the probe, a fresh bind must succeed.

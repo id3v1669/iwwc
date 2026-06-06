@@ -1,6 +1,7 @@
 use crate::config::math::{self, value::Value};
-use crate::config::resolved::{ PreResolvedStyle, ResolvedButton, ResolvedColumn, ResolvedContainer,
-    ResolvedElement, ResolvedRow, ResolvedText, ResolvedWidget,
+use crate::config::resolved::{
+    PreResolvedStyle, ResolvedButton, ResolvedColumn, ResolvedContainer, ResolvedElement,
+    ResolvedRow, ResolvedText, ResolvedWidget,
 };
 use crate::config::resolver::coerce;
 use crate::config::resolver::vars::FlatEnv;
@@ -9,7 +10,6 @@ use crate::config::types::{
 };
 use crate::config::{ConfigError, ConfigErrorKind, Severity};
 use std::collections::HashSet;
-
 
 pub(crate) struct Ctx<'a> {
     pub config: &'a ParsedConfig,
@@ -114,7 +114,9 @@ pub(crate) fn resolve_ref(
     }
 
     if reference == "apptray" {
-        return Some(ResolvedElement::Apptray(resolve_apptray_settings(ctx)));
+        return Some(ResolvedElement::Apptray(Box::new(
+            resolve_apptray_settings(ctx),
+        )));
     }
 
     if ctx.config.texts.contains_key(reference) {
@@ -132,7 +134,7 @@ pub(crate) fn resolve_ref(
         visited.insert(reference.to_string());
         let resolved = resolve_container(&c, ctx, visited);
         visited.remove(reference);
-        return resolved.map(ResolvedElement::Container);
+        return resolved.map(|c| ResolvedElement::Container(Box::new(c)));
     }
 
     if ctx.config.buttons.contains_key(reference) {
@@ -238,7 +240,7 @@ fn resolve_fragment_element(
 ) -> Option<ResolvedElement> {
     match el {
         OwnedEl::Container(c) => {
-            resolve_container(&c, ctx, visited).map(ResolvedElement::Container)
+            resolve_container(&c, ctx, visited).map(|c| ResolvedElement::Container(Box::new(c)))
         }
         OwnedEl::Button(b) => Some(ResolvedElement::Button(Box::new(resolve_button(&b, ctx)))),
         OwnedEl::Row(r) => Some(ResolvedElement::Row(resolve_row(&r, ctx, visited))),
@@ -478,7 +480,9 @@ fn resolve_shadow_ref(
     Some(iced::Shadow {
         color: resolve_field(&sh.color, "color", &sh.span, coerce::coerce_color, ctx)
             .unwrap_or(iced::Color::TRANSPARENT),
-        offset: offset.map(|(x, y)| iced::Vector::new(x, y)).unwrap_or_default(),
+        offset: offset
+            .map(|(x, y)| iced::Vector::new(x, y))
+            .unwrap_or_default(),
         blur_radius: resolve_field(
             &sh.blur_radius,
             "blur_radius",
@@ -546,9 +550,6 @@ pub(crate) fn resolve_apptray_settings(ctx: &mut Ctx) -> ResolvedApptraySettings
     ) {
         s.text_color = v;
     }
-    if let Some(v) = resolve_field(&a.row_height, "row_height", &span, coerce::coerce_f32, ctx) {
-        out.menu.row_height = v;
-    }
     out
 }
 
@@ -556,7 +557,13 @@ pub(crate) fn resolve_text(t: &TextEl, ctx: &mut Ctx) -> ResolvedText {
     ResolvedText {
         w: resolve_field(&t.w, "w", &t.span, coerce::coerce_length, ctx),
         h: resolve_field(&t.h, "h", &t.span, coerce::coerce_length, ctx),
-        align_x: resolve_field(&t.align_x, "align_x", &t.span, coerce::coerce_text_align_x, ctx),
+        align_x: resolve_field(
+            &t.align_x,
+            "align_x",
+            &t.span,
+            coerce::coerce_text_align_x,
+            ctx,
+        ),
         align_y: resolve_field(&t.align_y, "align_y", &t.span, coerce::coerce_align_y, ctx),
         color: resolve_field(&t.color, "color", &t.span, coerce::coerce_color, ctx),
         font: resolve_field(&t.font, "font", &t.span, coerce::coerce_string, ctx),
@@ -600,10 +607,7 @@ mod tests {
         let bar = rc.widgets.get("bar").expect("bar widget");
         match bar.child.as_deref() {
             Some(ResolvedElement::Text(t)) => {
-                assert_eq!(
-                    t.color,
-                    Some(iced::Color::from("ffffff"))
-                );
+                assert_eq!(t.color, Some(iced::Color::WHITE));
             }
             other => panic!("expected text child, got {:?}", other),
         }
@@ -735,25 +739,11 @@ mod tests {
         match rc.widgets.get("bar").unwrap().child.as_deref() {
             Some(ResolvedElement::Container(c)) => {
                 let style = c.style.as_ref().expect("style inlined");
-                assert_eq!(
-                    style.bg,
-                    Some(crate::config::types::Color {
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                        a: 0xff
-                    })
-                );
-                let border = style.border.as_ref().expect("border inlined");
-                assert_eq!(
-                    border.radius,
-                    Some(iced::border::Radius {
-                        top_left: 5.0,
-                        top_right: 5.0,
-                        bottom_right: 5.0,
-                        bottom_left: 5.0
-                    })
-                );
+                assert!(matches!(
+                    style.background,
+                    Some(iced::Background::Color(col)) if col == iced::Color::BLACK
+                ));
+                assert_eq!(style.border.radius, iced::border::Radius::from(5.0));
             }
             other => panic!("expected container, got {:?}", other),
         }

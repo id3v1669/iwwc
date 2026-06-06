@@ -1,15 +1,15 @@
 use crate::config::primitives::{
-    AnchorError, parse_align_x, parse_align_y, parse_anchor,
-    parse_color, parse_interval, parse_layer, parse_output, parse_text_align_x,
+    AnchorError, parse_align_x, parse_align_y, parse_anchor, parse_color, parse_interval,
+    parse_layer, parse_output, parse_text_align_x,
 };
-use iced::Padding;
-use iced::border::Radius;
-use iced::alignment::{Horizontal, Vertical};
 use crate::config::types::PullDecl;
-use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 use crate::config::types::{FieldValue, ParsedConfig, SourceText, Span};
 use crate::config::types::{VarDecl, VarValue};
 use crate::config::{ConfigError, ConfigErrorKind, Severity};
+use iced::Padding;
+use iced::alignment::{Horizontal, Vertical};
+use iced::border::Radius;
+use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 
 pub(crate) fn build_var(
     node: &kdl::KdlNode,
@@ -1408,8 +1408,6 @@ pub(crate) fn build_apptray_settings(
         menu_bg: field_color("menu_bg", node, source, errs),
         menu_text: field_color("menu_text", node, source, errs),
         menu_disabled: field_color("menu_disabled", node, source, errs),
-        menu_width: field_f32("menu_width", node, source, errs),
-        row_height: field_f32("row_height", node, source, errs),
         span: Span {
             source: source.clone(),
             span: node.span(),
@@ -1553,7 +1551,7 @@ mod tests {
         assert_eq!(span_at("ab", 999, 0).line_col(), (1, 3));
     }
 
-    use crate::config::types::Anchor;
+    use iced_layershell::reexport::Anchor;
 
     #[test]
     fn length_keyword_parsing() {
@@ -1573,12 +1571,20 @@ mod tests {
         use super::{AnchorError, parse_anchor};
 
         fn a(t: bool, b: bool, l: bool, r: bool) -> Anchor {
-            Anchor {
-                top: t,
-                bottom: b,
-                left: l,
-                right: r,
+            let mut out = Anchor::empty();
+            if t {
+                out |= Anchor::Top;
             }
+            if b {
+                out |= Anchor::Bottom;
+            }
+            if l {
+                out |= Anchor::Left;
+            }
+            if r {
+                out |= Anchor::Right;
+            }
+            out
         }
 
         assert_eq!(parse_anchor("t").unwrap(), a(true, false, false, false));
@@ -1641,6 +1647,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::type_complexity)]
     fn field_helpers_compile() {
         let _: fn(
             &str,
@@ -2282,7 +2289,7 @@ mod tests {
                 label: "align_x invalid",
                 kdl: "text t1 align_x=middle",
                 expect: Expect::Err(
-                    "invalid align_x value, expected one of: l, c, r, left, center, right",
+                    "invalid align_x value, expected one of: l, c, r, j, left, center, right, justified",
                 ),
             },
             Case {

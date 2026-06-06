@@ -111,9 +111,11 @@ mod tests {
 
     #[test]
     fn precalc_matches_reference_formulas() {
-        let mut s = ResolvedNotificationSettings::default();
-        s.width = 400.0;
-        s.height = 110.0;
+        let s = ResolvedNotificationSettings {
+            width: 400.0,
+            height: 110.0,
+            ..Default::default()
+        };
         let p = PreCalc::generate(&s);
         assert_eq!(p.image_size, 110.0 * 0.65);
         assert_eq!(

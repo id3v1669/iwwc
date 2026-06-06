@@ -1,7 +1,6 @@
 pub mod convert;
 pub mod menu;
 pub mod notification;
-pub mod style;
 
 #[derive(Debug, Clone)]
 pub enum UiMessage {
@@ -269,7 +268,7 @@ fn build_apptray(s: &ResolvedApptraySettings, ctx: &RenderCtx) -> Element<'stati
     if bg.is_some() || border.is_some() {
         iced::widget::container(inner)
             .style(move |_| iced::widget::container::Style {
-                background: bg.map(style::background),
+                background: bg.map(iced::Background::Color),
                 border: border.unwrap_or_default(),
                 ..Default::default()
             })

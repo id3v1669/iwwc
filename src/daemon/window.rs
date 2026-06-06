@@ -1,7 +1,5 @@
 use crate::config::resolved::ResolvedWidget;
-use iced_layershell::reexport::{
-    Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings,
-};
+use iced_layershell::reexport::{Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings};
 
 pub fn layer_settings_for(w: &ResolvedWidget) -> NewLayerShellSettings {
     let width = w.w.map(|v| v as u32).unwrap_or(0);

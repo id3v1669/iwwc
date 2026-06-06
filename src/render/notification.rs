@@ -7,7 +7,6 @@ use crate::config::resolved::ResolvedNotificationSettings;
 use crate::notification::types::{Notification, PreCalc, action_pairs};
 use crate::render::UiMessage;
 use crate::render::convert;
-use crate::render::style;
 
 pub fn view_notification<'a>(
     settings: &ResolvedNotificationSettings,
@@ -78,7 +77,7 @@ pub fn view_notification<'a>(
         .width(Length::Fill)
         .height(Length::Fill)
         .style(move |_| container::Style {
-            background: Some(style::background(bg)),
+            background: Some(iced::Background::Color(bg)),
             border: border.unwrap_or_default(),
             ..Default::default()
         })
