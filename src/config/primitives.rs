@@ -1,8 +1,48 @@
 use iced::Color;
 use iced::advanced::text::Alignment as TextAlignment;
 use iced::alignment::{Horizontal, Vertical};
+use iced::font::{Stretch, Style as FontStyle, Weight};
 use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 use std::str::FromStr;
+
+pub fn parse_font_weight(s: &str) -> Option<Weight> {
+    Some(match s.to_ascii_lowercase().as_str() {
+        "thin" => Weight::Thin,
+        "extra-light" | "extralight" => Weight::ExtraLight,
+        "light" => Weight::Light,
+        "normal" => Weight::Normal,
+        "medium" => Weight::Medium,
+        "semibold" | "semi-bold" => Weight::Semibold,
+        "bold" => Weight::Bold,
+        "extra-bold" | "extrabold" => Weight::ExtraBold,
+        "black" => Weight::Black,
+        _ => return None,
+    })
+}
+
+pub fn parse_font_stretch(s: &str) -> Option<Stretch> {
+    Some(match s.to_ascii_lowercase().as_str() {
+        "ultra-condensed" | "ultracondensed" => Stretch::UltraCondensed,
+        "extra-condensed" | "extracondensed" => Stretch::ExtraCondensed,
+        "condensed" => Stretch::Condensed,
+        "semi-condensed" | "semicondensed" => Stretch::SemiCondensed,
+        "normal" => Stretch::Normal,
+        "semi-expanded" | "semiexpanded" => Stretch::SemiExpanded,
+        "expanded" => Stretch::Expanded,
+        "extra-expanded" | "extraexpanded" => Stretch::ExtraExpanded,
+        "ultra-expanded" | "ultraexpanded" => Stretch::UltraExpanded,
+        _ => return None,
+    })
+}
+
+pub fn parse_font_style(s: &str) -> Option<FontStyle> {
+    Some(match s.to_ascii_lowercase().as_str() {
+        "normal" => FontStyle::Normal,
+        "italic" => FontStyle::Italic,
+        "oblique" => FontStyle::Oblique,
+        _ => return None,
+    })
+}
 
 pub fn parse_color(input: &str) -> Option<Color> {
     if input == "transparent" {

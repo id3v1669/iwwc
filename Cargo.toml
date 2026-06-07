@@ -28,7 +28,8 @@ iced = { version = "0.14.0", default-features = false, features = [
   "image",
   "svg"
 ] }
-iced_layershell = { path = "/home/user/myrepos/exwlshelleventloop/iced_layershell" }
+#iced_layershell = { path = "/home/user/myrepos/exwlshelleventloop/iced_layershell" }
+iced_layershell = { git = "https://github.com/id3v1669/exwlshelleventloop", branch = "master" }
 
 wayland-client = "0.31.14"
 wayland-protocols = { version = "0.32.12", features = ["client", "unstable"] }

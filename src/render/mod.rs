@@ -1,4 +1,3 @@
-pub mod convert;
 pub mod menu;
 pub mod notification;
 
@@ -76,7 +75,7 @@ fn build_text(t: &ResolvedText, _ctx: &RenderCtx) -> Element<'static, UiMessage>
         el = el.color(c);
     }
     if let Some(f) = &t.font {
-        el = el.font(convert::font(f));
+        el = el.font(*f);
     }
     if let Some(ax) = t.align_x {
         el = el.align_x(ax);
@@ -116,7 +115,7 @@ fn build_container(c: &ResolvedContainer, ctx: &RenderCtx) -> Element<'static, U
 fn build_button(b: &ResolvedButton, _ctx: &RenderCtx) -> Element<'static, UiMessage> {
     let mut content = text(b.text.clone().unwrap_or_default());
     if let Some(f) = &b.font {
-        content = content.font(convert::font(f));
+        content = content.font(*f);
     }
     let mut el = button(content);
     if let Some(w) = b.w {
@@ -308,7 +307,9 @@ mod tests {
 
     #[test]
     fn renders_text_widget() {
-        let rc = render_kdl("widget bar child=t1\ntext t1 color=ffffff font=\"Sans\" align_x=c");
+        let rc = render_kdl(
+            "widget bar child=t1\ntext t1 color=ffffff font=f1 align_x=c\nfont f1 family=\"Sans\" style=italic",
+        );
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(
             w,
