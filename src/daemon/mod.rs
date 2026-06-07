@@ -490,17 +490,16 @@ impl App {
         let (width, height) = (w as u32, h as u32);
         let (cx, cy) = anchor.cursor;
 
-        let popup = IcedNewPopupSettings {
-            size: (width, height),
-            parent: anchor.parent,
-            anchor_rect: (cx as i32, cy as i32, 1, 1),
-            anchor: PopupAnchor::BottomLeft,
-            gravity: PopupGravity::BottomRight,
-            constraint_adjustment: PopupConstraintAdjustment::FlipX
-                | PopupConstraintAdjustment::FlipY
-                | PopupConstraintAdjustment::SlideX
-                | PopupConstraintAdjustment::SlideY,
-        };
+        let popup =
+            IcedNewPopupSettings::new(anchor.parent, (width, height), (cx as i32, cy as i32, 1, 1))
+                .anchor(PopupAnchor::BottomLeft)
+                .gravity(PopupGravity::BottomRight)
+                .constraint_adjustment(
+                    PopupConstraintAdjustment::FlipX
+                        | PopupConstraintAdjustment::FlipY
+                        | PopupConstraintAdjustment::SlideX
+                        | PopupConstraintAdjustment::SlideY,
+                );
         let (wid, mtask) = Message::popup_open(popup);
         self.menu_windows.insert(wid, 0);
         self.menus.push(crate::daemon::menu::MenuLevel {
@@ -627,20 +626,21 @@ impl App {
         let (w, h) = crate::render::menu::menu_pixel_wh(&children, &settings.menu);
         let (width, height) = (w as u32, h as u32);
 
-        let popup = IcedNewPopupSettings {
-            size: (width, height),
-            parent: parent_window,
-            anchor_rect: (
+        let popup = IcedNewPopupSettings::new(
+            parent_window,
+            (width, height),
+            (
                 0,
                 top_offset,
                 parent_width as i32,
                 crate::render::menu::row_height(&settings.menu) as i32,
             ),
-            anchor: PopupAnchor::TopRight,
-            gravity: PopupGravity::BottomRight,
-            constraint_adjustment: PopupConstraintAdjustment::FlipX
-                | PopupConstraintAdjustment::SlideY,
-        };
+        )
+        .anchor(PopupAnchor::TopRight)
+        .gravity(PopupGravity::BottomRight)
+        .constraint_adjustment(
+            PopupConstraintAdjustment::FlipX | PopupConstraintAdjustment::SlideY,
+        );
         let (wid, mtask) = Message::popup_open(popup);
         let new_level = self.menus.len();
         self.menu_windows.insert(wid, new_level);

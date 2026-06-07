@@ -294,7 +294,7 @@ fn resolve_button(b: &Button, ctx: &mut Ctx) -> ResolvedButton {
         style_active: resolve_style_ref(&b.style_active, &b.span, ctx).map(|p| p.to_button()),
         style_disabled: resolve_style_ref(&b.style_disabled, &b.span, ctx).map(|p| p.to_button()),
         text: resolve_field(&b.text, "text", &b.span, coerce::coerce_string, ctx),
-        font: resolve_field(&b.font, "font", &b.span, coerce::coerce_string, ctx),
+        font: resolve_font_ref(&b.font, &b.span, ctx),
         span: b.span.clone(),
     }
 }
@@ -427,6 +427,30 @@ fn resolve_style(s: &Style, span: &Span, ctx: &mut Ctx) -> PreResolvedStyle {
         border: resolve_border_ref(&s.border, span, ctx),
         shadow: resolve_shadow_ref(&s.shadow, span, ctx),
         snap: resolve_field(&s.snap, "snap", &s.span, coerce::coerce_bool, ctx),
+    }
+}
+
+pub(crate) fn resolve_font_ref(
+    id_field: &Option<FieldValue<String>>,
+    span: &Span,
+    ctx: &mut Ctx,
+) -> Option<iced::Font> {
+    let id = literal_or_eval_id(id_field, span, ctx)?;
+    match ctx.config.fonts.get(&id) {
+        Some(font) => {
+            let font = *font;
+            ctx.used.insert(id);
+            Some(font)
+        }
+        None => {
+            ctx.errs.push(ConfigError {
+                kind: ConfigErrorKind::UnresolvedReference,
+                span: span.clone(),
+                message: format!("unresolved reference \"{}\"", id),
+                severity: Severity::Error,
+            });
+            None
+        }
     }
 }
 
@@ -566,7 +590,7 @@ pub(crate) fn resolve_text(t: &TextEl, ctx: &mut Ctx) -> ResolvedText {
         ),
         align_y: resolve_field(&t.align_y, "align_y", &t.span, coerce::coerce_align_y, ctx),
         color: resolve_field(&t.color, "color", &t.span, coerce::coerce_color, ctx),
-        font: resolve_field(&t.font, "font", &t.span, coerce::coerce_string, ctx),
+        font: resolve_font_ref(&t.font, &t.span, ctx),
         content: resolve_field(&t.content, "text", &t.span, coerce::coerce_string, ctx),
         span: t.span.clone(),
     }

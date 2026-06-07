@@ -1,7 +1,7 @@
 use crate::config::types::Span;
 use iced::alignment::{Horizontal, Vertical};
 use iced::widget::{button, container};
-use iced::{Background, Border, Color, Padding, Shadow, border::Radius};
+use iced::{Font, Background, Border, Color, Padding, Shadow, border::Radius};
 use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 use indexmap::IndexMap;
 use std::str::FromStr;
@@ -65,7 +65,7 @@ pub struct ResolvedButton {
     pub style_active: Option<button::Style>,
     pub style_disabled: Option<button::Style>,
     pub text: Option<String>,
-    pub font: Option<String>,
+    pub font: Option<Font>,
     pub span: Span,
 }
 
@@ -100,7 +100,7 @@ pub struct ResolvedText {
     pub align_x: Option<iced::advanced::text::Alignment>,
     pub align_y: Option<Vertical>,
     pub color: Option<Color>,
-    pub font: Option<String>,
+    pub font: Option<Font>,
     pub content: Option<String>,
     pub span: Span,
 }
@@ -139,7 +139,7 @@ impl PreResolvedStyle {
 
 #[derive(Debug, Clone)]
 pub struct ResolvedMenu {
-    pub font_name: Option<String>,
+    pub font: Option<Font>,
     pub font_size: f32,
     pub icon_size: f32,
     pub row_spacing: f32,
@@ -155,7 +155,7 @@ pub struct ResolvedMenu {
 impl Default for ResolvedMenu {
     fn default() -> Self {
         ResolvedMenu {
-            font_name: None,
+            font: None,
             font_size: 16.0,
             icon_size: 16.0,
             row_spacing: 6.0,
@@ -254,7 +254,7 @@ pub struct ResolvedNotificationSettings {
     pub secondary_text: Color,
     pub bg: Color,
     pub border: Option<Border>,
-    pub font: Option<String>,
+    pub font: Option<Font>,
     pub anchor: Anchor,
     pub margin: (f32, f32, f32, f32),
     pub gap: f32,
@@ -277,7 +277,7 @@ impl Default for ResolvedNotificationSettings {
                 width: 2.0,
                 radius: Radius::from(10.0),
             }),
-            font: None,
+            font: Some(Font::DEFAULT),
             anchor: Anchor::Top | Anchor::Right,
             margin: (12.0, 12.0, 12.0, 12.0),
             gap: 8.0,

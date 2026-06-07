@@ -156,10 +156,8 @@ fn resolve_notification(
         out.bg = v;
     }
     out.border = elements::resolve_border_ref(&ns.border, span, &mut ctx);
-    if let Some(v) =
-        elements::resolve_field(&ns.font, "font", span, coerce::coerce_string, &mut ctx)
-    {
-        out.font = Some(v);
+    if let Some(f) = elements::resolve_font_ref(&ns.font, span, &mut ctx) {
+        out.font = Some(f);
     }
     if let Some(v) =
         elements::resolve_field(&ns.anchor, "anchor", span, coerce::coerce_anchor, &mut ctx)

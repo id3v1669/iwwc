@@ -6,7 +6,6 @@ use iced::{Element, Length};
 use crate::config::resolved::ResolvedNotificationSettings;
 use crate::notification::types::{Notification, PreCalc, action_pairs};
 use crate::render::UiMessage;
-use crate::render::convert;
 
 pub fn view_notification<'a>(
     settings: &ResolvedNotificationSettings,
@@ -33,14 +32,14 @@ pub fn view_notification<'a>(
         .size(precalc.font_size_summary)
         .color(settings.primary_text);
     if let Some(f) = &settings.font {
-        summary = summary.font(convert::font(f));
+        summary = summary.font(*f);
     }
 
     let mut body = text(n.body.clone())
         .size(precalc.font_size_body)
         .color(settings.secondary_text);
     if let Some(f) = &settings.font {
-        body = body.font(convert::font(f));
+        body = body.font(*f);
     }
 
     let text_block = column![

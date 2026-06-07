@@ -62,6 +62,7 @@ pub struct ParsedConfig {
     pub styles: IndexMap<String, Style>,
     pub borders: IndexMap<String, Border>,
     pub shadows: IndexMap<String, Shadow>,
+    pub fonts: IndexMap<String, iced::Font>,
     pub notification: Option<NotificationSettings>,
     pub apptray: Option<ApptraySettings>,
     pub pulls: IndexMap<String, PullDecl>,

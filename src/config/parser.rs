@@ -1,6 +1,7 @@
 use crate::config::primitives::{
-    AnchorError, parse_align_x, parse_align_y, parse_anchor, parse_color, parse_interval,
-    parse_layer, parse_output, parse_text_align_x,
+    AnchorError, parse_align_x, parse_align_y, parse_anchor, parse_color,
+    parse_font_stretch, parse_font_style, parse_font_weight, parse_interval, parse_layer,
+    parse_output, parse_text_align_x,
 };
 use crate::config::types::PullDecl;
 use crate::config::types::{FieldValue, ParsedConfig, SourceText, Span};
@@ -183,6 +184,7 @@ pub(crate) fn parse_document(
                     | "style"
                     | "border"
                     | "shadow"
+                    | "font"
             )
             && first_positional_string(node).as_deref() == Some("apptray")
         {
@@ -241,6 +243,15 @@ pub(crate) fn parse_document(
                         errs.push(dup_id_warning(&id, "shadow", node, &source));
                     } else {
                         out.shadows.insert(id, s);
+                    }
+                }
+            }
+            "font" => {
+                if let Some((id, f)) = build_font(node, &source, &mut errs) {
+                    if out.fonts.contains_key(&id) {
+                        errs.push(dup_id_warning(&id, "font", node, &source));
+                    } else {
+                        out.fonts.insert(id, f);
                     }
                 }
             }
@@ -1071,6 +1082,91 @@ pub(crate) fn build_style(
 }
 
 use crate::config::types::Border;
+
+fn font_enum<T>(
+    node: &kdl::KdlNode,
+    name: &str,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+    parse: impl Fn(&str) -> Option<T>,
+    expected: &str,
+) -> Option<T> {
+    let entry = prop(node, name)?;
+    match entry.value() {
+        kdl::KdlValue::String(s) => match parse(s) {
+            Some(v) => Some(v),
+            None => {
+                errs.push(ConfigError {
+                    kind: ConfigErrorKind::InvalidEnumValue,
+                    span: span_of_entry(entry, source),
+                    message: expected.into(),
+                    severity: Severity::Error,
+                });
+                None
+            }
+        },
+        _ => {
+            errs.push(ConfigError {
+                kind: ConfigErrorKind::InvalidEnumValue,
+                span: span_of_entry(entry, source),
+                message: expected.into(),
+                severity: Severity::Error,
+            });
+            None
+        }
+    }
+}
+
+pub(crate) fn build_font(
+    node: &kdl::KdlNode,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) -> Option<(String, iced::Font)> {
+    let id = first_positional_string(node)?;
+    let mut font = iced::Font::DEFAULT;
+    if let Some(entry) = prop(node, "family") {
+        match entry.value() {
+            kdl::KdlValue::String(s) => font.family = iced::font::Family::Name(Box::leak(s.to_string().into_boxed_str())),
+            _ => errs.push(ConfigError {
+                kind: ConfigErrorKind::InvalidEnumValue,
+                span: span_of_entry(entry, source),
+                message: "font family must be a string".into(),
+                severity: Severity::Error,
+            }),
+        }
+    }
+    if let Some(v) = font_enum(
+        node,
+        "weight",
+        source,
+        errs,
+        parse_font_weight,
+        "invalid weight, expected one of: thin, extra-light, light, normal, medium, semibold, bold, extra-bold, black",
+    ) {
+        font.weight = v;
+    }
+    if let Some(v) = font_enum(
+        node,
+        "stretch",
+        source,
+        errs,
+        parse_font_stretch,
+        "invalid stretch, expected one of: ultra-condensed, extra-condensed, condensed, semi-condensed, normal, semi-expanded, expanded, extra-expanded, ultra-expanded",
+    ) {
+        font.stretch = v;
+    }
+    if let Some(v) = font_enum(
+        node,
+        "style",
+        source,
+        errs,
+        parse_font_style,
+        "invalid style, expected one of: normal, italic, oblique",
+    ) {
+        font.style = v;
+    }
+    Some((id, font))
+}
 
 pub(crate) fn build_border(
     node: &kdl::KdlNode,

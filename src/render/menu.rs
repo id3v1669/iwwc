@@ -1,16 +1,14 @@
 use iced::widget::{Space, column, container, image, mouse_area, row, text};
-use iced::{Element, Length};
+use iced::{Element, Length, Font};
 
 use crate::config::resolved::ResolvedMenu;
 use crate::render::UiMessage;
 use crate::tray::menu_types::{MenuIcon, MenuItem, Toggle};
 
-/// Menu font family. Constant for now, find in old code converter of cfg to static
-pub const MENU_FONT: iced::Font = iced::Font::DEFAULT;
 /// Submenu indicator glyph. Config??
 pub const SUBMENU_ARROW: &str = "\u{25b8}";
 
-fn measure_text(content: &str, font_size: f32) -> (f32, f32) {
+fn measure_text(content: &str, font_size: f32, font: Option<Font>) -> (f32, f32) {
     use iced::advanced::graphics::text::Paragraph as GraphicsParagraph;
     use iced::advanced::text::{Alignment, LineHeight, Paragraph as _, Shaping, Text, Wrapping};
 
@@ -22,7 +20,7 @@ fn measure_text(content: &str, font_size: f32) -> (f32, f32) {
         bounds: iced::Size::new(f32::INFINITY, f32::INFINITY),
         size: iced::Pixels(font_size),
         line_height: LineHeight::default(),
-        font: MENU_FONT,
+        font: font.unwrap_or_default(),
         align_x: Alignment::Default,
         align_y: iced::alignment::Vertical::Top,
         shaping: Shaping::Advanced,
@@ -63,7 +61,7 @@ pub fn menu_pixel_wh(items: &[MenuItem], m: &ResolvedMenu) -> (f32, f32) {
         + m.button_padding.right;
 
     let rh = row_height(m);
-    let (arrow_w, _) = measure_text(SUBMENU_ARROW, m.font_size);
+    let (arrow_w, _) = measure_text(SUBMENU_ARROW, m.font_size, m.font);
     let mut max_w = 0.0_f32;
     let mut content_h = 0.0_f32;
     for item in items.iter().filter(|i| i.visible) {
@@ -72,7 +70,7 @@ pub fn menu_pixel_wh(items: &[MenuItem], m: &ResolvedMenu) -> (f32, f32) {
             continue;
         }
         content_h += rh;
-        let (mut w, _) = measure_text(&row_text(item), m.font_size);
+        let (mut w, _) = measure_text(&row_text(item), m.font_size, m.font);
         w += cw;
         if !matches!(item.icon, MenuIcon::None) {
             w += m.icon_size + m.row_spacing;
@@ -104,7 +102,7 @@ pub fn row_height(m: &ResolvedMenu) -> f32 {
     .into_iter()
     .map(|s| s.map_or(0.0, |s| s.border.width))
     .fold(0.0_f32, f32::max);
-    let (_, line_h) = measure_text("M", m.font_size);
+    let (_, line_h) = measure_text("M", m.font_size, m.font);
     line_h.max(m.icon_size) + m.button_padding.top + m.button_padding.bottom + border * 2.0
 }
 
@@ -163,7 +161,7 @@ pub fn view_menu(
 
         let mut line = row![
             text(row_text(item))
-                .font(MENU_FONT)
+                .font(m.font.unwrap_or_default())
                 .size(m.font_size)
                 .shaping(iced::widget::text::Shaping::Advanced)
                 .wrapping(iced::widget::text::Wrapping::None)
@@ -212,7 +210,7 @@ pub fn view_menu(
         if item.has_submenu {
             line = line.push(
                 text(SUBMENU_ARROW)
-                    .font(MENU_FONT)
+                    .font(m.font.unwrap_or_default())
                     .size(m.font_size)
                     .shaping(iced::widget::text::Shaping::Advanced),
             );
