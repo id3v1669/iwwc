@@ -145,7 +145,10 @@ impl App {
         let mut subs = vec![
             ipc_bridge::subscription(),
             crate::notification::subscription::subscription(),
-            crate::tray::subscription::subscription(self.store.resolved().icon_theme.clone()),
+            crate::tray::subscription::subscription(
+                self.store.resolved().icon_theme.clone(),
+                self.store.resolved().apptray.icon_size as u16,
+            ),
             iced::window::close_events().map(Message::WindowClosed),
             iced::keyboard::listen().map(|ev| match ev {
                 iced::keyboard::Event::KeyPressed {

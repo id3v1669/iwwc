@@ -1,5 +1,5 @@
 use iced::widget::{Space, column, container, image, mouse_area, row, text};
-use iced::{Element, Length, Font};
+use iced::{Element, Font, Length};
 
 use crate::config::resolved::ResolvedMenu;
 use crate::render::UiMessage;
@@ -196,14 +196,10 @@ pub fn view_menu(
                     .align_y(iced::alignment::Vertical::Center);
             }
             MenuIcon::Png(handle) => {
-                line = row![
-                    image(handle.clone())
-                        .width(m.icon_size)
-                        .height(m.icon_size)
-                ]
-                .push(line)
-                .spacing(m.row_spacing)
-                .align_y(iced::alignment::Vertical::Center);
+                line = row![image(handle.clone()).width(m.icon_size).height(m.icon_size)]
+                    .push(line)
+                    .spacing(m.row_spacing)
+                    .align_y(iced::alignment::Vertical::Center);
             }
             MenuIcon::None => {}
         }
