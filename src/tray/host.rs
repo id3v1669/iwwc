@@ -47,18 +47,3 @@ pub async fn build_item(
         menu_path,
     })
 }
-
-pub async fn snapshot(
-    conn: &Connection,
-    entries: &[String],
-    icon_size: u16,
-    icon_theme: Option<&str>,
-) -> Vec<TrayItem> {
-    let mut out = Vec::new();
-    for e in entries {
-        if let Some(item) = build_item(conn, e, icon_size, icon_theme).await {
-            out.push(item);
-        }
-    }
-    out
-}

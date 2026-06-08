@@ -13,7 +13,7 @@ Before Beta:
 - [ ] logic for notifications that prevents timeout on hover
 - [x] fix tests under clippy
 - [x] Tray menu direction is an ugly workaround that doesn't work well, replicate xdg_popup for layershell like one the eww uses.(exwlshelleventloop patch)
-- [ ] figure out how to properly calculate menu and submenu width and rm temp statics (calc based on text and font or make proper eval via iced, test what is more efficient and stable).
+- [x] figure out how to properly calculate menu and submenu width and rm temp statics (calc based on text and font or make proper eval via iced, test what is more efficient and stable).
 - [x] Rm bunch of leftover structures in favor of orig iced stucts (old code from iced fork and when layershell lib wasn't used.) #oldmigration
 
 Beta:

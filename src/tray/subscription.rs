@@ -6,6 +6,7 @@ use iced::Subscription;
 use zbus::Connection;
 
 use crate::daemon::Message;
+use crate::tray::host::build_item;
 use crate::tray::proxy::StatusNotifierItemProxy;
 use crate::tray::watcher::{Items, Watcher};
 
@@ -15,7 +16,6 @@ pub fn connection() -> Option<Connection> {
     CONNECTION.get().cloned()
 }
 
-const ICON_SIZE: u16 = 24;
 const WATCHER_NAME: &str = "org.kde.StatusNotifierWatcher";
 const WATCHER_PATH: &str = "/StatusNotifierWatcher";
 
@@ -37,8 +37,8 @@ fn split_entry(entry: &str) -> (String, String) {
     }
 }
 
-fn tray_stream(icon_theme: &Option<String>) -> futures::stream::BoxStream<'static, Message> {
-    let icon_theme = icon_theme.clone();
+fn tray_stream(args: &(Option<String>, u16)) -> futures::stream::BoxStream<'static, Message> {
+    let (icon_theme, icon_size) = args.clone();
     iced::stream::channel(16, async move |mut output| {
         let conn = match Connection::session().await {
             Ok(c) => c,
@@ -95,10 +95,21 @@ fn tray_stream(icon_theme: &Option<String>) -> futures::stream::BoxStream<'stati
 
         loop {
             let entries = { items.0.lock().unwrap().clone() };
-            let snap =
-                crate::tray::host::snapshot(&conn, &entries, ICON_SIZE, icon_theme.as_deref())
-                    .await;
-            if output.send(Message::TrayItems(snap)).await.is_err() {
+            if output
+                .send(Message::TrayItems({
+                    let mut out = Vec::new();
+                    for e in &entries {
+                        if let Some(item) =
+                            build_item(&conn, e, icon_size, icon_theme.as_deref()).await
+                        {
+                            out.push(item);
+                        }
+                    }
+                    out
+                }))
+                .await
+                .is_err()
+            {
                 break;
             }
 
@@ -145,6 +156,6 @@ fn tray_stream(icon_theme: &Option<String>) -> futures::stream::BoxStream<'stati
     .boxed()
 }
 
-pub fn subscription(icon_theme: Option<String>) -> Subscription<Message> {
-    Subscription::run_with(icon_theme, tray_stream)
+pub fn subscription(icon_theme: Option<String>, icon_size: u16) -> Subscription<Message> {
+    Subscription::run_with((icon_theme, icon_size), tray_stream)
 }

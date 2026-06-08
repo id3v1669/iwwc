@@ -1,7 +1,7 @@
 use crate::config::types::Span;
 use iced::alignment::{Horizontal, Vertical};
 use iced::widget::{button, container};
-use iced::{Font, Background, Border, Color, Padding, Shadow, border::Radius};
+use iced::{Background, Border, Color, Font, Padding, Shadow, border::Radius};
 use iced_layershell::reexport::{Anchor, Layer, OutputOption};
 use indexmap::IndexMap;
 use std::str::FromStr;

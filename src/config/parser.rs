@@ -1,7 +1,7 @@
 use crate::config::primitives::{
-    AnchorError, parse_align_x, parse_align_y, parse_anchor, parse_color,
-    parse_font_stretch, parse_font_style, parse_font_weight, parse_interval, parse_layer,
-    parse_output, parse_text_align_x,
+    AnchorError, parse_align_x, parse_align_y, parse_anchor, parse_color, parse_font_stretch,
+    parse_font_style, parse_font_weight, parse_interval, parse_layer, parse_output,
+    parse_text_align_x,
 };
 use crate::config::types::PullDecl;
 use crate::config::types::{FieldValue, ParsedConfig, SourceText, Span};
@@ -1126,7 +1126,9 @@ pub(crate) fn build_font(
     let mut font = iced::Font::DEFAULT;
     if let Some(entry) = prop(node, "family") {
         match entry.value() {
-            kdl::KdlValue::String(s) => font.family = iced::font::Family::Name(Box::leak(s.to_string().into_boxed_str())),
+            kdl::KdlValue::String(s) => {
+                font.family = iced::font::Family::Name(Box::leak(s.to_string().into_boxed_str()))
+            }
             _ => errs.push(ConfigError {
                 kind: ConfigErrorKind::InvalidEnumValue,
                 span: span_of_entry(entry, source),
