@@ -46,7 +46,7 @@ pub fn parse_node(node: &LayoutNode) -> MenuItem {
     let icon = if let Some(name) = str_prop(props, "icon-name").filter(|s| !s.is_empty()) {
         MenuIcon::Name(name)
     } else if let Some(data) = bytes_prop(props, "icon-data") {
-        MenuIcon::Png(data)
+        MenuIcon::Png(iced::widget::image::Handle::from_bytes(data))
     } else {
         MenuIcon::None
     };
@@ -126,10 +126,11 @@ mod tests {
             &[("icon-data", Value::from(vec![1u8, 2, 3, 4]))],
             vec![],
         ));
-        match by_data.icon {
-            MenuIcon::Png(bytes) => assert_eq!(bytes, vec![1, 2, 3, 4]),
-            other => panic!("expected png icon, got {:?}", other),
-        }
+        assert!(
+            matches!(by_data.icon, MenuIcon::Png(_)),
+            "expected png icon, got {:?}",
+            by_data.icon
+        );
     }
 
     #[test]

@@ -195,9 +195,9 @@ pub fn view_menu(
                     .spacing(m.row_spacing)
                     .align_y(iced::alignment::Vertical::Center);
             }
-            MenuIcon::Png(bytes) => {
+            MenuIcon::Png(handle) => {
                 line = row![
-                    image(image::Handle::from_bytes(bytes.clone()))
+                    image(handle.clone())
                         .width(m.icon_size)
                         .height(m.icon_size)
                 ]
