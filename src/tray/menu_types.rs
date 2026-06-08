@@ -22,7 +22,7 @@ pub enum Toggle {
 pub enum MenuIcon {
     None,
     Name(String),
-    Png(Vec<u8>),
+    Png(iced::widget::image::Handle),
 }
 
 pub fn strip_mnemonic(label: &str) -> String {
