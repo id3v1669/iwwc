@@ -124,6 +124,8 @@ pub fn parse_text_align_x(s: &str) -> Option<TextAlignment> {
 pub fn parse_output(s: &str) -> OutputOption {
     if s == "last" {
         OutputOption::LastOutput
+    } else if s == "active" {
+        OutputOption::Active
     } else {
         OutputOption::OutputName(s.to_string())
     }
