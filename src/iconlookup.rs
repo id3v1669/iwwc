@@ -4,12 +4,12 @@ pub fn effective_theme(icon_theme: Option<&str>) -> String {
     icon_theme
         .filter(|t| !t.is_empty())
         .map(|t| t.to_string())
-        .or_else(nix_freedesktop_icons::default_theme_gtk)
+        .or_else(freedesktop_icons::default_theme_gtk)
         .unwrap_or_else(|| "hicolor".to_string())
 }
 
 pub fn lookup_named(name: &str, size: u16, theme: &str) -> Option<PathBuf> {
-    nix_freedesktop_icons::lookup(name)
+    freedesktop_icons::lookup(name)
         .with_size(size)
         .with_theme(theme)
         .with_cache()

@@ -135,4 +135,16 @@ mod tests {
             iced_layershell::reexport::OutputOption::LastOutput
         ));
     }
+
+    #[test]
+    fn output_active() {
+        let w = widget(
+            "widget bar anchor=\"t\" h=30 w=100 output=\"active\" child=t1\ntext t1",
+            "bar",
+        );
+        assert!(matches!(
+            layer_settings_for(&w).output_option,
+            iced_layershell::reexport::OutputOption::Active
+        ));
+    }
 }

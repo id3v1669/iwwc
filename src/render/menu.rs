@@ -178,7 +178,7 @@ pub fn view_menu(
                         .width(m.icon_size)
                         .height(m.icon_size)
                         .into()
-                } else if let Some(found) = nix_freedesktop_icons::lookup(n)
+                } else if let Some(found) = freedesktop_icons::lookup(n)
                     .with_size(m.icon_size as u16)
                     .with_cache()
                     .find()

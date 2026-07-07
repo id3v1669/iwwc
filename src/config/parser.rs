@@ -1738,6 +1738,7 @@ mod tests {
         assert_eq!(parse_align_y("mid"), None);
 
         assert_eq!(parse_output("last"), OutputOption::LastOutput);
+        assert_eq!(parse_output("active"), OutputOption::Active);
         assert_eq!(
             parse_output("HDMI-A-1"),
             OutputOption::OutputName("HDMI-A-1".into())
