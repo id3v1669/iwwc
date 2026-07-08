@@ -2,7 +2,7 @@
 
 Before Beta:
 
-- [ ] fix overlap on exclusive zones for vertical widget. Doesn't recalc to shrink on foreign exclusive widget entry
+- [x] fix overlap on exclusive zones for vertical widget. Doesn't recalc to shrink on foreign exclusive widget entry. (I didn't fix it, just works now, lib fix?)
 - [ ] fix issue with conflicting anchors and 0 h or w should default to max availible(local patch, Furute fix lib)
 - [x] expose absolute mosue position as it's needed for correct apptray work (exwlshelleventloop patch): NOT VALID, IMPLEMENTED VIA xdg_popup
 - [ ] animation support
@@ -10,7 +10,7 @@ Before Beta:
 - [ ] iwwc.gpu.(load/temp/vram)(amd)
 - [x] fix styles for apptray
 - [x] Add proper font validation, conversion to static and tests
-- [ ] logic for notifications that prevents timeout on hover
+- [x] logic for notifications that prevents timeout on hover
 - [x] fix tests under clippy
 - [x] Tray menu direction is an ugly workaround that doesn't work well, replicate xdg_popup for layershell like one the eww uses.(exwlshelleventloop patch)
 - [x] figure out how to properly calculate menu and submenu width and rm temp statics (calc based on text and font or make proper eval via iced, test what is more efficient and stable).
