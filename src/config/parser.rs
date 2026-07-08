@@ -1535,6 +1535,7 @@ pub(crate) fn build_notification(
         timeout: field_f32("timeout", node, source, errs),
         layer: field_layer("layer", node, source, errs),
         respect_notification_icon: field_bool("respect_notification_icon", node, source, errs),
+        freeze_on_hover: field_bool("freeze_on_hover", node, source, errs),
         span: Span {
             source: source.clone(),
             span: node.span(),

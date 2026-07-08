@@ -33,7 +33,10 @@ pub enum Message {
     WindowClosed(WindowId),
     Notify(crate::notification::types::Notification),
     NotifClose(u32),
-    NotifTimeout(u32),
+    NotifTimeout {
+        id: u32,
+        generation: u64,
+    },
     TrayItems(Vec<crate::tray::types::TrayItem>),
     MenuOpen {
         bus_name: String,
@@ -48,6 +51,8 @@ pub enum Message {
         y: f32,
     },
     NotifRightClick(WindowId),
+    NotifHoverEnter(WindowId),
+    NotifHoverLeave(WindowId),
     PullTick(String),
     PullResult {
         name: String,
@@ -74,6 +79,7 @@ struct NotifState {
     icon: std::path::PathBuf,
     precalc: PreCalc,
     window: Option<WindowId>,
+    timer_gen: u64,
 }
 
 pub fn run(store: Store, config_path: std::path::PathBuf) -> iced_layershell::Result {
@@ -206,7 +212,13 @@ impl App {
             }
             Message::Notify(n) => self.on_notify(n),
             Message::NotifClose(id) => self.close_notification(id, 3),
-            Message::NotifTimeout(id) => self.close_notification(id, 1),
+            Message::NotifTimeout { id, generation } => {
+                if timer_is_current(&self.notifications, id, generation) {
+                    self.close_notification(id, 1)
+                } else {
+                    Task::none()
+                }
+            }
             Message::TrayItems(items) => {
                 self.tray_items = items;
                 Task::none()
@@ -282,6 +294,24 @@ impl App {
                 Some(nid) => self.close_notification(nid, 2),
                 None => Task::none(),
             },
+            Message::NotifHoverEnter(window) => {
+                if self.store.resolved().notification.freeze_on_hover
+                    && let Some(&id) = self.notif_windows.get(&window)
+                    && let Some(st) = self.notifications.get_mut(&id)
+                {
+                    st.timer_gen += 1;
+                }
+                Task::none()
+            }
+            Message::NotifHoverLeave(window) => {
+                if !self.store.resolved().notification.freeze_on_hover {
+                    return Task::none();
+                }
+                match self.notif_windows.get(&window).copied() {
+                    Some(id) => self.arm_timer(id),
+                    None => Task::none(),
+                }
+            }
             Message::Noop => Task::none(),
             _ => Task::none(),
         }
@@ -376,7 +406,7 @@ impl App {
             &config_dir,
         );
         let precalc = PreCalc::generate(&settings);
-        let timer = timeout_task(id, n.expire_timeout, &settings);
+        let timer = self.arm_timer(id);
 
         if self.notifications.contains_key(&id) {
             let st = self.notifications.get_mut(&id).unwrap();
@@ -393,6 +423,7 @@ impl App {
                 icon,
                 precalc,
                 window: None,
+                timer_gen: 0,
             },
         );
         if self.notif_windows.len() >= settings.max as usize {
@@ -422,6 +453,17 @@ impl App {
         Task::batch(tasks)
     }
 
+    fn arm_timer(&mut self, id: u32) -> Task<Message> {
+        let settings = self.store.resolved().notification.clone();
+        let Some(st) = self.notifications.get_mut(&id) else {
+            return Task::none();
+        };
+        st.timer_gen += 1;
+        let generation = st.timer_gen;
+        let timeout = st.notification.expire_timeout;
+        timeout_task(id, generation, timeout, &settings)
+    }
+
     fn promote_queued(&mut self) -> Task<Message> {
         let settings = self.store.resolved().notification.clone();
         if self.notif_windows.len() >= settings.max as usize {
@@ -435,11 +477,6 @@ impl App {
         let Some(id) = next else {
             return Task::none();
         };
-        let timeout = self
-            .notifications
-            .get(&id)
-            .map(|s| s.notification.expire_timeout)
-            .unwrap_or(-1);
         let (wid, open_task) = Message::layershell_open(
             crate::daemon::notification::notif_layer_settings(&settings, 0),
         );
@@ -447,7 +484,7 @@ impl App {
             st.window = Some(wid);
         }
         self.notif_windows.insert(wid, id);
-        Task::batch([open_task, timeout_task(id, timeout, &settings)])
+        Task::batch([open_task, self.arm_timer(id)])
     }
 
     fn restack(&self) -> Task<Message> {
@@ -766,6 +803,12 @@ fn pointer_event(
                 y: position.y,
             })
         }
+        iced::Event::Mouse(iced::mouse::Event::CursorEntered) => {
+            Some(Message::NotifHoverEnter(window))
+        }
+        iced::Event::Mouse(iced::mouse::Event::CursorLeft) => {
+            Some(Message::NotifHoverLeave(window))
+        }
         iced::Event::Mouse(ButtonReleased(Button::Right)) => Some(Message::NotifRightClick(window)),
         _ => None,
     }
@@ -842,8 +885,16 @@ fn tray_method_task(bus: String, path: String, method: TrayMethod) -> Task<Messa
     )
 }
 
+fn timer_is_current(notifications: &IndexMap<u32, NotifState>, id: u32, generation: u64) -> bool {
+    notifications
+        .get(&id)
+        .map(|st| st.timer_gen == generation)
+        .unwrap_or(false)
+}
+
 fn timeout_task(
     id: u32,
+    generation: u64,
     timeout: i32,
     settings: &crate::config::resolved::ResolvedNotificationSettings,
 ) -> Task<Message> {
@@ -855,7 +906,10 @@ fn timeout_task(
     } else {
         timeout as u64
     });
-    Task::perform(tokio::time::sleep(dur), move |_| Message::NotifTimeout(id))
+    Task::perform(tokio::time::sleep(dur), move |_| Message::NotifTimeout {
+        id,
+        generation,
+    })
 }
 
 fn emit_closed_task(id: u32, reason: u32) -> Task<Message> {

@@ -194,6 +194,15 @@ fn resolve_notification(
     ) {
         out.respect_icon = v;
     }
+    if let Some(v) = elements::resolve_field(
+        &ns.freeze_on_hover,
+        "freeze_on_hover",
+        span,
+        coerce::coerce_bool,
+        &mut ctx,
+    ) {
+        out.freeze_on_hover = v;
+    }
     out
 }
 
