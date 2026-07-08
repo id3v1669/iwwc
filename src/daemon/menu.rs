@@ -31,3 +31,29 @@ pub struct MenuAnchor {
     pub parent: WindowId,
     pub cursor: (f32, f32),
 }
+
+pub fn visible_items(root: &MenuItem) -> Vec<MenuItem> {
+    root.children
+        .iter()
+        .filter(|i| i.visible)
+        .cloned()
+        .collect()
+}
+
+pub fn submenu_items(items: &[MenuItem], id: i32) -> Option<Vec<MenuItem>> {
+    let item = items.iter().find(|i| i.id == id)?;
+    if !item.has_submenu || !item.enabled {
+        return None;
+    }
+    let children: Vec<MenuItem> = item
+        .children
+        .iter()
+        .filter(|c| c.visible)
+        .cloned()
+        .collect();
+    if children.is_empty() {
+        None
+    } else {
+        Some(children)
+    }
+}

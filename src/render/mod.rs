@@ -18,6 +18,7 @@ pub enum UiMessage {
         idx: usize,
         delta: f32,
     },
+    TrayHover(usize),
     MenuClick {
         level: usize,
         id: i32,
@@ -239,6 +240,7 @@ fn build_apptray(s: &ResolvedApptraySettings, ctx: &RenderCtx) -> Element<'stati
             (UiMessage::TrayActivate(idx), menu_msg)
         };
         let area = iced::widget::mouse_area(icon)
+            .on_enter(UiMessage::TrayHover(idx))
             .on_press(left)
             .on_right_press(right)
             .on_middle_press(UiMessage::TraySecondary(idx))
