@@ -171,25 +171,19 @@ pub fn view_menu(
         .width(Length::Fill);
 
         match &item.icon {
-            MenuIcon::Name(n) => {
-                let p = std::path::Path::new(n);
-                let h: Element<'static, UiMessage> = if p.is_absolute() && p.is_file() {
+            MenuIcon::File(p) => {
+                line = row![
                     image(image::Handle::from_path(p))
                         .width(m.icon_size)
                         .height(m.icon_size)
-                        .into()
-                } else if let Some(found) = freedesktop_icons::lookup(n)
-                    .with_size(m.icon_size as u16)
-                    .with_cache()
-                    .find()
-                {
-                    image(image::Handle::from_path(found))
-                        .width(m.icon_size)
-                        .height(m.icon_size)
-                        .into()
-                } else {
-                    Space::new().width(m.icon_size).height(m.icon_size).into()
-                };
+                ]
+                .push(line)
+                .spacing(m.row_spacing)
+                .align_y(iced::alignment::Vertical::Center);
+            }
+            MenuIcon::Name(_) => {
+                let h: Element<'static, UiMessage> =
+                    Space::new().width(m.icon_size).height(m.icon_size).into();
                 line = row![h]
                     .push(line)
                     .spacing(m.row_spacing)

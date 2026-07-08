@@ -22,7 +22,29 @@ pub enum Toggle {
 pub enum MenuIcon {
     None,
     Name(String),
+    File(std::path::PathBuf),
     Png(iced::widget::image::Handle),
+}
+
+pub fn resolve_icons(item: &mut MenuItem, size: u16) {
+    if let MenuIcon::Name(name) = &item.icon {
+        let p = std::path::Path::new(name);
+        item.icon = if p.is_absolute() && p.is_file() {
+            MenuIcon::File(p.to_path_buf())
+        } else {
+            match freedesktop_icons::lookup(name)
+                .with_size(size)
+                .with_cache()
+                .find()
+            {
+                Some(found) => MenuIcon::File(found),
+                None => MenuIcon::None,
+            }
+        };
+    }
+    for child in &mut item.children {
+        resolve_icons(child, size);
+    }
 }
 
 pub fn strip_mnemonic(label: &str) -> String {

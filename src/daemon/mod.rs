@@ -273,7 +273,10 @@ impl App {
                                 let refresh = self.spawn_menu_fetch(bus, path, true);
                                 Task::batch([open, refresh])
                             }
-                            None => menu_fetch_task(bus, path, anchor),
+                            None => {
+                                let icon_size = self.store.resolved().apptray.menu.icon_size as u16;
+                                menu_fetch_task(bus, path, anchor, icon_size)
+                            }
                         }
                     }
                     Some((_, None)) => self.tray_call(idx, TrayMethod::ContextMenu),
@@ -620,7 +623,8 @@ impl App {
             return Task::none();
         }
         self.menu_fetch_inflight.insert(key);
-        menu_layout_task(bus_name, menu_path, notify)
+        let icon_size = self.store.resolved().apptray.menu.icon_size as u16;
+        menu_layout_task(bus_name, menu_path, notify, icon_size)
     }
 
     fn open_root_menu(
@@ -919,6 +923,7 @@ fn menu_fetch_task(
     bus: String,
     path: String,
     anchor: crate::daemon::menu::MenuAnchor,
+    icon_size: u16,
 ) -> Task<Message> {
     Task::perform(
         async move {
@@ -933,7 +938,8 @@ fn menu_fetch_task(
                 .ok()?;
             let _ = proxy.about_to_show(0).await;
             let (_rev, layout) = proxy.get_layout(0, -1, &[]).await.ok()?;
-            let root = crate::tray::dbusmenu::parse_node(&layout);
+            let mut root = crate::tray::dbusmenu::parse_node(&layout);
+            crate::tray::menu_types::resolve_icons(&mut root, icon_size);
             Some((bus, path, root))
         },
         move |res| match res {
@@ -948,7 +954,7 @@ fn menu_fetch_task(
     )
 }
 
-fn menu_layout_task(bus: String, path: String, notify: bool) -> Task<Message> {
+fn menu_layout_task(bus: String, path: String, notify: bool, icon_size: u16) -> Task<Message> {
     let bus_name = bus.clone();
     let menu_path = path.clone();
     Task::perform(
@@ -966,7 +972,9 @@ fn menu_layout_task(bus: String, path: String, notify: bool) -> Task<Message> {
                 let _ = proxy.about_to_show(0).await;
             }
             let (_rev, layout) = proxy.get_layout(0, -1, &[]).await.ok()?;
-            Some(crate::tray::dbusmenu::parse_node(&layout))
+            let mut root = crate::tray::dbusmenu::parse_node(&layout);
+            crate::tray::menu_types::resolve_icons(&mut root, icon_size);
+            Some(root)
         },
         move |root| Message::MenuLayout {
             bus_name,
