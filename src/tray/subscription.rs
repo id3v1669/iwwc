@@ -6,6 +6,7 @@ use iced::Subscription;
 use zbus::Connection;
 
 use crate::daemon::Message;
+use crate::tray::dbusmenu::DBusMenuProxy;
 use crate::tray::host::build_item;
 use crate::tray::proxy::StatusNotifierItemProxy;
 use crate::tray::watcher::{Items, Watcher};
@@ -93,23 +94,19 @@ fn tray_stream(args: &(Option<String>, u16)) -> futures::stream::BoxStream<'stat
             }
         };
 
-        loop {
+        'outer: loop {
             let entries = { items.0.lock().unwrap().clone() };
-            if output
-                .send(Message::TrayItems({
-                    let mut out = Vec::new();
-                    for e in &entries {
-                        if let Some(item) =
-                            build_item(&conn, e, icon_size, icon_theme.as_deref()).await
-                        {
-                            out.push(item);
-                        }
-                    }
-                    out
-                }))
-                .await
-                .is_err()
-            {
+            let mut tray_items = Vec::new();
+            for e in &entries {
+                if let Some(item) = build_item(&conn, e, icon_size, icon_theme.as_deref()).await {
+                    tray_items.push(item);
+                }
+            }
+            let menu_keys: Vec<(String, String)> = tray_items
+                .iter()
+                .filter_map(|i| i.menu_path.clone().map(|p| (i.bus_name.clone(), p)))
+                .collect();
+            if output.send(Message::TrayItems(tray_items)).await.is_err() {
                 break;
             }
 
@@ -137,19 +134,46 @@ fn tray_stream(args: &(Option<String>, u16)) -> futures::stream::BoxStream<'stat
             }
             let mut merged = select_all(sigs);
 
-            tokio::select! {
-                _ = rx.recv() => {}
-                ev = noc.next() => {
-                    let Some(ev) = ev else { break; };
-                    if let Ok(args) = ev.args()
-                        && args.new_owner().is_none()
-                    {
-                        let prefix = format!("{}/", args.name().as_str());
-                        let mut g = items.0.lock().unwrap();
-                        g.retain(|e| !e.starts_with(&prefix));
+            let mut menu_sigs = Vec::new();
+            for (bus, path) in &menu_keys {
+                if let Ok(b) = DBusMenuProxy::builder(&conn).destination(bus.clone())
+                    && let Ok(b) = b.path(path.clone())
+                    && let Ok(p) = b.build().await
+                    && let Ok(s) = p.receive_layout_updated().await
+                {
+                    let bus = bus.clone();
+                    let path = path.clone();
+                    menu_sigs.push(s.map(move |_| (bus.clone(), path.clone())).boxed());
+                }
+            }
+            let mut menu_merged = select_all(menu_sigs);
+
+            loop {
+                tokio::select! {
+                    _ = rx.recv() => { continue 'outer; }
+                    ev = noc.next() => {
+                        let Some(ev) = ev else { break 'outer; };
+                        if let Ok(args) = ev.args()
+                            && args.new_owner().is_none()
+                        {
+                            let prefix = format!("{}/", args.name().as_str());
+                            let mut g = items.0.lock().unwrap();
+                            g.retain(|e| !e.starts_with(&prefix));
+                        }
+                        continue 'outer;
+                    }
+                    _ = merged.next(), if !merged.is_empty() => { continue 'outer; }
+                    key = menu_merged.next(), if !menu_merged.is_empty() => {
+                        if let Some((bus_name, menu_path)) = key
+                            && output
+                                .send(Message::MenuRefetch { bus_name, menu_path })
+                                .await
+                                .is_err()
+                        {
+                            break 'outer;
+                        }
                     }
                 }
-                _ = merged.next(), if !merged.is_empty() => {}
             }
         }
     })

@@ -5,7 +5,7 @@ pub mod notification;
 pub mod pull;
 pub mod window;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 use iced::window::Id as WindowId;
@@ -45,6 +45,15 @@ pub enum Message {
         anchor: crate::daemon::menu::MenuAnchor,
     },
     MenuCloseAll,
+    MenuLayout {
+        bus_name: String,
+        menu_path: String,
+        root: Option<crate::tray::menu_types::MenuItem>,
+    },
+    MenuRefetch {
+        bus_name: String,
+        menu_path: String,
+    },
     CursorMoved {
         window: WindowId,
         x: f32,
@@ -72,6 +81,9 @@ pub struct App {
     menus: Vec<crate::daemon::menu::MenuLevel>,
     menu_windows: HashMap<WindowId, usize>,
     cursor: HashMap<WindowId, (f32, f32)>,
+    menu_cache: HashMap<(String, String), crate::tray::menu_types::MenuItem>,
+    menu_fetch_inflight: HashSet<(String, String)>,
+    menu_refetch_pending: HashMap<(String, String), bool>,
 }
 
 struct NotifState {
@@ -133,6 +145,9 @@ impl App {
             menus: Vec::new(),
             menu_windows: HashMap::new(),
             cursor: HashMap::new(),
+            menu_cache: HashMap::new(),
+            menu_fetch_inflight: HashSet::new(),
+            menu_refetch_pending: HashMap::new(),
         }
     }
 
@@ -221,26 +236,62 @@ impl App {
             }
             Message::TrayItems(items) => {
                 self.tray_items = items;
-                Task::none()
+                let live: HashSet<(String, String)> = self
+                    .tray_items
+                    .iter()
+                    .filter_map(|i| i.menu_path.clone().map(|p| (i.bus_name.clone(), p)))
+                    .collect();
+                self.menu_cache.retain(|k, _| live.contains(k));
+                self.menu_fetch_inflight.retain(|k| live.contains(k));
+                self.menu_refetch_pending.retain(|k, _| live.contains(k));
+                let missing: Vec<(String, String)> = live
+                    .into_iter()
+                    .filter(|k| !self.menu_cache.contains_key(k))
+                    .collect();
+                let tasks: Vec<Task<Message>> = missing
+                    .into_iter()
+                    .map(|(bus, path)| self.spawn_menu_fetch(bus, path, false))
+                    .collect();
+                Task::batch(tasks)
             }
             Message::Ui(UiMessage::TrayActivate(idx)) => self.tray_call(idx, TrayMethod::Activate),
             Message::Ui(UiMessage::TraySecondary(idx)) => {
                 self.tray_call(idx, TrayMethod::Secondary)
             }
             Message::Ui(UiMessage::TrayContextMenu { window, idx }) => {
-                match self.tray_items.get(idx) {
-                    Some(item) => match item.menu_path.clone() {
-                        Some(path) => {
-                            let anchor = self.menu_anchor(window);
-                            menu_fetch_task(item.bus_name.clone(), path, anchor)
+                let target = self
+                    .tray_items
+                    .get(idx)
+                    .map(|item| (item.bus_name.clone(), item.menu_path.clone()));
+                match target {
+                    Some((bus, Some(path))) => {
+                        let anchor = self.menu_anchor(window);
+                        match self.menu_cache.get(&(bus.clone(), path.clone())).cloned() {
+                            Some(root) => {
+                                let open =
+                                    self.open_root_menu(bus.clone(), path.clone(), root, anchor);
+                                let refresh = self.spawn_menu_fetch(bus, path, true);
+                                Task::batch([open, refresh])
+                            }
+                            None => menu_fetch_task(bus, path, anchor),
                         }
-                        None => self.tray_call(idx, TrayMethod::ContextMenu),
-                    },
+                    }
+                    Some((_, None)) => self.tray_call(idx, TrayMethod::ContextMenu),
                     None => Task::none(),
                 }
             }
             Message::Ui(UiMessage::TrayScroll { idx, delta }) => {
                 self.tray_call(idx, TrayMethod::Scroll(delta))
+            }
+            Message::Ui(UiMessage::TrayHover(idx)) => {
+                let target = self
+                    .tray_items
+                    .get(idx)
+                    .and_then(|item| item.menu_path.clone().map(|p| (item.bus_name.clone(), p)));
+                match target {
+                    Some((bus, path)) => self.spawn_menu_fetch(bus, path, true),
+                    None => Task::none(),
+                }
             }
             Message::Ui(UiMessage::MenuDismiss) => self.close_menus(),
             Message::Ui(UiMessage::MenuClick { level, id }) => {
@@ -261,8 +312,51 @@ impl App {
                 menu_path,
                 root,
                 anchor,
-            } => self.open_root_menu(bus_name, menu_path, root, anchor),
+            } => {
+                let live = self.tray_items.iter().any(|i| {
+                    i.bus_name == bus_name && i.menu_path.as_deref() == Some(menu_path.as_str())
+                });
+                if live {
+                    self.menu_cache
+                        .insert((bus_name.clone(), menu_path.clone()), root.clone());
+                }
+                self.open_root_menu(bus_name, menu_path, root, anchor)
+            }
             Message::MenuCloseAll => self.close_menus(),
+            Message::MenuLayout {
+                bus_name,
+                menu_path,
+                root,
+            } => {
+                let key = (bus_name.clone(), menu_path.clone());
+                self.menu_fetch_inflight.remove(&key);
+                let trailing = match self.menu_refetch_pending.remove(&key) {
+                    Some(notify) => {
+                        self.spawn_menu_fetch(bus_name.clone(), menu_path.clone(), notify)
+                    }
+                    None => Task::none(),
+                };
+                let live = self
+                    .tray_items
+                    .iter()
+                    .any(|i| i.bus_name == key.0 && i.menu_path.as_deref() == Some(&key.1));
+                let sync = match root {
+                    Some(root) if live => {
+                        self.menu_cache.insert(key, root);
+                        self.sync_open_menus(&bus_name, &menu_path)
+                    }
+                    Some(_) => Task::none(),
+                    None => {
+                        log::debug!("menu layout fetch failed for {bus_name} {menu_path}");
+                        Task::none()
+                    }
+                };
+                Task::batch([trailing, sync])
+            }
+            Message::MenuRefetch {
+                bus_name,
+                menu_path,
+            } => self.spawn_menu_fetch(bus_name, menu_path, false),
             Message::CursorMoved { window, x, y } => {
                 self.cursor.insert(window, (x, y));
                 Task::none()
@@ -513,6 +607,22 @@ impl App {
         }
     }
 
+    fn spawn_menu_fetch(
+        &mut self,
+        bus_name: String,
+        menu_path: String,
+        notify: bool,
+    ) -> Task<Message> {
+        let key = (bus_name.clone(), menu_path.clone());
+        if self.menu_fetch_inflight.contains(&key) {
+            let pending = self.menu_refetch_pending.entry(key).or_insert(false);
+            *pending = *pending || notify;
+            return Task::none();
+        }
+        self.menu_fetch_inflight.insert(key);
+        menu_layout_task(bus_name, menu_path, notify)
+    }
+
     fn open_root_menu(
         &mut self,
         bus_name: String,
@@ -525,7 +635,7 @@ impl App {
 
         let close = self.close_menus();
         let settings = self.store.resolved().apptray.clone();
-        let items: Vec<_> = root.children.into_iter().filter(|i| i.visible).collect();
+        let items = crate::daemon::menu::visible_items(&root);
         let (w, h) = crate::render::menu::menu_pixel_wh(&items, &settings.menu);
         let (width, height) = (w as u32, h as u32);
         let (cx, cy) = anchor.cursor;
@@ -561,6 +671,64 @@ impl App {
             tasks.push(Task::done(Message::RemoveWindow(lvl.window)));
         }
         self.menu_windows.clear();
+        Task::batch(tasks)
+    }
+
+    fn sync_open_menus(&mut self, bus_name: &str, menu_path: &str) -> Task<Message> {
+        let is_open = self
+            .menus
+            .first()
+            .map(|l| l.bus_name == bus_name && l.menu_path == menu_path)
+            .unwrap_or(false);
+        if !is_open {
+            return Task::none();
+        }
+        let Some(root) = self
+            .menu_cache
+            .get(&(bus_name.to_string(), menu_path.to_string()))
+            .cloned()
+        else {
+            return Task::none();
+        };
+        let settings = self.store.resolved().apptray.clone();
+        let mut tasks = Vec::new();
+        let mut items = crate::daemon::menu::visible_items(&root);
+        let mut level = 0;
+        loop {
+            let active = {
+                let Some(lvl) = self.menus.get_mut(level) else {
+                    break;
+                };
+                lvl.items = items.clone();
+                let (w, h) = crate::render::menu::menu_pixel_wh(&lvl.items, &settings.menu);
+                let (w, h) = (w as u32, h as u32);
+                if (w, h) != (lvl.width, lvl.height) {
+                    lvl.width = w;
+                    lvl.height = h;
+                    tasks.push(Task::done(Message::SizeChange {
+                        id: lvl.window,
+                        size: (w, h),
+                    }));
+                }
+                lvl.active_child
+            };
+            let Some(active) = active else {
+                break;
+            };
+            match crate::daemon::menu::submenu_items(&items, active) {
+                Some(children) => {
+                    items = children;
+                    level += 1;
+                }
+                None => {
+                    tasks.push(self.close_from(level + 1));
+                    if let Some(lvl) = self.menus.get_mut(level) {
+                        lvl.active_child = None;
+                    }
+                    break;
+                }
+            }
+        }
         Task::batch(tasks)
     }
 
@@ -776,6 +944,34 @@ fn menu_fetch_task(
                 anchor,
             },
             None => Message::Noop,
+        },
+    )
+}
+
+fn menu_layout_task(bus: String, path: String, notify: bool) -> Task<Message> {
+    let bus_name = bus.clone();
+    let menu_path = path.clone();
+    Task::perform(
+        async move {
+            let conn = crate::tray::subscription::connection()?;
+            let proxy = crate::tray::dbusmenu::DBusMenuProxy::builder(&conn)
+                .destination(bus.clone())
+                .ok()?
+                .path(path.clone())
+                .ok()?
+                .build()
+                .await
+                .ok()?;
+            if notify {
+                let _ = proxy.about_to_show(0).await;
+            }
+            let (_rev, layout) = proxy.get_layout(0, -1, &[]).await.ok()?;
+            Some(crate::tray::dbusmenu::parse_node(&layout))
+        },
+        move |root| Message::MenuLayout {
+            bus_name,
+            menu_path,
+            root,
         },
     )
 }
