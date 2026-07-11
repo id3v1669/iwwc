@@ -62,7 +62,7 @@ fn eval_one(
     let tokens = lexer::Lexer::new(text).tokenize().map_err(|e| EvalError {
         kind: EvalErrorKind::LexError,
         span: span_at(source, abs_offset + e.offset),
-        message: format!("unexpected character '{}' in expression", e.ch),
+        message: e.message,
     })?;
     let ast = parser::parse(&tokens).map_err(|e| {
         let kind = match e.kind {
