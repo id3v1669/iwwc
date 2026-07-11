@@ -8,9 +8,8 @@ use crate::config::types::{FieldValue, ParsedConfig, SourceText, Span};
 use crate::config::types::{VarDecl, VarValue};
 use crate::config::{ConfigError, ConfigErrorKind, Severity};
 use iced::Padding;
-use iced::alignment::{Horizontal, Vertical};
 use iced::border::Radius;
-use iced_layershell::reexport::{Anchor, Layer, OutputOption};
+use iced_layershell::reexport::Anchor;
 
 pub(crate) fn build_var(
     node: &kdl::KdlNode,
@@ -582,40 +581,6 @@ pub(crate) fn field_string(
     }
 }
 
-pub(crate) fn field_layer(
-    name: &str,
-    node: &kdl::KdlNode,
-    source: &SourceText,
-    errs: &mut Vec<ConfigError>,
-) -> Option<FieldValue<Layer>> {
-    let entry = prop(node, name)?;
-    match entry.value() {
-        kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
-        kdl::KdlValue::String(s) => match parse_layer(s) {
-            Some(l) => Some(FieldValue::Literal(l)),
-            None => {
-                errs.push(ConfigError {
-                    kind: ConfigErrorKind::InvalidEnumValue,
-                    span: span_of_entry(entry, source),
-                    message: format!("invalid layer value \"{}\", expected one of: top, bottom, background, overlay", s),
-                    severity: Severity::Error,
-                });
-                None
-            }
-        },
-        _ => {
-            errs.push(ConfigError {
-                kind: ConfigErrorKind::InvalidEnumValue,
-                span: span_of_entry(entry, source),
-                message: "invalid layer value, expected one of: top, bottom, background, overlay"
-                    .into(),
-                severity: Severity::Error,
-            });
-            None
-        }
-    }
-}
-
 pub(crate) fn field_anchor(
     name: &str,
     node: &kdl::KdlNode,
@@ -664,28 +629,6 @@ fn push_anchor_err(
         severity: Severity::Error,
     });
     None
-}
-
-pub(crate) fn field_output(
-    name: &str,
-    node: &kdl::KdlNode,
-    source: &SourceText,
-    errs: &mut Vec<ConfigError>,
-) -> Option<FieldValue<OutputOption>> {
-    let entry = prop(node, name)?;
-    match entry.value() {
-        kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
-        kdl::KdlValue::String(s) => Some(FieldValue::Literal(parse_output(s))),
-        _ => {
-            errs.push(ConfigError {
-                kind: ConfigErrorKind::InvalidEnumValue,
-                span: span_of_entry(entry, source),
-                message: "invalid output value, expected a string or `last`".into(),
-                severity: Severity::Error,
-            });
-            None
-        }
-    }
 }
 
 fn collect_f32_vals(child: &kdl::KdlNode) -> Vec<f32> {
@@ -931,115 +874,6 @@ pub(crate) fn field_length(
     None
 }
 
-pub(crate) fn field_align_x(
-    name: &str,
-    node: &kdl::KdlNode,
-    source: &SourceText,
-    errs: &mut Vec<ConfigError>,
-) -> Option<FieldValue<Horizontal>> {
-    let entry = prop(node, name)?;
-    match entry.value() {
-        kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
-        kdl::KdlValue::String(s) => match parse_align_x(s) {
-            Some(a) => Some(FieldValue::Literal(a)),
-            None => {
-                invalid_align(
-                    errs,
-                    entry,
-                    source,
-                    "align_x",
-                    "invalid align_x value, expected one of: l, c, r, left, center, right",
-                );
-                None
-            }
-        },
-        _ => {
-            invalid_align(
-                errs,
-                entry,
-                source,
-                "align_x",
-                "invalid align_x value, expected one of: l, c, r, left, center, right",
-            );
-            None
-        }
-    }
-}
-
-pub(crate) fn field_text_align_x(
-    name: &str,
-    node: &kdl::KdlNode,
-    source: &SourceText,
-    errs: &mut Vec<ConfigError>,
-) -> Option<FieldValue<iced::advanced::text::Alignment>> {
-    let entry = prop(node, name)?;
-    let msg = "invalid align_x value, expected one of: l, c, r, j, left, center, right, justified";
-    match entry.value() {
-        kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
-        kdl::KdlValue::String(s) => match parse_text_align_x(s) {
-            Some(a) => Some(FieldValue::Literal(a)),
-            None => {
-                invalid_align(errs, entry, source, "align_x", msg);
-                None
-            }
-        },
-        _ => {
-            invalid_align(errs, entry, source, "align_x", msg);
-            None
-        }
-    }
-}
-
-pub(crate) fn field_align_y(
-    name: &str,
-    node: &kdl::KdlNode,
-    source: &SourceText,
-    errs: &mut Vec<ConfigError>,
-) -> Option<FieldValue<Vertical>> {
-    let entry = prop(node, name)?;
-    match entry.value() {
-        kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
-        kdl::KdlValue::String(s) => match parse_align_y(s) {
-            Some(a) => Some(FieldValue::Literal(a)),
-            None => {
-                invalid_align(
-                    errs,
-                    entry,
-                    source,
-                    "align_y",
-                    "invalid align_y value, expected one of: t, c, b, top, center, bottom",
-                );
-                None
-            }
-        },
-        _ => {
-            invalid_align(
-                errs,
-                entry,
-                source,
-                "align_y",
-                "invalid align_y value, expected one of: t, c, b, top, center, bottom",
-            );
-            None
-        }
-    }
-}
-
-fn invalid_align(
-    errs: &mut Vec<ConfigError>,
-    entry: &kdl::KdlEntry,
-    source: &SourceText,
-    _name: &str,
-    msg: &str,
-) {
-    errs.push(ConfigError {
-        kind: ConfigErrorKind::InvalidEnumValue,
-        span: span_of_entry(entry, source),
-        message: msg.into(),
-        severity: Severity::Error,
-    });
-}
-
 use crate::config::types::Widget;
 
 pub(crate) fn build_widget(
@@ -1051,11 +885,25 @@ pub(crate) fn build_widget(
     let w = Widget {
         h: field_f32("h", node, source, errs),
         w: field_f32("w", node, source, errs),
-        layer: field_layer("layer", node, source, errs),
+        layer: field_parsed(
+            "layer",
+            node,
+            source,
+            errs,
+            parse_layer,
+            "one of: top, bottom, background, overlay",
+        ),
         anchor: field_anchor("anchor", node, source, errs),
         exclusive: field_bool("exclusive", node, source, errs),
         margin: field_margin("margin", node, source, errs),
-        output: field_output("output", node, source, errs),
+        output: field_parsed(
+            "output",
+            node,
+            source,
+            errs,
+            |s| Some(parse_output(s)),
+            "a string or `last`",
+        ),
         keyboard: field_bool("keyboard", node, source, errs),
         transparent: field_bool("transparent", node, source, errs),
         child: field_id_ref("child", node, source, errs),
@@ -1091,8 +939,22 @@ pub(crate) fn build_container(
         w: field_length("w", node, source, errs),
         h: field_length("h", node, source, errs),
         padding: field_padding("padding", node, source, errs),
-        align_x: field_align_x("align_x", node, source, errs),
-        align_y: field_align_y("align_y", node, source, errs),
+        align_x: field_parsed(
+            "align_x",
+            node,
+            source,
+            errs,
+            parse_align_x,
+            "one of: l, c, r, left, center, right",
+        ),
+        align_y: field_parsed(
+            "align_y",
+            node,
+            source,
+            errs,
+            parse_align_y,
+            "one of: t, c, b, top, center, bottom",
+        ),
         clip: field_bool("clip", node, source, errs),
         style: field_id_ref("style", node, source, errs),
         child,
@@ -1372,58 +1234,6 @@ pub(crate) fn field_children(
     None
 }
 
-pub(crate) fn field_col_align(
-    name: &str,
-    node: &kdl::KdlNode,
-    source: &SourceText,
-    errs: &mut Vec<ConfigError>,
-) -> Option<FieldValue<Horizontal>> {
-    let entry = prop(node, name)?;
-    match entry.value() {
-        kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
-        kdl::KdlValue::String(s) => match parse_align_x(s) {
-            Some(a) => Some(FieldValue::Literal(a)),
-            None => {
-                errs.push(ConfigError {
-                    kind: ConfigErrorKind::InvalidEnumValue,
-                    span: span_of_entry(entry, source),
-                    message: "invalid align value for column, expected one of: l, c, r, left, center, right".into(),
-                    severity: Severity::Error,
-                });
-                None
-            }
-        },
-        _ => None,
-    }
-}
-
-pub(crate) fn field_row_align(
-    name: &str,
-    node: &kdl::KdlNode,
-    source: &SourceText,
-    errs: &mut Vec<ConfigError>,
-) -> Option<FieldValue<Vertical>> {
-    let entry = prop(node, name)?;
-    match entry.value() {
-        kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
-        kdl::KdlValue::String(s) => {
-            match parse_align_y(s) {
-                Some(a) => Some(FieldValue::Literal(a)),
-                None => {
-                    errs.push(ConfigError {
-                    kind: ConfigErrorKind::InvalidEnumValue,
-                    span: span_of_entry(entry, source),
-                    message: "invalid align value for row, expected one of: t, c, b, top, center, bottom".into(),
-                    severity: Severity::Error,
-                });
-                    None
-                }
-            }
-        }
-        _ => None,
-    }
-}
-
 use crate::config::types::Button;
 
 pub(crate) fn build_button(
@@ -1485,7 +1295,14 @@ pub(crate) fn build_row(
         padding: field_padding("padding", node, source, errs),
         spacing: field_f32("spacing", node, source, errs),
         clip: field_bool("clip", node, source, errs),
-        align: field_row_align("align", node, source, errs),
+        align: field_parsed(
+            "align",
+            node,
+            source,
+            errs,
+            parse_align_y,
+            "one of: t, c, b, top, center, bottom",
+        ),
         span: Span {
             source: source.clone(),
             span: node.span(),
@@ -1527,7 +1344,14 @@ pub(crate) fn build_column(
         padding: field_padding("padding", node, source, errs),
         spacing: field_f32("spacing", node, source, errs),
         clip: field_bool("clip", node, source, errs),
-        align: field_col_align("align", node, source, errs),
+        align: field_parsed(
+            "align",
+            node,
+            source,
+            errs,
+            parse_align_x,
+            "one of: l, c, r, left, center, right",
+        ),
         span: Span {
             source: source.clone(),
             span: node.span(),
@@ -1547,8 +1371,22 @@ pub(crate) fn build_text(
     let t = TextEl {
         w: field_length("w", node, source, errs),
         h: field_length("h", node, source, errs),
-        align_x: field_text_align_x("align_x", node, source, errs),
-        align_y: field_align_y("align_y", node, source, errs),
+        align_x: field_parsed(
+            "align_x",
+            node,
+            source,
+            errs,
+            parse_text_align_x,
+            "one of: l, c, r, j, left, center, right, justified",
+        ),
+        align_y: field_parsed(
+            "align_y",
+            node,
+            source,
+            errs,
+            parse_align_y,
+            "one of: t, c, b, top, center, bottom",
+        ),
         color: field_color("color", node, source, errs),
         font: field_string("font", node, source, errs),
         content: field_string("text", node, source, errs),
@@ -1625,7 +1463,14 @@ pub(crate) fn build_notification(
         gap: field_f32("gap", node, source, errs),
         max: field_f32("max", node, source, errs),
         timeout: field_f32("timeout", node, source, errs),
-        layer: field_layer("layer", node, source, errs),
+        layer: field_parsed(
+            "layer",
+            node,
+            source,
+            errs,
+            parse_layer,
+            "one of: top, bottom, background, overlay",
+        ),
         respect_notification_icon: field_bool("respect_notification_icon", node, source, errs),
         freeze_on_hover: field_bool("freeze_on_hover", node, source, errs),
         span: Span {
@@ -1638,6 +1483,8 @@ pub(crate) fn build_notification(
 #[cfg(test)]
 mod tests {
     use crate::config::{Severity, parse_str};
+    use iced::alignment::{Horizontal, Vertical};
+    use iced_layershell::reexport::{Layer, OutputOption};
 
     pub(crate) enum Expect {
         Ok,
@@ -1942,7 +1789,7 @@ mod tests {
                 label: "layer invalid",
                 kdl: "widget bar layer=middle child=box1",
                 expect: Expect::Err(
-                    "invalid layer value \"middle\", expected one of: top, bottom, background, overlay",
+                    "invalid `layer` \"middle\", expected one of: top, bottom, background, overlay",
                 ),
             },
             Case {
@@ -2043,7 +1890,7 @@ mod tests {
             Case {
                 label: "output invalid (int)",
                 kdl: "widget bar output=123 child=box1",
-                expect: Expect::Err("invalid output value, expected a string or `last`"),
+                expect: Expect::Err("field `output` expects a string or `last`"),
             },
         ]);
     }
@@ -2195,7 +2042,7 @@ mod tests {
                 label: "align_x invalid",
                 kdl: "container box1 align_x=middle child=btn1",
                 expect: Expect::Err(
-                    "invalid align_x value, expected one of: l, c, r, left, center, right",
+                    "invalid `align_x` \"middle\", expected one of: l, c, r, left, center, right",
                 ),
             },
             Case {
@@ -2232,7 +2079,7 @@ mod tests {
                 label: "align_y invalid",
                 kdl: "container box1 align_y=mid child=btn1",
                 expect: Expect::Err(
-                    "invalid align_y value, expected one of: t, c, b, top, center, bottom",
+                    "invalid `align_y` \"mid\", expected one of: t, c, b, top, center, bottom",
                 ),
             },
         ]);
@@ -2392,7 +2239,7 @@ mod tests {
                 label: "align left invalid",
                 kdl: "row r1 align=left {\n  children btn1\n}",
                 expect: Expect::Err(
-                    "invalid align value for row, expected one of: t, c, b, top, center, bottom",
+                    "invalid `align` \"left\", expected one of: t, c, b, top, center, bottom",
                 ),
             },
             Case {
@@ -2455,7 +2302,7 @@ mod tests {
                 label: "align top invalid",
                 kdl: "column c1 align=top {\n  children btn1\n}",
                 expect: Expect::Err(
-                    "invalid align value for column, expected one of: l, c, r, left, center, right",
+                    "invalid `align` \"top\", expected one of: l, c, r, left, center, right",
                 ),
             },
         ]);
@@ -2490,14 +2337,14 @@ mod tests {
                 label: "align_x invalid",
                 kdl: "text t1 align_x=middle",
                 expect: Expect::Err(
-                    "invalid align_x value, expected one of: l, c, r, j, left, center, right, justified",
+                    "invalid `align_x` \"middle\", expected one of: l, c, r, j, left, center, right, justified",
                 ),
             },
             Case {
                 label: "align_y invalid",
                 kdl: "text t1 align_y=mid",
                 expect: Expect::Err(
-                    "invalid align_y value, expected one of: t, c, b, top, center, bottom",
+                    "invalid `align_y` \"mid\", expected one of: t, c, b, top, center, bottom",
                 ),
             },
             Case {
@@ -2583,7 +2430,7 @@ mod tests {
                 label: "bad layer",
                 kdl: "notification layer=middle",
                 expect: Expect::Err(
-                    "invalid layer value \"middle\", expected one of: top, bottom, background, overlay",
+                    "invalid `layer` \"middle\", expected one of: top, bottom, background, overlay",
                 ),
             },
             Case {
