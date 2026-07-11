@@ -55,6 +55,7 @@ pub struct ParsedConfig {
     pub vars: IndexMap<String, VarDecl>,
     pub widgets: IndexMap<String, Widget>,
     pub containers: IndexMap<String, Container>,
+    pub revealers: IndexMap<String, Revealer>,
     pub buttons: IndexMap<String, Button>,
     pub rows: IndexMap<String, Row>,
     pub columns: IndexMap<String, Column>,
@@ -106,6 +107,14 @@ pub struct Container {
     pub align_y: Option<FieldValue<Vertical>>,
     pub clip: Option<FieldValue<bool>>,
     pub style: Option<FieldValue<String>>,
+    pub child: Option<FieldValue<String>>,
+    pub span: Span,
+}
+#[derive(Debug, Clone)]
+pub struct Revealer {
+    pub transition: Option<FieldValue<crate::config::primitives::Transition>>,
+    pub active: Option<FieldValue<bool>>,
+    pub duration: Option<FieldValue<std::time::Duration>>,
     pub child: Option<FieldValue<String>>,
     pub span: Span,
 }

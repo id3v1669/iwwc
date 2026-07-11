@@ -1,12 +1,12 @@
 use crate::config::math::{self, value::Value};
 use crate::config::resolved::{
     PreResolvedStyle, ResolvedButton, ResolvedColumn, ResolvedContainer, ResolvedElement,
-    ResolvedRow, ResolvedText, ResolvedWidget,
+    ResolvedRevealer, ResolvedRow, ResolvedText, ResolvedWidget,
 };
 use crate::config::resolver::coerce;
 use crate::config::resolver::vars::FlatEnv;
 use crate::config::types::{
-    Button, Column, Container, FieldValue, ParsedConfig, Row, Span, Style, TextEl, Widget,
+    Button, Column, Container, FieldValue, ParsedConfig, Revealer, Row, Span, Style, TextEl, Widget,
 };
 use crate::config::{ConfigError, ConfigErrorKind, Severity};
 use std::collections::HashSet;
@@ -137,6 +137,15 @@ pub(crate) fn resolve_ref(
         return resolved.map(|c| ResolvedElement::Container(Box::new(c)));
     }
 
+    if ctx.config.revealers.contains_key(reference) {
+        let r = ctx.config.revealers.get(reference).unwrap().clone();
+        ctx.used.insert(reference.to_string());
+        visited.insert(reference.to_string());
+        let resolved = resolve_revealer(&r, ctx, visited);
+        visited.remove(reference);
+        return resolved.map(|r| ResolvedElement::Revealer(Box::new(r)));
+    }
+
     if ctx.config.buttons.contains_key(reference) {
         let b = ctx.config.buttons.get(reference).unwrap().clone();
         ctx.used.insert(reference.to_string());
@@ -200,6 +209,7 @@ pub(crate) fn resolve_ref(
 
 enum OwnedEl {
     Container(Container),
+    Revealer(Revealer),
     Button(Button),
     Row(Row),
     Column(Column),
@@ -208,6 +218,7 @@ enum OwnedEl {
 
 fn single_element_owned(frag: &ParsedConfig) -> Option<OwnedEl> {
     let count = frag.containers.len()
+        + frag.revealers.len()
         + frag.buttons.len()
         + frag.rows.len()
         + frag.columns.len()
@@ -217,6 +228,9 @@ fn single_element_owned(frag: &ParsedConfig) -> Option<OwnedEl> {
     }
     if let Some((_, c)) = frag.containers.iter().next() {
         return Some(OwnedEl::Container(c.clone()));
+    }
+    if let Some((_, r)) = frag.revealers.iter().next() {
+        return Some(OwnedEl::Revealer(r.clone()));
     }
     if let Some((_, b)) = frag.buttons.iter().next() {
         return Some(OwnedEl::Button(b.clone()));
@@ -242,6 +256,9 @@ fn resolve_fragment_element(
         OwnedEl::Container(c) => {
             resolve_container(&c, ctx, visited).map(|c| ResolvedElement::Container(Box::new(c)))
         }
+        OwnedEl::Revealer(r) => {
+            resolve_revealer(&r, ctx, visited).map(|r| ResolvedElement::Revealer(Box::new(r)))
+        }
         OwnedEl::Button(b) => Some(ResolvedElement::Button(Box::new(resolve_button(&b, ctx)))),
         OwnedEl::Row(r) => Some(ResolvedElement::Row(resolve_row(&r, ctx, visited))),
         OwnedEl::Column(c) => Some(ResolvedElement::Column(resolve_column(&c, ctx, visited))),
@@ -249,26 +266,32 @@ fn resolve_fragment_element(
     }
 }
 
+fn resolve_child(
+    child: &Option<FieldValue<String>>,
+    span: &Span,
+    ctx: &mut Ctx,
+    visited: &mut HashSet<String>,
+) -> Option<Box<ResolvedElement>> {
+    match child {
+        None => None,
+        Some(FieldValue::Literal(id)) => {
+            let id = id.clone();
+            resolve_ref(&id, span, ctx, visited)
+        }
+        Some(FieldValue::Expr(s)) => {
+            let s = s.clone();
+            resolve_string_ref(&s, span, ctx, visited)
+        }
+    }
+    .map(Box::new)
+}
+
 fn resolve_container(
     c: &Container,
     ctx: &mut Ctx,
     visited: &mut HashSet<String>,
 ) -> Option<ResolvedContainer> {
-    let child = match &c.child {
-        None => None,
-        Some(FieldValue::Literal(id)) => {
-            let id = id.clone();
-            resolve_ref(&id, &c.span, ctx, visited)
-        }
-        Some(FieldValue::Expr(s)) => {
-            let s = s.clone();
-            resolve_string_ref(&s, &c.span, ctx, visited)
-        }
-    };
-    let child = match child {
-        Some(el) => Box::new(el),
-        None => return None,
-    };
+    let child = resolve_child(&c.child, &c.span, ctx, visited)?;
     Some(ResolvedContainer {
         w: resolve_field(&c.w, "w", &c.span, coerce::coerce_length, ctx),
         h: resolve_field(&c.h, "h", &c.span, coerce::coerce_length, ctx),
@@ -279,6 +302,36 @@ fn resolve_container(
         style: resolve_style_ref(&c.style, &c.span, ctx).map(|p| p.to_container()),
         child,
         span: c.span.clone(),
+    })
+}
+
+fn resolve_revealer(
+    r: &Revealer,
+    ctx: &mut Ctx,
+    visited: &mut HashSet<String>,
+) -> Option<ResolvedRevealer> {
+    let child = resolve_child(&r.child, &r.span, ctx, visited)?;
+    Some(ResolvedRevealer {
+        transition: resolve_field(
+            &r.transition,
+            "transition",
+            &r.span,
+            coerce::coerce_transition,
+            ctx,
+        )
+        .unwrap_or_default(),
+        active: resolve_field(&r.active, "active", &r.span, coerce::coerce_bool, ctx)
+            .unwrap_or(true),
+        duration: resolve_field(
+            &r.duration,
+            "duration",
+            &r.span,
+            coerce::coerce_duration,
+            ctx,
+        )
+        .unwrap_or(std::time::Duration::from_millis(300)),
+        child,
+        span: r.span.clone(),
     })
 }
 

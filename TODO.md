@@ -5,7 +5,7 @@ Before Beta:
 - [x] fix overlap on exclusive zones for vertical widget. Doesn't recalc to shrink on foreign exclusive widget entry. (I didn't fix it, just works now, lib fix?)
 - [ ] fix issue with conflicting anchors and 0 h or w should default to max availible(local patch, Furute fix lib)
 - [x] expose absolute mosue position as it's needed for correct apptray work (exwlshelleventloop patch): NOT VALID, IMPLEMENTED VIA xdg_popup
-- [ ] animation support
+- [x] animation support
 - [ ] iwwc.cpu.(load/temp/per-core)
 - [ ] iwwc.gpu.(load/temp/vram)(amd)
 - [x] fix styles for apptray
@@ -39,4 +39,10 @@ Future:
 - [ ] get rid of functions that are used only once now
 - [ ] re-review math for apptray, it works, but ugly and has duplicates. I just wanted to make it work
 - [ ] tray separator make option to make it visible
-
+- [ ] animation types for revealer??
+- [ ] more tests for revealer when/if decide on animation type handling
+- [ ] animation guards for oversize?
+- [ ] duration int fallback to ms or keeps strings to parse?
+- [ ] animation options other than EaseInOut #rmstatic1
+- [ ] add min,max custom logic for dimentions of objects
+- [ ] learn about fluid and enclose for Length

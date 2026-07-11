@@ -150,6 +150,27 @@ pub fn parse_interval(s: &str) -> Option<std::time::Duration> {
     ))
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Transition {
+    #[default]
+    None,
+    SlideUp,
+    SlideDown,
+    SlideLeft,
+    SlideRight,
+}
+
+pub fn parse_transition(s: &str) -> Option<Transition> {
+    match s.trim() {
+        "none" => Some(Transition::None),
+        "slideup" => Some(Transition::SlideUp),
+        "slidedown" => Some(Transition::SlideDown),
+        "slideleft" => Some(Transition::SlideLeft),
+        "slideright" => Some(Transition::SlideRight),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -164,5 +185,23 @@ mod tests {
         assert_eq!(parse_interval("5"), None);
         assert_eq!(parse_interval("1x"), None);
         assert_eq!(parse_interval("ms"), None);
+    }
+
+    #[test]
+    fn transition_parses_all_variants() {
+        use super::{Transition, parse_transition};
+        assert_eq!(parse_transition("none"), Some(Transition::None));
+        assert_eq!(parse_transition("slideup"), Some(Transition::SlideUp));
+        assert_eq!(parse_transition("slidedown"), Some(Transition::SlideDown));
+        assert_eq!(parse_transition("slideleft"), Some(Transition::SlideLeft));
+        assert_eq!(parse_transition("slideright"), Some(Transition::SlideRight));
+        assert_eq!(parse_transition(" slideleft "), Some(Transition::SlideLeft));
+    }
+
+    #[test]
+    fn transition_rejects_garbage() {
+        use super::parse_transition;
+        assert_eq!(parse_transition("slidleft"), None);
+        assert_eq!(parse_transition(""), None);
     }
 }

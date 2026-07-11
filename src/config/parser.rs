@@ -1,7 +1,7 @@
 use crate::config::primitives::{
     AnchorError, parse_align_x, parse_align_y, parse_anchor, parse_color, parse_font_stretch,
     parse_font_style, parse_font_weight, parse_interval, parse_layer, parse_output,
-    parse_text_align_x,
+    parse_text_align_x, parse_transition,
 };
 use crate::config::types::PullDecl;
 use crate::config::types::{FieldValue, ParsedConfig, SourceText, Span};
@@ -177,6 +177,7 @@ pub(crate) fn parse_document(
                 name,
                 "widget"
                     | "container"
+                    | "revealer"
                     | "button"
                     | "row"
                     | "column"
@@ -216,6 +217,15 @@ pub(crate) fn parse_document(
                         errs.push(dup_id_warning(&id, "container", node, &source));
                     } else {
                         out.containers.insert(id, c);
+                    }
+                }
+            }
+            "revealer" => {
+                if let Some((id, r)) = build_revealer(node, &source, &mut errs) {
+                    if out.revealers.contains_key(&id) {
+                        errs.push(dup_id_warning(&id, "revealer", node, &source));
+                    } else {
+                        out.revealers.insert(id, r);
                     }
                 }
             }
@@ -416,6 +426,41 @@ pub(crate) fn field_bool(
                 kind: ConfigErrorKind::InvalidBool,
                 span: span_of_entry(entry, source),
                 message: "invalid bool, expected #true or #false".into(),
+                severity: Severity::Error,
+            });
+            None
+        }
+    }
+}
+
+pub(crate) fn field_parsed<T>(
+    name: &str,
+    node: &kdl::KdlNode,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+    parse: fn(&str) -> Option<T>,
+    expected: &str,
+) -> Option<FieldValue<T>> {
+    let entry = prop(node, name)?;
+    match entry.value() {
+        kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
+        kdl::KdlValue::String(s) => match parse(s) {
+            Some(t) => Some(FieldValue::Literal(t)),
+            None => {
+                errs.push(ConfigError {
+                    kind: ConfigErrorKind::InvalidFieldType,
+                    span: span_of_entry(entry, source),
+                    message: format!("invalid `{}` \"{}\", expected {}", name, s, expected),
+                    severity: Severity::Error,
+                });
+                None
+            }
+        },
+        _ => {
+            errs.push(ConfigError {
+                kind: ConfigErrorKind::InvalidFieldType,
+                span: span_of_entry(entry, source),
+                message: format!("field `{}` expects {}", name, expected),
                 severity: Severity::Error,
             });
             None
@@ -1057,6 +1102,53 @@ pub(crate) fn build_container(
         },
     };
     Some((id, c))
+}
+
+use crate::config::types::Revealer;
+
+pub(crate) fn build_revealer(
+    node: &kdl::KdlNode,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) -> Option<(String, Revealer)> {
+    let id = first_positional_string(node)?;
+    let child = field_id_ref("child", node, source, errs);
+    if child.is_none() {
+        errs.push(ConfigError {
+            kind: ConfigErrorKind::MissingRequiredField,
+            span: Span {
+                source: source.clone(),
+                span: node.span(),
+            },
+            message: "child is required".into(),
+            severity: Severity::Error,
+        });
+    }
+    let r = Revealer {
+        transition: field_parsed(
+            "transition",
+            node,
+            source,
+            errs,
+            parse_transition,
+            "none, slideup, slidedown, slideleft or slideright",
+        ),
+        active: field_bool("active", node, source, errs),
+        duration: field_parsed(
+            "duration",
+            node,
+            source,
+            errs,
+            parse_interval,
+            "a duration string e.g. \"500ms\", \"1s\"",
+        ),
+        child,
+        span: Span {
+            source: source.clone(),
+            span: node.span(),
+        },
+    };
+    Some((id, r))
 }
 
 use crate::config::types::Style;
@@ -2144,6 +2236,15 @@ mod tests {
                 ),
             },
         ]);
+    }
+
+    #[test]
+    fn revealer_cases() {
+        run_cases(&[Case {
+            label: "minimal revealer",
+            kdl: "widget bar child=rev\nrevealer rev child=t1\ntext t1",
+            expect: Expect::Ok,
+        }]);
     }
 
     #[test]

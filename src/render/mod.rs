@@ -1,5 +1,6 @@
 pub mod menu;
 pub mod notification;
+pub mod revealer;
 
 #[derive(Debug, Clone)]
 pub enum UiMessage {
@@ -40,7 +41,7 @@ pub struct RenderCtx<'a> {
 
 use crate::config::resolved::{
     ResolvedApptraySettings, ResolvedButton, ResolvedColumn, ResolvedContainer, ResolvedElement,
-    ResolvedRow, ResolvedText, ResolvedWidget,
+    ResolvedRevealer, ResolvedRow, ResolvedText, ResolvedWidget,
 };
 use crate::tray::types::TrayIcon;
 use iced::Element;
@@ -56,6 +57,7 @@ pub fn view_widget(w: &ResolvedWidget, ctx: &RenderCtx) -> Element<'static, UiMe
 fn view_element(el: &ResolvedElement, ctx: &RenderCtx) -> Element<'static, UiMessage> {
     match el {
         ResolvedElement::Container(c) => build_container(c, ctx),
+        ResolvedElement::Revealer(r) => build_revealer(r, ctx),
         ResolvedElement::Button(b) => build_button(b, ctx),
         ResolvedElement::Row(r) => build_row(r, ctx),
         ResolvedElement::Column(c) => build_column(c, ctx),
@@ -111,6 +113,16 @@ fn build_container(c: &ResolvedContainer, ctx: &RenderCtx) -> Element<'static, U
         el = el.style(move |_theme| s);
     }
     el.into()
+}
+
+fn build_revealer(r: &ResolvedRevealer, ctx: &RenderCtx) -> Element<'static, UiMessage> {
+    revealer::Revealer::new(
+        view_element(&r.child, ctx),
+        r.active,
+        r.transition,
+        r.duration,
+    )
+    .into()
 }
 
 fn build_button(b: &ResolvedButton, _ctx: &RenderCtx) -> Element<'static, UiMessage> {
@@ -441,6 +453,21 @@ mod tests {
             w,
             &RenderCtx {
                 tray: &items,
+                window: iced::window::Id::unique(),
+            },
+        );
+    }
+
+    #[test]
+    fn renders_revealer_with_child() {
+        let rc = render_kdl(
+            "widget bar child=rev\nrevealer rev transition=slideleft active=#false duration=\"300ms\" child=t1\ntext t1 color=ffffff",
+        );
+        let w = rc.widgets.get("bar").unwrap();
+        let _el = view_widget(
+            w,
+            &RenderCtx {
+                tray: &[],
                 window: iced::window::Id::unique(),
             },
         );
