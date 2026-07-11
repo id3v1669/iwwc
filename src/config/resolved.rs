@@ -33,6 +33,7 @@ pub struct ResolvedWidget {
 #[derive(Debug, Clone)]
 pub enum ResolvedElement {
     Container(Box<ResolvedContainer>),
+    Revealer(Box<ResolvedRevealer>),
     Button(Box<ResolvedButton>),
     Row(ResolvedRow),
     Column(ResolvedColumn),
@@ -49,6 +50,15 @@ pub struct ResolvedContainer {
     pub align_y: Option<Vertical>,
     pub clip: Option<bool>,
     pub style: Option<container::Style>,
+    pub child: Box<ResolvedElement>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedRevealer {
+    pub transition: crate::config::primitives::Transition,
+    pub active: bool,
+    pub duration: std::time::Duration,
     pub child: Box<ResolvedElement>,
     pub span: Span,
 }

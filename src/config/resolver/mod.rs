@@ -46,6 +46,9 @@ pub fn resolve(config: &ParsedConfig) -> (Option<ResolvedConfig>, Vec<ConfigErro
     for (id, e) in &config.containers {
         all_ids.push((id, &e.span, false));
     }
+    for (id, e) in &config.revealers {
+        all_ids.push((id, &e.span, false));
+    }
     for (id, e) in &config.buttons {
         all_ids.push((id, &e.span, false));
     }
@@ -397,5 +400,84 @@ mod tests {
         assert_eq!(n.timeout_ms, 2000);
         assert_eq!(n.bg, iced::Color::BLACK);
         assert_eq!(n.border.unwrap().width, 2.0);
+    }
+
+    #[test]
+    fn revealer_resolves_with_defaults() {
+        use crate::config::parse_str;
+        use crate::config::primitives::Transition;
+        use crate::config::resolved::ResolvedElement;
+        let (cfg, _) = parse_str(
+            "widget bar child=rev\nrevealer rev child=t1\ntext t1",
+            "<t>",
+        );
+        let (rc, errs) = resolve(&cfg.unwrap());
+        assert!(
+            errs.iter()
+                .all(|e| e.severity != crate::config::Severity::Error),
+            "unexpected errors: {errs:?}"
+        );
+        let rc = rc.unwrap();
+        let w = rc.widgets.get("bar").unwrap();
+        match w.child.as_deref().unwrap() {
+            ResolvedElement::Revealer(r) => {
+                assert_eq!(r.transition, Transition::None);
+                assert!(r.active);
+                assert_eq!(r.duration, std::time::Duration::from_millis(300));
+                assert!(matches!(*r.child, ResolvedElement::Text(_)));
+            }
+            other => panic!("expected revealer, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn revealer_resolves_expression_active() {
+        use crate::config::parse_str;
+        use crate::config::resolved::ResolvedElement;
+        let (cfg, _) = parse_str(
+            "var folded=#false\nwidget bar child=rev\nrevealer rev active=\"${folded}\" child=t1\ntext t1",
+            "<t>",
+        );
+        let (rc, errs) = resolve(&cfg.unwrap());
+        assert!(
+            errs.iter()
+                .all(|e| e.severity != crate::config::Severity::Error),
+            "unexpected errors: {errs:?}"
+        );
+        let w = rc.unwrap();
+        let w = w.widgets.get("bar").unwrap();
+        match w.child.as_deref().unwrap() {
+            ResolvedElement::Revealer(r) => assert!(!r.active),
+            other => panic!("expected revealer, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn revealer_expression_active_non_bool_is_error() {
+        use crate::config::parse_str;
+        let (cfg, _) = parse_str(
+            "var folded=\"yes\"\nwidget bar child=rev\nrevealer rev active=\"${folded}\" child=t1\ntext t1",
+            "<t>",
+        );
+        let (rc, errs) = resolve(&cfg.unwrap());
+        assert!(rc.is_none());
+        assert!(
+            errs.iter()
+                .any(|e| e.severity == crate::config::Severity::Error)
+        );
+    }
+
+    #[test]
+    fn unused_revealer_warns() {
+        use crate::config::parse_str;
+        use crate::config::{ConfigErrorKind, Severity};
+        let (cfg, _) = parse_str(
+            "widget bar child=t2\ntext t2\nrevealer rev child=t1\ntext t1",
+            "<t>",
+        );
+        let (_, errs) = resolve(&cfg.unwrap());
+        assert!(errs.iter().any(|e| e.kind == ConfigErrorKind::UnusedElement
+            && e.severity == Severity::Warning
+            && e.message.contains("\"rev\"")));
     }
 }

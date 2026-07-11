@@ -170,6 +170,30 @@ pub fn coerce_string(v: Value, _field: &str, _span: &Span) -> Result<String, Con
     })
 }
 
+pub fn coerce_transition(
+    v: Value,
+    field: &str,
+    span: &Span,
+) -> Result<crate::config::primitives::Transition, ConfigError> {
+    match v {
+        Value::Str(s) => primitives::parse_transition(&s)
+            .ok_or_else(|| type_err(field, "a valid transition", span)),
+        _ => Err(type_err(field, "a transition string", span)),
+    }
+}
+
+pub fn coerce_duration(
+    v: Value,
+    field: &str,
+    span: &Span,
+) -> Result<std::time::Duration, ConfigError> {
+    match v {
+        Value::Str(s) => primitives::parse_interval(&s)
+            .ok_or_else(|| type_err(field, "a valid interval (e.g. \"500ms\")", span)),
+        _ => Err(type_err(field, "an interval string", span)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -245,5 +269,24 @@ mod tests {
             coerce_string(Value::Str("hi".into()), "text", &span()).unwrap(),
             "hi"
         );
+    }
+    #[test]
+    fn transition_from_string() {
+        use crate::config::primitives::Transition;
+        assert_eq!(
+            coerce_transition(Value::Str("slideleft".into()), "transition", &span()).unwrap(),
+            Transition::SlideLeft
+        );
+        assert!(coerce_transition(Value::Str("slidleft".into()), "transition", &span()).is_err());
+        assert!(coerce_transition(int(1), "transition", &span()).is_err());
+    }
+    #[test]
+    fn duration_from_string() {
+        assert_eq!(
+            coerce_duration(Value::Str("300ms".into()), "duration", &span()).unwrap(),
+            std::time::Duration::from_millis(300)
+        );
+        assert!(coerce_duration(Value::Str("300sm".into()), "duration", &span()).is_err());
+        assert!(coerce_duration(int(300), "duration", &span()).is_err());
     }
 }
