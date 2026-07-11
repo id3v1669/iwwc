@@ -119,56 +119,47 @@ pub(crate) fn resolve_ref(
         )));
     }
 
-    if ctx.config.texts.contains_key(reference) {
+    let owned = ctx
+        .config
+        .texts
+        .get(reference)
+        .map(|t| OwnedEl::Text(t.clone()))
+        .or_else(|| {
+            ctx.config
+                .containers
+                .get(reference)
+                .map(|c| OwnedEl::Container(c.clone()))
+        })
+        .or_else(|| {
+            ctx.config
+                .revealers
+                .get(reference)
+                .map(|r| OwnedEl::Revealer(r.clone()))
+        })
+        .or_else(|| {
+            ctx.config
+                .buttons
+                .get(reference)
+                .map(|b| OwnedEl::Button(b.clone()))
+        })
+        .or_else(|| {
+            ctx.config
+                .rows
+                .get(reference)
+                .map(|r| OwnedEl::Row(r.clone()))
+        })
+        .or_else(|| {
+            ctx.config
+                .columns
+                .get(reference)
+                .map(|c| OwnedEl::Column(c.clone()))
+        });
+    if let Some(el) = owned {
         ctx.used.insert(reference.to_string());
         visited.insert(reference.to_string());
-        let t = ctx.config.texts.get(reference).unwrap().clone();
-        let resolved = resolve_text(&t, ctx);
+        let out = resolve_fragment_element(el, ctx, visited);
         visited.remove(reference);
-        return Some(ResolvedElement::Text(resolved));
-    }
-
-    if ctx.config.containers.contains_key(reference) {
-        let c = ctx.config.containers.get(reference).unwrap().clone();
-        ctx.used.insert(reference.to_string());
-        visited.insert(reference.to_string());
-        let resolved = resolve_container(&c, ctx, visited);
-        visited.remove(reference);
-        return resolved.map(|c| ResolvedElement::Container(Box::new(c)));
-    }
-
-    if ctx.config.revealers.contains_key(reference) {
-        let r = ctx.config.revealers.get(reference).unwrap().clone();
-        ctx.used.insert(reference.to_string());
-        visited.insert(reference.to_string());
-        let resolved = resolve_revealer(&r, ctx, visited);
-        visited.remove(reference);
-        return resolved.map(|r| ResolvedElement::Revealer(Box::new(r)));
-    }
-
-    if ctx.config.buttons.contains_key(reference) {
-        let b = ctx.config.buttons.get(reference).unwrap().clone();
-        ctx.used.insert(reference.to_string());
-        let resolved = resolve_button(&b, ctx);
-        return Some(ResolvedElement::Button(Box::new(resolved)));
-    }
-
-    if ctx.config.rows.contains_key(reference) {
-        let r = ctx.config.rows.get(reference).unwrap().clone();
-        ctx.used.insert(reference.to_string());
-        visited.insert(reference.to_string());
-        let resolved = resolve_row(&r, ctx, visited);
-        visited.remove(reference);
-        return Some(ResolvedElement::Row(resolved));
-    }
-
-    if ctx.config.columns.contains_key(reference) {
-        let col = ctx.config.columns.get(reference).unwrap().clone();
-        ctx.used.insert(reference.to_string());
-        visited.insert(reference.to_string());
-        let resolved = resolve_column(&col, ctx, visited);
-        visited.remove(reference);
-        return Some(ResolvedElement::Column(resolved));
+        return out;
     }
 
     if let Some(crate::config::types::VarValue::Str(s)) = ctx.env.lookup_value(reference) {

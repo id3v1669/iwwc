@@ -141,8 +141,8 @@ pub(crate) fn build_pull(
     let (name, command) = subscription?;
     let interval = match interval_str {
         Some(s) => match parse_interval(&s) {
-            Some(d) => d,
-            None => {
+            Some(d) if !d.is_zero() => d,
+            _ => {
                 err(errs, &format!("invalid interval \"{}\"", s));
                 return None;
             }
@@ -855,7 +855,21 @@ pub(crate) fn field_length(
             }
             if let Some(p) = prop(child, "portion") {
                 if let kdl::KdlValue::Integer(i) = p.value() {
-                    return Some(FieldValue::Literal(iced::Length::FillPortion(*i as u16)));
+                    return match u16::try_from(*i) {
+                        Ok(v) if v > 0 => Some(FieldValue::Literal(iced::Length::FillPortion(v))),
+                        _ => {
+                            errs.push(ConfigError {
+                                kind: ConfigErrorKind::InvalidLengthValue,
+                                span: Span {
+                                    source: source.clone(),
+                                    span: p.span(),
+                                },
+                                message: format!("portion must be between 1 and 65535, got {}", i),
+                                severity: Severity::Error,
+                            });
+                            None
+                        }
+                    };
                 } else {
                     errs.push(ConfigError {
                         kind: ConfigErrorKind::PortionMissingInt,
@@ -1989,6 +2003,16 @@ mod tests {
                 expect: Expect::Err("portion requires an integer argument"),
             },
             Case {
+                label: "w portion zero",
+                kdl: "container box1 child=btn1 {\n  w portion=0\n}",
+                expect: Expect::Err("portion must be between 1 and 65535, got 0"),
+            },
+            Case {
+                label: "w portion too large",
+                kdl: "container box1 child=btn1 {\n  w portion=65536\n}",
+                expect: Expect::Err("portion must be between 1 and 65535, got 65536"),
+            },
+            Case {
                 label: "padding 1",
                 kdl: "container box1 padding=5 child=btn1",
                 expect: Expect::Ok,
@@ -2463,6 +2487,11 @@ mod tests {
                 label: "bad interval",
                 kdl: r#"pull dt="date" i="1x""#,
                 expect: Expect::Err("invalid interval \"1x\""),
+            },
+            Case {
+                label: "zero interval",
+                kdl: r#"pull dt="date" i="0s""#,
+                expect: Expect::Err("invalid interval \"0s\""),
             },
             Case {
                 label: "missing interval",

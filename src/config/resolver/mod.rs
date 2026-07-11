@@ -43,33 +43,16 @@ pub fn resolve(config: &ParsedConfig) -> (Option<ResolvedConfig>, Vec<ConfigErro
     for (id, d) in &config.vars {
         all_ids.push((id, &d.span, true));
     }
-    for (id, e) in &config.containers {
-        all_ids.push((id, &e.span, false));
+    macro_rules! collect_element_ids {
+        ($($map:ident),+) => {
+            $(for (id, e) in &config.$map {
+                all_ids.push((id, &e.span, false));
+            })+
+        };
     }
-    for (id, e) in &config.revealers {
-        all_ids.push((id, &e.span, false));
-    }
-    for (id, e) in &config.buttons {
-        all_ids.push((id, &e.span, false));
-    }
-    for (id, e) in &config.rows {
-        all_ids.push((id, &e.span, false));
-    }
-    for (id, e) in &config.columns {
-        all_ids.push((id, &e.span, false));
-    }
-    for (id, e) in &config.texts {
-        all_ids.push((id, &e.span, false));
-    }
-    for (id, e) in &config.styles {
-        all_ids.push((id, &e.span, false));
-    }
-    for (id, e) in &config.borders {
-        all_ids.push((id, &e.span, false));
-    }
-    for (id, e) in &config.shadows {
-        all_ids.push((id, &e.span, false));
-    }
+    collect_element_ids!(
+        containers, revealers, buttons, rows, columns, texts, styles, borders, shadows
+    );
 
     for (id, span, is_var) in all_ids {
         if !used.contains(id) {
@@ -181,7 +164,7 @@ fn resolve_notification(
     if let Some(v) =
         elements::resolve_field(&ns.timeout, "timeout", span, coerce::coerce_f32, &mut ctx)
     {
-        out.timeout_ms = v as i32;
+        out.timeout_ms = v.max(0.0) as i32;
     }
     if let Some(v) =
         elements::resolve_field(&ns.layer, "layer", span, coerce::coerce_layer, &mut ctx)

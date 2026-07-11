@@ -26,7 +26,7 @@ pub enum Token {
 #[derive(Debug, Clone)]
 pub struct LexError {
     pub offset: usize,
-    pub ch: char,
+    pub message: String,
 }
 
 pub struct Lexer<'src> {
@@ -112,10 +112,7 @@ impl<'src> Lexer<'src> {
                         self.pos += 2;
                         Token::Eq
                     } else {
-                        return Err(LexError {
-                            offset: self.pos,
-                            ch: '=',
-                        });
+                        return Err(unexpected_char(self.pos, '='));
                     }
                 }
                 b'!' => {
@@ -123,24 +120,18 @@ impl<'src> Lexer<'src> {
                         self.pos += 2;
                         Token::Ne
                     } else {
-                        return Err(LexError {
-                            offset: self.pos,
-                            ch: '!',
-                        });
+                        return Err(unexpected_char(self.pos, '!'));
                     }
                 }
                 b'.' => {
                     self.pos += 1;
                     Token::Dot
                 }
-                b'0'..=b'9' => self.lex_number(start),
+                b'0'..=b'9' => self.lex_number(start)?,
                 b'A'..=b'Z' | b'a'..=b'z' | b'_' => self.lex_ident(start),
                 _ => {
                     let ch = self.src[self.pos..].chars().next().unwrap_or('\0');
-                    return Err(LexError {
-                        offset: self.pos,
-                        ch,
-                    });
+                    return Err(unexpected_char(self.pos, ch));
                 }
             };
             out.push((tok, start..self.pos));
@@ -148,7 +139,7 @@ impl<'src> Lexer<'src> {
         Ok(out)
     }
 
-    fn lex_number(&mut self, start: usize) -> Token {
+    fn lex_number(&mut self, start: usize) -> Result<Token, LexError> {
         while matches!(self.bytes.get(self.pos), Some(b) if b.is_ascii_digit()) {
             self.pos += 1;
         }
@@ -160,10 +151,13 @@ impl<'src> Lexer<'src> {
                 self.pos += 1;
             }
             let s = &self.src[start..self.pos];
-            Token::Float(s.parse::<f64>().unwrap())
+            Ok(Token::Float(s.parse::<f64>().unwrap()))
         } else {
             let s = &self.src[start..self.pos];
-            Token::Int(s.parse::<i128>().unwrap())
+            s.parse::<i128>().map(Token::Int).map_err(|_| LexError {
+                offset: start,
+                message: format!("integer literal \"{}\" is too large", s),
+            })
         }
     }
 
@@ -174,6 +168,13 @@ impl<'src> Lexer<'src> {
             self.pos += 1;
         }
         Token::Ident(self.src[start..self.pos].to_string())
+    }
+}
+
+fn unexpected_char(offset: usize, ch: char) -> LexError {
+    LexError {
+        offset,
+        message: format!("unexpected character '{}' in expression", ch),
     }
 }
 
