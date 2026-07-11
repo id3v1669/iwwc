@@ -503,13 +503,13 @@ impl App {
             &config_dir,
         );
         let precalc = PreCalc::generate(&settings);
-        let timer = self.arm_timer(id);
 
         if self.notifications.contains_key(&id) {
             let st = self.notifications.get_mut(&id).unwrap();
             st.notification = n;
             st.icon = icon;
             st.precalc = precalc;
+            let timer = self.arm_timer(id);
             return Task::batch([self.restack(), timer]);
         }
 
@@ -533,6 +533,7 @@ impl App {
             st.window = Some(wid);
         }
         self.notif_windows.insert(wid, id);
+        let timer = self.arm_timer(id);
         Task::batch([open_task, self.restack(), timer])
     }
 
