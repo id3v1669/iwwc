@@ -4,10 +4,17 @@ use iced_layershell::reexport::{Anchor, KeyboardInteractivity, Layer, NewLayerSh
 pub fn layer_settings_for(w: &ResolvedWidget) -> NewLayerShellSettings {
     let width = w.w.map(|v| v as u32).unwrap_or(0);
     let height = w.h.map(|v| v as u32).unwrap_or(0);
+    let mut anchor = w.anchor.unwrap_or(Anchor::Top | Anchor::Left);
+    if width == 0 {
+        anchor |= Anchor::Left | Anchor::Right;
+    }
+    if height == 0 {
+        anchor |= Anchor::Top | Anchor::Bottom;
+    }
     NewLayerShellSettings {
         size: Some((width, height)),
         layer: w.layer.unwrap_or(Layer::Top),
-        anchor: w.anchor.unwrap_or(Anchor::Top | Anchor::Left),
+        anchor,
         exclusive_zone: Some(exclusive_zone(w)),
         margin: w
             .margin

@@ -3,11 +3,10 @@
 Before Beta:
 
 - [x] fix overlap on exclusive zones for vertical widget. Doesn't recalc to shrink on foreign exclusive widget entry. (I didn't fix it, just works now, lib fix?)
-- [ ] fix issue with conflicting anchors and 0 h or w should default to max availible(local patch, Furute fix lib)
+- [x] fix issue with conflicting anchors and 0 h or w should default to max availible(local patch, Furute fix lib)
 - [x] expose absolute mosue position as it's needed for correct apptray work (exwlshelleventloop patch): NOT VALID, IMPLEMENTED VIA xdg_popup
 - [x] animation support
-- [ ] iwwc.cpu.(load/temp/per-core)
-- [ ] iwwc.gpu.(load/temp/vram)(amd)
+- [x] iwwc.cpu.(load/per-core)
 - [x] fix styles for apptray
 - [x] Add proper font validation, conversion to static and tests
 - [x] logic for notifications that prevents timeout on hover
@@ -25,6 +24,8 @@ Beta:
 
 Future:
 
+- [ ] iwwc.gpu.(load/temp/vram)(amd)
+- [ ] iwwc.temps.(*)
 - [ ] re-review all tests
 - [ ] better handling of attempt to create layer with 0 h or w (exwlshelleventloop patch)
 - [ ] fix issue with conflicting anchors and 0 h or w should default to max availible (exwlshelleventloop patch)

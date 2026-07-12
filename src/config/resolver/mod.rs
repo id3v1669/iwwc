@@ -171,6 +171,11 @@ fn resolve_notification(
     {
         out.layer = v;
     }
+    if let Some(v) =
+        elements::resolve_field(&ns.output, "output", span, coerce::coerce_output, &mut ctx)
+    {
+        out.output = v;
+    }
     if let Some(v) = elements::resolve_field(
         &ns.respect_notification_icon,
         "respect_notification_icon",
@@ -366,9 +371,13 @@ mod tests {
         assert_eq!(n.width, 400.0);
         assert_eq!(n.max, 5);
         assert_eq!(n.timeout_ms, 5000);
+        assert!(matches!(
+            n.output,
+            iced_layershell::reexport::OutputOption::Active
+        ));
 
         let (cfg, _) = parse_str(
-            "widget bar child=t1\ntext t1\nnotification width=300 max=3 timeout=2000 bg=000000 border=nb\nborder nb w=2",
+            "widget bar child=t1\ntext t1\nnotification width=300 max=3 timeout=2000 bg=000000 border=nb output=\"HDMI-A-1\"\nborder nb w=2",
             "<t>",
         );
         let (rc, errs) = resolve(&cfg.unwrap());
@@ -383,6 +392,10 @@ mod tests {
         assert_eq!(n.timeout_ms, 2000);
         assert_eq!(n.bg, iced::Color::BLACK);
         assert_eq!(n.border.unwrap().width, 2.0);
+        assert!(matches!(
+            n.output,
+            iced_layershell::reexport::OutputOption::OutputName(ref o) if o == "HDMI-A-1"
+        ));
     }
 
     #[test]

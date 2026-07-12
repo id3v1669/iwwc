@@ -220,6 +220,7 @@ pub struct NotificationSettings {
     pub max: Option<FieldValue<f32>>,
     pub timeout: Option<FieldValue<f32>>,
     pub layer: Option<FieldValue<Layer>>,
+    pub output: Option<FieldValue<OutputOption>>,
     pub respect_notification_icon: Option<FieldValue<bool>>,
     pub freeze_on_hover: Option<FieldValue<bool>>,
     pub span: Span,
