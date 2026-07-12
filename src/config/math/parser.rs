@@ -80,15 +80,17 @@ impl<'a> Parser<'a> {
                     while self.peek() == Some(&Token::Dot)
                         && matches!(
                             self.tokens.get(self.pos + 1).map(|(t, _)| t),
-                            Some(Token::Ident(_))
+                            Some(Token::Ident(_) | Token::Int(_))
                         )
                     {
                         self.advance();
-                        if let Some(Token::Ident(seg)) = self.advance() {
-                            let seg = seg.clone();
-                            name.push('.');
-                            name.push_str(&seg);
-                        }
+                        let seg = match self.advance() {
+                            Some(Token::Ident(s)) => s.clone(),
+                            Some(Token::Int(n)) => n.to_string(),
+                            _ => unreachable!(""),
+                        };
+                        name.push('.');
+                        name.push_str(&seg);
                     }
                     Expr::Var(name)
                 }

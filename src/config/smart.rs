@@ -1,5 +1,9 @@
 use crate::config::types::VarValue;
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
+use sysinfo::{CpuRefreshKind, System};
+
+static SYS: OnceLock<Mutex<System>> = OnceLock::new();
 
 pub fn values() -> Vec<(String, VarValue)> {
     let mut out = Vec::new();
@@ -9,19 +13,56 @@ pub fn values() -> Vec<(String, VarValue)> {
         out.push(("iwwc.ram.total".to_string(), VarValue::Int(total)));
         out.push(("iwwc.ram.used".to_string(), VarValue::Int(used)));
     }
+    let mut sys = SYS
+        .get_or_init(|| Mutex::new(System::new()))
+        .lock()
+        .unwrap();
+    sys.refresh_cpu_specifics(CpuRefreshKind::nothing().with_cpu_usage().with_frequency());
+    for (i, cpu) in sys.cpus().iter().enumerate() {
+        out.push((
+            format!("iwwc.cpu.{i}.usage"),
+            VarValue::Float(round2(cpu.cpu_usage())),
+        ));
+        out.push((
+            format!("iwwc.cpu.{i}.frequency"),
+            VarValue::Int(cpu.frequency() as i128),
+        ));
+    }
+    out.push((
+        "iwwc.cpu.avg.usage".to_string(),
+        VarValue::Float(round2(sys.global_cpu_usage())),
+    ));
+    out
+}
+
+fn round2(v: f32) -> f64 {
+    (v as f64 * 100.0).round() / 100.0
+}
+
+pub fn children(values: &[(String, VarValue)], prefix: &str) -> Vec<String> {
+    let dotted = format!("{prefix}.");
+    let mut out: Vec<String> = Vec::new();
+    for (key, _) in values {
+        if let Some(rest) = key.strip_prefix(&dotted) {
+            let seg = rest.split('.').next().unwrap_or(rest);
+            if !out.iter().any(|s| s == seg) {
+                out.push(seg.to_string());
+            }
+        }
+    }
     out
 }
 
 pub fn namespace_of(name: &str) -> Option<&'static str> {
-    match name {
-        "iwwc.ram.total" | "iwwc.ram.used" => Some("iwwc.ram"),
-        _ => None,
-    }
+    ["iwwc.ram", "iwwc.cpu"].into_iter().find(|ns| {
+        name.strip_prefix(ns)
+            .is_some_and(|rest| rest.starts_with('.'))
+    })
 }
 
 pub fn poll_interval(namespace: &str) -> Option<Duration> {
     match namespace {
-        "iwwc.ram" => Some(Duration::from_secs(1)),
+        "iwwc.ram" | "iwwc.cpu" => Some(Duration::from_secs(1)),
         _ => None,
     }
 }

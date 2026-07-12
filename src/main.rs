@@ -30,6 +30,8 @@ enum Cmd {
     },
     /// Update a variable: iwwc update <name> <value>
     Update { name: String, value: String },
+    /// Read a variable: iwwc get <name>
+    Get { name: String },
     /// Open a window: iwwc open <window>
     Open { window: String },
     /// Close a window: iwwc close <window>
@@ -46,6 +48,7 @@ pub fn main() {
     match cli.cmd {
         Cmd::Daemon { config } => run_daemon(config),
         Cmd::Update { name, value } => client_dispatch(Command::Update { name, value }),
+        Cmd::Get { name } => client_dispatch(Command::Get { name }),
         Cmd::Open { window } => client_dispatch(Command::Open { window }),
         Cmd::Close { window } => client_dispatch(Command::Close { window }),
         Cmd::Toggle { window } => client_dispatch(Command::Toggle { window }),
@@ -65,13 +68,18 @@ fn init_logger(debug: bool) {
 }
 
 fn client_dispatch(command: Command) {
+    let to_stdout = matches!(command, Command::Get { .. });
     let result = tokio::runtime::Runtime::new()
         .expect("create tokio runtime")
         .block_on(IpcClient::send(&command));
     match result {
         Ok(Response::Ok) => {}
         Ok(Response::Note(msg)) => {
-            eprintln!("{msg}");
+            if to_stdout {
+                println!("{msg}");
+            } else {
+                eprintln!("{msg}");
+            }
         }
         Ok(Response::Error(msg)) => {
             eprintln!("{msg}");
