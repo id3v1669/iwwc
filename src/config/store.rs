@@ -84,6 +84,10 @@ impl Store {
         &self.config.pulls
     }
 
+    pub fn var_value(&self, name: &str) -> Option<&VarValue> {
+        self.config.vars.get(name).map(|d| &d.value)
+    }
+
     pub fn refresh(&mut self) {
         let (resolved, msgs) = resolve(&self.config);
         if let Some(r) = resolved {

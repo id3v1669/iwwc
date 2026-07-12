@@ -420,6 +420,7 @@ impl App {
                 Ok(()) => (Response::Ok, Task::none()),
                 Err(e) => (Response::Error(e.to_string()), Task::none()),
             },
+            Command::Get { name } => (self.get_value(&name), Task::none()),
             Command::Open { window } => {
                 if self.windows.values().any(|n| n == &window) {
                     return (Response::Ok, Task::none());
@@ -480,6 +481,24 @@ impl App {
                 }
                 Err(errs) => (Response::Error(errs.join("\n")), Task::none()),
             },
+        }
+    }
+
+    fn get_value(&self, name: &str) -> Response {
+        if name == "iwwc" || name.starts_with("iwwc.") {
+            let values = crate::config::smart::values();
+            if let Some((_, v)) = values.iter().find(|(k, _)| k == name) {
+                return Response::Note(fmt_var(v));
+            }
+            let children = crate::config::smart::children(&values, name);
+            if children.is_empty() {
+                return Response::Error(format!("unknown variable \"{name}\""));
+            }
+            return Response::Note(children.join(" "));
+        }
+        match self.store.var_value(name) {
+            Some(v) => Response::Note(fmt_var(v)),
+            None => Response::Error(format!("variable \"{name}\" is not defined")),
         }
     }
 
@@ -1088,6 +1107,16 @@ fn tray_method_task(bus: String, path: String, method: TrayMethod) -> Task<Messa
         },
         |_| Message::Noop,
     )
+}
+
+fn fmt_var(v: &crate::config::types::VarValue) -> String {
+    use crate::config::types::VarValue;
+    match v {
+        VarValue::Int(i) => i.to_string(),
+        VarValue::Float(f) => f.to_string(),
+        VarValue::Bool(b) => format!("#{b}"),
+        VarValue::Str(s) => s.clone(),
+    }
 }
 
 fn timer_is_current(notifications: &IndexMap<u32, NotifState>, id: u32, generation: u64) -> bool {

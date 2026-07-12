@@ -1,6 +1,7 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
     Update { name: String, value: String },
+    Get { name: String },
     Open { window: String },
     Close { window: String },
     Toggle { window: String },
@@ -34,6 +35,7 @@ impl Command {
     pub fn to_wire(&self) -> String {
         match self {
             Command::Update { name, value } => format!("update {} {}", name, value),
+            Command::Get { name } => format!("get {}", name),
             Command::Open { window } => format!("open {}", window),
             Command::Close { window } => format!("close {}", window),
             Command::Toggle { window } => format!("toggle {}", window),
@@ -64,6 +66,15 @@ impl Command {
                 })
             }
             "reload" => Ok(Command::Reload),
+            "get" => {
+                let name = rest.trim();
+                if name.is_empty() {
+                    return Err(ParseError::MissingArgument("variable name"));
+                }
+                Ok(Command::Get {
+                    name: name.to_string(),
+                })
+            }
             "open" | "close" | "toggle" => {
                 let window = rest.trim();
                 if window.is_empty() {
@@ -272,6 +283,9 @@ mod tests {
             },
             Command::Toggle {
                 window: "bar".into(),
+            },
+            Command::Get {
+                name: "iwwc.cpu".into(),
             },
         ];
         for c in cases {
