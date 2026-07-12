@@ -41,8 +41,9 @@ pub struct PreCalc {
 
 impl PreCalc {
     pub fn generate(s: &ResolvedNotificationSettings) -> Self {
-        let height = s.height;
         let width = s.width;
+        // #ratio
+        let height = width * 0.275;
         PreCalc {
             general_padding: ((height * 0.15) as u16).min((width * 0.03) as u16) as f32,
             font_size_summary: ((height * 0.24) as u16)
@@ -67,7 +68,7 @@ impl PreCalc {
                 top: height * 0.1,
                 bottom: height * 0.1,
                 left: height * 0.15,
-                right: 0.0,
+                right: height * 0.15,
             },
         }
     }
@@ -113,7 +114,6 @@ mod tests {
     fn precalc_matches_reference_formulas() {
         let s = ResolvedNotificationSettings {
             width: 400.0,
-            height: 110.0,
             ..Default::default()
         };
         let p = PreCalc::generate(&s);

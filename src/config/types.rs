@@ -208,7 +208,6 @@ pub struct ApptraySettings {
 #[derive(Debug, Clone)]
 pub struct NotificationSettings {
     pub width: Option<FieldValue<f32>>,
-    pub height: Option<FieldValue<f32>>,
     pub primary_text: Option<FieldValue<Color>>,
     pub secondary_text: Option<FieldValue<Color>>,
     pub bg: Option<FieldValue<Color>>,
@@ -223,5 +222,13 @@ pub struct NotificationSettings {
     pub output: Option<FieldValue<OutputOption>>,
     pub respect_notification_icon: Option<FieldValue<bool>>,
     pub freeze_on_hover: Option<FieldValue<bool>>,
+    pub ok_style: Option<FieldValue<String>>,
+    pub ok_style_hover: Option<FieldValue<String>>,
+    pub ok_style_active: Option<FieldValue<String>>,
+    pub ok_style_disabled: Option<FieldValue<String>>,
+    pub no_style: Option<FieldValue<String>>,
+    pub no_style_hover: Option<FieldValue<String>>,
+    pub no_style_active: Option<FieldValue<String>>,
+    pub no_style_disabled: Option<FieldValue<String>>,
     pub span: Span,
 }

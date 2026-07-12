@@ -48,3 +48,4 @@ Future:
 - [ ] add min,max custom logic for dimentions of objects
 - [ ] learn about fluid and enclose for Length
 - [ ] since vars for iwwc.cpu are dynamic how to test them? call via cpu.0? research values
+- [ ] change default ration? #ratio

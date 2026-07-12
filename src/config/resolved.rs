@@ -259,7 +259,6 @@ impl Default for ResolvedApptraySettings {
 #[derive(Debug, Clone)]
 pub struct ResolvedNotificationSettings {
     pub width: f32,
-    pub height: f32,
     pub primary_text: Color,
     pub secondary_text: Color,
     pub bg: Color,
@@ -274,13 +273,20 @@ pub struct ResolvedNotificationSettings {
     pub output: OutputOption,
     pub respect_icon: bool,
     pub freeze_on_hover: bool,
+    pub ok_style: Option<button::Style>,
+    pub ok_style_hover: Option<button::Style>,
+    pub ok_style_active: Option<button::Style>,
+    pub ok_style_disabled: Option<button::Style>,
+    pub no_style: Option<button::Style>,
+    pub no_style_hover: Option<button::Style>,
+    pub no_style_active: Option<button::Style>,
+    pub no_style_disabled: Option<button::Style>,
 }
 
 impl Default for ResolvedNotificationSettings {
     fn default() -> Self {
         ResolvedNotificationSettings {
             width: 400.0,
-            height: 110.0,
             primary_text: Color::from_str("e7d4a2").unwrap(),
             secondary_text: Color::from_str("e3cd92").unwrap(),
             bg: Color::from_str("3c3836").unwrap(),
@@ -299,6 +305,14 @@ impl Default for ResolvedNotificationSettings {
             output: OutputOption::Active,
             respect_icon: true,
             freeze_on_hover: true,
+            ok_style: None,
+            ok_style_hover: None,
+            ok_style_active: None,
+            ok_style_disabled: None,
+            no_style: None,
+            no_style_hover: None,
+            no_style_active: None,
+            no_style_disabled: None,
         }
     }
 }

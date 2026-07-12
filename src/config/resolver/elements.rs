@@ -444,7 +444,7 @@ fn literal_or_eval_id(
     }
 }
 
-fn resolve_style_ref(
+pub(crate) fn resolve_style_ref(
     id_field: &Option<FieldValue<String>>,
     span: &Span,
     ctx: &mut Ctx,

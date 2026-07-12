@@ -115,11 +115,6 @@ fn resolve_notification(
     {
         out.width = v;
     }
-    if let Some(v) =
-        elements::resolve_field(&ns.height, "height", span, coerce::coerce_f32, &mut ctx)
-    {
-        out.height = v;
-    }
     if let Some(v) = elements::resolve_field(
         &ns.primary_text,
         "primary_text",
@@ -194,6 +189,17 @@ fn resolve_notification(
     ) {
         out.freeze_on_hover = v;
     }
+    let button_style = |field, ctx: &mut elements::Ctx| {
+        elements::resolve_style_ref(field, span, ctx).map(|p| p.to_button())
+    };
+    out.ok_style = button_style(&ns.ok_style, &mut ctx);
+    out.ok_style_hover = button_style(&ns.ok_style_hover, &mut ctx);
+    out.ok_style_active = button_style(&ns.ok_style_active, &mut ctx);
+    out.ok_style_disabled = button_style(&ns.ok_style_disabled, &mut ctx);
+    out.no_style = button_style(&ns.no_style, &mut ctx);
+    out.no_style_hover = button_style(&ns.no_style_hover, &mut ctx);
+    out.no_style_active = button_style(&ns.no_style_active, &mut ctx);
+    out.no_style_disabled = button_style(&ns.no_style_disabled, &mut ctx);
     out
 }
 

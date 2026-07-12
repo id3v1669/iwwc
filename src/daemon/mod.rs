@@ -60,6 +60,7 @@ pub enum Message {
         y: f32,
     },
     NotifRightClick(WindowId),
+    NotifLeftClick(WindowId),
     NotifHoverEnter(WindowId),
     NotifHoverLeave(WindowId),
     PullTick(String),
@@ -90,6 +91,7 @@ struct NotifState {
     notification: Notification,
     icon: std::path::PathBuf,
     precalc: PreCalc,
+    height: f32,
     window: Option<WindowId>,
     timer_gen: u64,
 }
@@ -391,6 +393,22 @@ impl App {
                 Some(nid) => self.close_notification(nid, 2),
                 None => Task::none(),
             },
+            Message::NotifLeftClick(window) => {
+                let target = self.notif_windows.get(&window).copied().filter(|nid| {
+                    self.notifications.get(nid).is_some_and(|st| {
+                        crate::notification::types::default_action_key(&st.notification.actions)
+                            .is_some()
+                    })
+                });
+                match target {
+                    Some(nid) => {
+                        let emit = emit_action_task(nid, "default".to_string());
+                        let close = self.close_notification(nid, 2);
+                        Task::batch([emit, close])
+                    }
+                    None => Task::none(),
+                }
+            }
             Message::NotifHoverEnter(window) => {
                 if self.store.resolved().notification.freeze_on_hover
                     && let Some(&id) = self.notif_windows.get(&window)
@@ -512,48 +530,77 @@ impl App {
             .filter(|p| !p.as_os_str().is_empty())
             .map(std::path::Path::to_path_buf)
             .unwrap_or_else(|| std::path::PathBuf::from("."));
+        let precalc = PreCalc::generate(&settings);
         let icon = crate::notification::icons::resolve_icon(
             &n.app_icon,
             &n.app_name,
             n.image_path.as_deref(),
-            settings.height as u16,
+            precalc.image_size as u16,
             settings.respect_icon,
             theme.as_deref(),
             &config_dir,
         );
-        let precalc = PreCalc::generate(&settings);
+        let height = crate::render::notification::measure_height(&settings, &precalc, &n);
 
         if self.notifications.contains_key(&id) {
             let st = self.notifications.get_mut(&id).unwrap();
             st.notification = n;
             st.icon = icon;
             st.precalc = precalc;
+            let resize = match st.window {
+                Some(wid) if st.height != height => Task::done(Message::SizeChange {
+                    id: wid,
+                    size: (settings.width as u32, height as u32),
+                }),
+                _ => Task::none(),
+            };
+            st.height = height;
             let timer = self.arm_timer(id);
-            return Task::batch([self.restack(), timer]);
+            return Task::batch([resize, self.restack(), timer]);
         }
 
+        let evict = if self.notif_windows.len() >= settings.max as usize {
+            let oldest = self
+                .notifications
+                .iter()
+                .find(|(_, st)| st.window.is_some())
+                .map(|(oid, _)| *oid);
+            match oldest {
+                Some(oid) => self.close_notification(oid, 1),
+                None => Task::none(),
+            }
+        } else {
+            Task::none()
+        };
         self.notifications.insert(
             id,
             NotifState {
                 notification: n,
                 icon,
                 precalc,
+                height,
                 window: None,
                 timer_gen: 0,
             },
         );
         if self.notif_windows.len() >= settings.max as usize {
-            return Task::none();
+            return evict;
         }
+        let offset: f32 = self
+            .notifications
+            .values()
+            .filter(|st| st.window.is_some())
+            .map(|st| st.height + settings.gap)
+            .sum();
         let (wid, open_task) = Message::layershell_open(
-            crate::daemon::notification::notif_layer_settings(&settings, 0),
+            crate::daemon::notification::notif_layer_settings(&settings, height, offset),
         );
         if let Some(st) = self.notifications.get_mut(&id) {
             st.window = Some(wid);
         }
         self.notif_windows.insert(wid, id);
         let timer = self.arm_timer(id);
-        Task::batch([open_task, self.restack(), timer])
+        Task::batch([evict, open_task, timer])
     }
 
     fn close_notification(&mut self, id: u32, reason: u32) -> Task<Message> {
@@ -565,7 +612,6 @@ impl App {
             self.notif_windows.remove(&wid);
             tasks.push(Task::done(Message::RemoveWindow(wid)));
         }
-        tasks.push(self.promote_queued());
         tasks.push(self.restack());
         Task::batch(tasks)
     }
@@ -581,45 +627,16 @@ impl App {
         timeout_task(id, generation, timeout, &settings)
     }
 
-    fn promote_queued(&mut self) -> Task<Message> {
-        let settings = self.store.resolved().notification.clone();
-        if self.notif_windows.len() >= settings.max as usize {
-            return Task::none();
-        }
-        let next = self
-            .notifications
-            .iter()
-            .find(|(_, st)| st.window.is_none())
-            .map(|(id, _)| *id);
-        let Some(id) = next else {
-            return Task::none();
-        };
-        let (wid, open_task) = Message::layershell_open(
-            crate::daemon::notification::notif_layer_settings(&settings, 0),
-        );
-        if let Some(st) = self.notifications.get_mut(&id) {
-            st.window = Some(wid);
-        }
-        self.notif_windows.insert(wid, id);
-        Task::batch([open_task, self.arm_timer(id)])
-    }
-
     fn restack(&self) -> Task<Message> {
         let settings = self.store.resolved().notification.clone();
-        let open: Vec<WindowId> = self
-            .notifications
-            .iter()
-            .rev()
-            .filter_map(|(_, st)| st.window)
-            .collect();
-        let tasks: Vec<Task<Message>> = open
-            .iter()
-            .enumerate()
-            .map(|(slot, wid)| {
-                let margin = crate::daemon::notification::margin_for_slot(&settings, slot);
-                Task::done(Message::MarginChange { id: *wid, margin })
-            })
-            .collect();
+        let mut offset = 0.0f32;
+        let mut tasks = Vec::new();
+        for st in self.notifications.values() {
+            let Some(wid) = st.window else { continue };
+            let margin = crate::daemon::notification::margin_offset(&settings, offset);
+            tasks.push(Task::done(Message::MarginChange { id: wid, margin }));
+            offset += st.height + settings.gap;
+        }
         Task::batch(tasks)
     }
 
@@ -1015,7 +1032,7 @@ fn run_pull_task(name: String, command: String, default: String) -> Task<Message
 
 fn pointer_event(
     event: iced::Event,
-    _status: iced::event::Status,
+    status: iced::event::Status,
     window: iced::window::Id,
 ) -> Option<Message> {
     use iced::mouse::{Button, Event::ButtonReleased};
@@ -1034,6 +1051,11 @@ fn pointer_event(
             Some(Message::NotifHoverLeave(window))
         }
         iced::Event::Mouse(ButtonReleased(Button::Right)) => Some(Message::NotifRightClick(window)),
+        iced::Event::Mouse(ButtonReleased(Button::Left))
+            if status == iced::event::Status::Ignored =>
+        {
+            Some(Message::NotifLeftClick(window))
+        }
         _ => None,
     }
 }
