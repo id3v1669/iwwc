@@ -1466,7 +1466,6 @@ pub(crate) fn build_notification(
 ) -> NotificationSettings {
     NotificationSettings {
         width: field_f32("width", node, source, errs),
-        height: field_f32("height", node, source, errs),
         primary_text: field_color("primary_text", node, source, errs),
         secondary_text: field_color("secondary_text", node, source, errs),
         bg: field_color("bg", node, source, errs),
@@ -1495,6 +1494,14 @@ pub(crate) fn build_notification(
         ),
         respect_notification_icon: field_bool("respect_notification_icon", node, source, errs),
         freeze_on_hover: field_bool("freeze_on_hover", node, source, errs),
+        ok_style: field_id_ref("ok:style", node, source, errs),
+        ok_style_hover: field_id_ref("ok:style:hover", node, source, errs),
+        ok_style_active: field_id_ref("ok:style:active", node, source, errs),
+        ok_style_disabled: field_id_ref("ok:style:disabled", node, source, errs),
+        no_style: field_id_ref("no:style", node, source, errs),
+        no_style_hover: field_id_ref("no:style:hover", node, source, errs),
+        no_style_active: field_id_ref("no:style:active", node, source, errs),
+        no_style_disabled: field_id_ref("no:style:disabled", node, source, errs),
         span: Span {
             source: source.clone(),
             span: node.span(),
@@ -2428,7 +2435,7 @@ mod tests {
         run_cases(&[
             Case {
                 label: "minimal",
-                kdl: "notification width=400 height=110",
+                kdl: "notification width=400",
                 expect: Expect::Ok,
             },
             Case {
