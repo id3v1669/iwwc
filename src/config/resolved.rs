@@ -271,6 +271,7 @@ pub struct ResolvedNotificationSettings {
     pub max: u32,
     pub timeout_ms: i32,
     pub layer: Layer,
+    pub output: OutputOption,
     pub respect_icon: bool,
     pub freeze_on_hover: bool,
 }
@@ -295,6 +296,7 @@ impl Default for ResolvedNotificationSettings {
             max: 5,
             timeout_ms: 5000,
             layer: Layer::Overlay,
+            output: OutputOption::Active,
             respect_icon: true,
             freeze_on_hover: true,
         }

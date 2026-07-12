@@ -1,7 +1,5 @@
 use crate::config::resolved::ResolvedNotificationSettings;
-use iced_layershell::reexport::{
-    Anchor, KeyboardInteractivity, NewLayerShellSettings, OutputOption,
-};
+use iced_layershell::reexport::{Anchor, KeyboardInteractivity, NewLayerShellSettings};
 
 pub fn margin_for_slot(s: &ResolvedNotificationSettings, slot: usize) -> (i32, i32, i32, i32) {
     let base = s.margin;
@@ -27,7 +25,7 @@ pub fn notif_layer_settings(
         exclusive_zone: Some(0),
         margin: Some(margin_for_slot(s, slot)),
         keyboard_interactivity: KeyboardInteractivity::None,
-        output_option: OutputOption::LastOutput,
+        output_option: s.output.clone(),
         events_transparent: false,
         namespace: Some("iwwc".to_string()),
     }

@@ -1485,6 +1485,14 @@ pub(crate) fn build_notification(
             parse_layer,
             "one of: top, bottom, background, overlay",
         ),
+        output: field_parsed(
+            "output",
+            node,
+            source,
+            errs,
+            |s| Some(parse_output(s)),
+            "a string or `last`",
+        ),
         respect_notification_icon: field_bool("respect_notification_icon", node, source, errs),
         freeze_on_hover: field_bool("freeze_on_hover", node, source, errs),
         span: Span {

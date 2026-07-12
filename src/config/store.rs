@@ -116,33 +116,57 @@ impl Store {
         }
     }
 
-    // TODO: rm function or rework it width needs to be max when lr not set, same for h and tb
     pub fn validate_surfaces(&self) -> Vec<ConfigError> {
         let mut errs = Vec::new();
+        let mut err = |kind, span: &crate::config::types::Span, message: String| {
+            errs.push(ConfigError {
+                kind,
+                span: span.clone(),
+                message,
+                severity: Severity::Error,
+            });
+        };
         for (name, w) in &self.resolved.widgets {
             let ew = w.w.map(|v| v as u32).unwrap_or(0);
             let eh = w.h.map(|v| v as u32).unwrap_or(0);
-            let lr = w
-                .anchor
-                .is_some_and(|a| a.contains(Anchor::Left) && a.contains(Anchor::Right));
-            let tb = w
-                .anchor
-                .is_some_and(|a| a.contains(Anchor::Top) && a.contains(Anchor::Bottom));
-            if ew == 0 && !lr {
-                errs.push(ConfigError {
-                    kind: ConfigErrorKind::MissingSizeAnchor,
-                    span: w.span.clone(),
-                    message: format!("widget \"{name}\": width is 0 (no w set) but not anchored to both left and right; anchor both horizontal edges (e.g. anchor=\"t | l | r\") or set an explicit w"),
-                    severity: Severity::Error,
-                });
+            let Some(a) = w.anchor else { continue };
+            let (l, r) = (a.contains(Anchor::Left), a.contains(Anchor::Right));
+            let (t, b) = (a.contains(Anchor::Top), a.contains(Anchor::Bottom));
+            if ew == 0 && (l ^ r) {
+                err(
+                    ConfigErrorKind::MissingSizeAnchor,
+                    &w.span,
+                    format!(
+                        "widget \"{name}\": anchor uses only one of left/right but w is not set; set w, or anchor t/b only to span the full width"
+                    ),
+                );
             }
-            if eh == 0 && !tb {
-                errs.push(ConfigError {
-                    kind: ConfigErrorKind::MissingSizeAnchor,
-                    span: w.span.clone(),
-                    message: format!("widget \"{name}\": height is 0 (no h set) but not anchored to both top and bottom; anchor both vertical edges or set an explicit h"), 
-                    severity: Severity::Error,
-                });
+            if ew > 0 && l && r {
+                err(
+                    ConfigErrorKind::AnchorConflict,
+                    &w.span,
+                    format!(
+                        "widget \"{name}\": w is set but anchor spans both left and right; remove w or one of the anchors"
+                    ),
+                );
+            }
+            if eh == 0 && (t ^ b) {
+                err(
+                    ConfigErrorKind::MissingSizeAnchor,
+                    &w.span,
+                    format!(
+                        "widget \"{name}\": anchor uses only one of top/bottom but h is not set; set h, or anchor l/r only to span the full height"
+                    ),
+                );
+            }
+            if eh > 0 && t && b {
+                err(
+                    ConfigErrorKind::AnchorConflict,
+                    &w.span,
+                    format!(
+                        "widget \"{name}\": h is set but anchor spans both top and bottom; remove h or one of the anchors"
+                    ),
+                );
             }
         }
         errs
@@ -409,13 +433,35 @@ mod tests {
     }
 
     #[test]
-    fn validate_surfaces_zero_width_needs_left_right() {
-        let s = store_from("widget bar anchor=\"t\" h=30 child=t1\ntext t1").unwrap();
+    fn validate_surfaces_single_top_anchor_full_width_ok() {
+        let s = store_from("widget bar anchor=t h=30 child=t1\ntext t1").unwrap();
+        assert!(
+            s.validate_surfaces().is_empty(),
+            "got {:?}",
+            s.validate_surfaces()
+        );
+    }
+
+    #[test]
+    fn validate_surfaces_single_left_without_w_errors() {
+        let s = store_from("widget bar anchor=l h=30 child=t1\ntext t1").unwrap();
         let errs = s.validate_surfaces();
         assert!(
             errs.iter()
                 .any(|e| e.kind == ConfigErrorKind::MissingSizeAnchor),
             "expected MissingSizeAnchor, got {:?}",
+            errs
+        );
+    }
+
+    #[test]
+    fn validate_surfaces_size_with_both_edges_conflicts() {
+        let s = store_from("widget bar anchor=\"l | r\" w=500 h=30 child=t1\ntext t1").unwrap();
+        let errs = s.validate_surfaces();
+        assert!(
+            errs.iter()
+                .any(|e| e.kind == ConfigErrorKind::AnchorConflict),
+            "expected AnchorConflict, got {:?}",
             errs
         );
     }
@@ -437,12 +483,12 @@ mod tests {
     }
 
     #[test]
-    fn validate_surfaces_zero_height_needs_top_bottom() {
-        let s = store_from("widget side anchor=\"l\" w=300 child=t1\ntext t1").unwrap();
+    fn validate_surfaces_left_panel_full_height_ok() {
+        let s = store_from("widget side anchor=l w=300 child=t1\ntext t1").unwrap();
         assert!(
+            s.validate_surfaces().is_empty(),
+            "got {:?}",
             s.validate_surfaces()
-                .iter()
-                .any(|e| e.kind == ConfigErrorKind::MissingSizeAnchor)
         );
     }
 
@@ -453,9 +499,13 @@ mod tests {
     }
 
     #[test]
-    fn validate_surfaces_no_anchor_no_size_errors() {
+    fn validate_surfaces_no_anchor_no_size_is_fullscreen_ok() {
         let s = store_from("widget bar child=t1\ntext t1").unwrap();
-        assert!(!s.validate_surfaces().is_empty());
+        assert!(
+            s.validate_surfaces().is_empty(),
+            "got {:?}",
+            s.validate_surfaces()
+        );
     }
 
     #[test]
@@ -491,12 +541,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("c.kdl");
         let mut f = std::fs::File::create(&path).unwrap();
-        write!(f, "widget bar anchor=\"t\" h=30 child=t1\ntext t1").unwrap();
+        write!(f, "widget bar anchor=l h=30 child=t1\ntext t1").unwrap();
         drop(f);
 
         let errs = store.reload(&path).unwrap_err();
         assert!(
-            errs.iter().any(|e| e.contains("left and right")),
+            errs.iter().any(|e| e.contains("only one of left/right")),
             "got {:?}",
             errs
         );
