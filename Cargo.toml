@@ -17,7 +17,7 @@ kdl = "6.7.1"
 miette = "7.6"
 
 # backend deps
-zbus = "5.16.0"
+zbus = "5.17.0"
 sysinfo = "0.39"
 
 # frontend deps
