@@ -250,7 +250,9 @@ fn resolve_fragment_element(
         OwnedEl::Revealer(r) => {
             resolve_revealer(&r, ctx, visited).map(|r| ResolvedElement::Revealer(Box::new(r)))
         }
-        OwnedEl::Button(b) => Some(ResolvedElement::Button(Box::new(resolve_button(&b, ctx)))),
+        OwnedEl::Button(b) => {
+            resolve_button(&b, ctx, visited).map(|b| ResolvedElement::Button(Box::new(b)))
+        }
         OwnedEl::Row(r) => Some(ResolvedElement::Row(resolve_row(&r, ctx, visited))),
         OwnedEl::Column(c) => Some(ResolvedElement::Column(resolve_column(&c, ctx, visited))),
         OwnedEl::Text(t) => Some(ResolvedElement::Text(resolve_text(&t, ctx))),
@@ -326,8 +328,9 @@ fn resolve_revealer(
     })
 }
 
-fn resolve_button(b: &Button, ctx: &mut Ctx) -> ResolvedButton {
-    ResolvedButton {
+fn resolve_button(b: &Button, ctx: &mut Ctx, visited: &mut HashSet<String>) -> Option<ResolvedButton> {
+    let child = resolve_child(&b.child, &b.span, ctx, visited)?;
+    Some(ResolvedButton {
         w: resolve_field(&b.w, "w", &b.span, coerce::coerce_length, ctx),
         h: resolve_field(&b.h, "h", &b.span, coerce::coerce_length, ctx),
         padding: resolve_field(&b.padding, "padding", &b.span, coerce::coerce_padding, ctx),
@@ -337,10 +340,9 @@ fn resolve_button(b: &Button, ctx: &mut Ctx) -> ResolvedButton {
         style_hover: resolve_style_ref(&b.style_hover, &b.span, ctx).map(|p| p.to_button()),
         style_active: resolve_style_ref(&b.style_active, &b.span, ctx).map(|p| p.to_button()),
         style_disabled: resolve_style_ref(&b.style_disabled, &b.span, ctx).map(|p| p.to_button()),
-        text: resolve_field(&b.text, "text", &b.span, coerce::coerce_string, ctx),
-        font: resolve_font_ref(&b.font, &b.span, ctx),
+        child,
         span: b.span.clone(),
-    }
+    })
 }
 
 fn resolve_children(
@@ -747,8 +749,9 @@ mod tests {
     }
 
     #[test]
-    fn button_no_child() {
-        let (rc, errs) = resolve_kdl("widget bar child=btn\nbutton btn action=\"echo hi\"");
+    fn button_with_child() {
+        let (rc, errs) =
+            resolve_kdl("widget bar child=btn\nbutton btn child=t1 action=\"echo hi\"\ntext t1");
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
             "errs: {:?}",
@@ -764,7 +767,7 @@ mod tests {
     #[test]
     fn row_with_multiple_children() {
         let (rc, errs) =
-            resolve_kdl("widget bar child=r1\nrow r1 {\n  children a b\n}\nbutton a\nbutton b");
+        resolve_kdl("widget bar child=r1\nrow r1 {\n  children a b\n}\nbutton a child=t1\nbutton b child=t1\ntext t1");
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
             "errs: {:?}",
@@ -780,7 +783,7 @@ mod tests {
     #[test]
     fn column_with_shared_child_duplicated() {
         let (rc, errs) =
-            resolve_kdl("widget bar child=c1\ncolumn c1 {\n  children b b\n}\nbutton b");
+            resolve_kdl("widget bar child=c1\ncolumn c1 {\n  children b b\n}\nbutton b child=t1\ntext t1");
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
             "errs: {:?}",
