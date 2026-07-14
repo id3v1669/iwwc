@@ -125,12 +125,8 @@ fn build_revealer(r: &ResolvedRevealer, ctx: &RenderCtx) -> Element<'static, UiM
     .into()
 }
 
-fn build_button(b: &ResolvedButton, _ctx: &RenderCtx) -> Element<'static, UiMessage> {
-    let mut content = text(b.text.clone().unwrap_or_default());
-    if let Some(f) = &b.font {
-        content = content.font(*f);
-    }
-    let mut el = button(content);
+fn build_button(b: &ResolvedButton, ctx: &RenderCtx) -> Element<'static, UiMessage> {
+    let mut el = button(view_element(&b.child, ctx));
     if let Some(w) = b.w {
         el = el.width(w);
     }
@@ -380,7 +376,7 @@ mod tests {
     #[test]
     fn renders_button_with_action_and_styles() {
         let rc = render_kdl(
-            "widget bar child=btn\nbutton btn text=\"hi\" action=\"echo x\" w=40 padding=5 clip=#true style=s1 style:hover=s2 style:active=s1 style:disabled=s2\nstyle s1 bg=ffffff text=000000\nstyle s2 bg=000000 text=ffffff",
+            "widget bar child=btn\nbutton btn child=t1 action=\"echo x\" w=40 padding=5 clip=#true style=s1 style:hover=s2 style:active=s1 style:disabled=s2\ntext t1 text=\"hi\"\nstyle s1 bg=ffffff text=000000\nstyle s2 bg=000000 text=ffffff",
         );
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(
@@ -394,7 +390,7 @@ mod tests {
 
     #[test]
     fn renders_button_minimal() {
-        let rc = render_kdl("widget bar child=btn\nbutton btn");
+        let rc = render_kdl("widget bar child=btn\nbutton btn child=t1\ntext t1");
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(
             w,
@@ -408,7 +404,7 @@ mod tests {
     #[test]
     fn renders_row_with_children() {
         let rc = render_kdl(
-            "widget bar child=r1\nrow r1 spacing=5 align=c w=fill {\n  children a b\n}\nbutton a\nbutton b",
+            "widget bar child=r1\nrow r1 spacing=5 align=c w=fill {\n  children a b\n}\nbutton a child=t1\nbutton b child=t1\ntext t1",
         );
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(

@@ -129,8 +129,7 @@ pub struct Button {
     pub style_hover: Option<FieldValue<String>>,
     pub style_active: Option<FieldValue<String>>,
     pub style_disabled: Option<FieldValue<String>>,
-    pub text: Option<FieldValue<String>>,
-    pub font: Option<FieldValue<String>>,
+    pub child: Option<FieldValue<String>>,
     pub span: Span,
 }
 #[derive(Debug, Clone)]

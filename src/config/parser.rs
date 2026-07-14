@@ -1256,6 +1256,18 @@ pub(crate) fn build_button(
     errs: &mut Vec<ConfigError>,
 ) -> Option<(String, Button)> {
     let id = first_positional_string(node)?;
+    let child = field_id_ref("child", node, source, errs);
+    if child.is_none() {
+        errs.push(ConfigError {
+            kind: ConfigErrorKind::MissingRequiredField,
+            span: Span {
+                source: source.clone(),
+                span: node.span(),
+            },
+            message: "child is required".into(),
+            severity: Severity::Error,
+        });
+    }
     let b = Button {
         w: field_length("w", node, source, errs),
         h: field_length("h", node, source, errs),
@@ -1266,8 +1278,7 @@ pub(crate) fn build_button(
         style_hover: field_id_ref("style:hover", node, source, errs),
         style_active: field_id_ref("style:active", node, source, errs),
         style_disabled: field_id_ref("style:disabled", node, source, errs),
-        text: field_string("text", node, source, errs),
-        font: field_string("font", node, source, errs),
+        child,
         span: Span {
             source: source.clone(),
             span: node.span(),
@@ -2199,28 +2210,33 @@ mod tests {
     fn button() {
         run_cases(&[
             Case {
-                label: "minimal — no child required",
-                kdl: "button btn1",
+                label: "minimal with child",
+                kdl: "button btn1 child=t1",
                 expect: Expect::Ok,
             },
             Case {
+                label: "missing child",
+                kdl: "button btn1",
+                expect: Expect::Err("child is required"),
+            },
+            Case {
                 label: "action string",
-                kdl: r#"button btn1 action="echo hello""#,
+                kdl: r#"button btn1 child=t1 action="echo hello""#,
                 expect: Expect::Ok,
             },
             Case {
                 label: "style variants",
-                kdl: "button btn1 style=s1 style:hover=s1 style:active=s1 style:disabled=s1",
+                kdl: "button btn1 child=t1 style=s1 style:hover=s1 style:active=s1 style:disabled=s1",
                 expect: Expect::Ok,
             },
             Case {
                 label: "padding 3 invalid",
-                kdl: "button btn1 {\n  padding 5 10 5\n}",
+                kdl: "button btn1 child=t1 {\n  padding 5 10 5\n}",
                 expect: Expect::Err("padding accepts 1, 2, or 4 values"),
             },
             Case {
                 label: "action non-string",
-                kdl: "button btn1 action=42",
+                kdl: "button btn1 child=t1 action=42",
                 expect: Expect::Err("field `action` expects a string"),
             },
         ]);

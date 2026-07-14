@@ -74,8 +74,7 @@ pub struct ResolvedButton {
     pub style_hover: Option<button::Style>,
     pub style_active: Option<button::Style>,
     pub style_disabled: Option<button::Style>,
-    pub text: Option<String>,
-    pub font: Option<Font>,
+    pub child: Box<ResolvedElement>,
     pub span: Span,
 }
 
