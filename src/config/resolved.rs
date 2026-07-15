@@ -13,6 +13,7 @@ pub struct ResolvedConfig {
     pub apptray: ResolvedApptraySettings,
     pub smart_polls: Vec<(String, std::time::Duration)>,
     pub icon_theme: Option<String>,
+    pub watches: Vec<ResolvedWatch>,
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +35,7 @@ pub struct ResolvedWidget {
 pub enum ResolvedElement {
     Container(Box<ResolvedContainer>),
     Revealer(Box<ResolvedRevealer>),
+    Event(Box<ResolvedEvent>),
     Button(Box<ResolvedButton>),
     Row(ResolvedRow),
     Column(ResolvedColumn),
@@ -61,6 +63,23 @@ pub struct ResolvedRevealer {
     pub duration: std::time::Duration,
     pub child: Box<ResolvedElement>,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedEvent {
+    pub evtype: crate::config::primitives::EventType,
+    pub action: Option<String>,
+    pub child: Box<ResolvedElement>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedWatch {
+    pub id: String,
+    pub evtype: crate::config::primitives::EventType,
+    pub var: String,
+    pub action: String,
+    pub duration: Option<std::time::Duration>,
 }
 
 #[derive(Debug, Clone)]

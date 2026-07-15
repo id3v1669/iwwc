@@ -1,12 +1,13 @@
 use crate::config::math::{self, value::Value};
 use crate::config::resolved::{
     PreResolvedStyle, ResolvedButton, ResolvedColumn, ResolvedContainer, ResolvedElement,
-    ResolvedRevealer, ResolvedRow, ResolvedText, ResolvedWidget,
+    ResolvedEvent, ResolvedRevealer, ResolvedRow, ResolvedText, ResolvedWidget,
 };
 use crate::config::resolver::coerce;
 use crate::config::resolver::vars::FlatEnv;
 use crate::config::types::{
-    Button, Column, Container, FieldValue, ParsedConfig, Revealer, Row, Span, Style, TextEl, Widget,
+    Button, Column, Container, Event, FieldValue, ParsedConfig, Revealer, Row, Span, Style, TextEl,
+    Widget,
 };
 use crate::config::{ConfigError, ConfigErrorKind, Severity};
 use std::collections::HashSet;
@@ -138,6 +139,12 @@ pub(crate) fn resolve_ref(
         })
         .or_else(|| {
             ctx.config
+                .events
+                .get(reference)
+                .map(|r| OwnedEl::Event(r.clone()))
+        })
+        .or_else(|| {
+            ctx.config
                 .buttons
                 .get(reference)
                 .map(|b| OwnedEl::Button(b.clone()))
@@ -201,6 +208,7 @@ pub(crate) fn resolve_ref(
 enum OwnedEl {
     Container(Container),
     Revealer(Revealer),
+    Event(Event),
     Button(Button),
     Row(Row),
     Column(Column),
@@ -210,6 +218,7 @@ enum OwnedEl {
 fn single_element_owned(frag: &ParsedConfig) -> Option<OwnedEl> {
     let count = frag.containers.len()
         + frag.revealers.len()
+        + frag.events.len()
         + frag.buttons.len()
         + frag.rows.len()
         + frag.columns.len()
@@ -222,6 +231,9 @@ fn single_element_owned(frag: &ParsedConfig) -> Option<OwnedEl> {
     }
     if let Some((_, r)) = frag.revealers.iter().next() {
         return Some(OwnedEl::Revealer(r.clone()));
+    }
+    if let Some((_, r)) = frag.events.iter().next() {
+        return Some(OwnedEl::Event(r.clone()));
     }
     if let Some((_, b)) = frag.buttons.iter().next() {
         return Some(OwnedEl::Button(b.clone()));
@@ -249,6 +261,9 @@ fn resolve_fragment_element(
         }
         OwnedEl::Revealer(r) => {
             resolve_revealer(&r, ctx, visited).map(|r| ResolvedElement::Revealer(Box::new(r)))
+        }
+        OwnedEl::Event(e) => {
+            resolve_event(&e, ctx, visited).map(|e| ResolvedElement::Event(Box::new(e)))
         }
         OwnedEl::Button(b) => {
             resolve_button(&b, ctx, visited).map(|b| ResolvedElement::Button(Box::new(b)))
@@ -328,7 +343,34 @@ fn resolve_revealer(
     })
 }
 
-fn resolve_button(b: &Button, ctx: &mut Ctx, visited: &mut HashSet<String>) -> Option<ResolvedButton> {
+fn resolve_event(e: &Event, ctx: &mut Ctx, visited: &mut HashSet<String>) -> Option<ResolvedEvent> {
+    use crate::config::primitives::EventType;
+    if matches!(
+        e.evtype,
+        EventType::WatchOn | EventType::WatchOff | EventType::Timeout
+    ) {
+        ctx.errs.push(ConfigError {
+            kind: ConfigErrorKind::InvalidFieldType,
+            span: e.span.clone(),
+            message: "watch-type events are global and cannot be used as a child".into(),
+            severity: Severity::Error,
+        });
+        return None;
+    }
+    let child = resolve_child(&e.child, &e.span, ctx, visited)?;
+    Some(ResolvedEvent {
+        evtype: e.evtype,
+        action: resolve_field(&e.action, "action", &e.span, coerce::coerce_string, ctx),
+        child,
+        span: e.span.clone(),
+    })
+}
+
+fn resolve_button(
+    b: &Button,
+    ctx: &mut Ctx,
+    visited: &mut HashSet<String>,
+) -> Option<ResolvedButton> {
     let child = resolve_child(&b.child, &b.span, ctx, visited)?;
     Some(ResolvedButton {
         w: resolve_field(&b.w, "w", &b.span, coerce::coerce_length, ctx),
@@ -766,8 +808,9 @@ mod tests {
 
     #[test]
     fn row_with_multiple_children() {
-        let (rc, errs) =
-        resolve_kdl("widget bar child=r1\nrow r1 {\n  children a b\n}\nbutton a child=t1\nbutton b child=t1\ntext t1");
+        let (rc, errs) = resolve_kdl(
+            "widget bar child=r1\nrow r1 {\n  children a b\n}\nbutton a child=t1\nbutton b child=t1\ntext t1",
+        );
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
             "errs: {:?}",
@@ -782,8 +825,9 @@ mod tests {
 
     #[test]
     fn column_with_shared_child_duplicated() {
-        let (rc, errs) =
-            resolve_kdl("widget bar child=c1\ncolumn c1 {\n  children b b\n}\nbutton b child=t1\ntext t1");
+        let (rc, errs) = resolve_kdl(
+            "widget bar child=c1\ncolumn c1 {\n  children b b\n}\nbutton b child=t1\ntext t1",
+        );
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
             "errs: {:?}",

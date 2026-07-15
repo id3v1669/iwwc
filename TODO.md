@@ -14,6 +14,7 @@ Before Beta:
 - [x] Tray menu direction is an ugly workaround that doesn't work well, replicate xdg_popup for layershell like one the eww uses.(exwlshelleventloop patch)
 - [x] figure out how to properly calculate menu and submenu width and rm temp statics (calc based on text and font or make proper eval via iced, test what is more efficient and stable).
 - [x] Rm bunch of leftover structures in favor of orig iced stucts (old code from iced fork and when layershell lib wasn't used.) #oldmigration
+- [x] add action support to have actions on hover enter, exit, rightclick
 
 Beta:
 
@@ -24,6 +25,7 @@ Beta:
 
 Future:
 
+- [ ] option for widgets to inherit output from another widet(useful for cases when first widget spawns via active)
 - [ ] iwwc.gpu.(load/temp/vram)(amd)
 - [ ] iwwc.temps.(*)
 - [ ] re-review all tests
@@ -49,3 +51,5 @@ Future:
 - [ ] learn about fluid and enclose for Length
 - [ ] since vars for iwwc.cpu are dynamic how to test them? call via cpu.0? research values
 - [ ] change default ration? #ratio
+- [ ] double declaration of action doesn't trigger any warning on reload
+- [ ] update var for bool filip option

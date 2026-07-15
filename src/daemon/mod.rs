@@ -37,6 +37,10 @@ pub enum Message {
         id: u32,
         generation: u64,
     },
+    WatchTimeout {
+        id: String,
+        generation: u64,
+    },
     TrayItems(Vec<crate::tray::types::TrayItem>),
     MenuOpen {
         bus_name: String,
@@ -85,6 +89,8 @@ pub struct App {
     menu_cache: HashMap<(String, String), crate::tray::menu_types::MenuItem>,
     menu_fetch_inflight: HashSet<(String, String)>,
     menu_refetch_pending: HashMap<(String, String), bool>,
+    watch_timers: HashMap<String, u64>,
+    watch_gen: u64,
 }
 
 struct NotifState {
@@ -150,6 +156,8 @@ impl App {
             menu_cache: HashMap::new(),
             menu_fetch_inflight: HashSet::new(),
             menu_refetch_pending: HashMap::new(),
+            watch_timers: HashMap::new(),
+            watch_gen: 0,
         }
     }
 
@@ -235,6 +243,25 @@ impl App {
                 } else {
                     Task::none()
                 }
+            }
+            Message::WatchTimeout { id, generation } => {
+                if self.watch_timers.get(&id) != Some(&generation) {
+                    return Task::none();
+                }
+                self.watch_timers.remove(&id);
+                let Some(w) = self
+                    .store
+                    .resolved()
+                    .watches
+                    .iter()
+                    .find(|w| w.id == id)
+                    .cloned()
+                else {
+                    return Task::none();
+                };
+                action::run_action(&w.action);
+                let (_res, task) = self.apply_var_update(&w.var, "#false");
+                task
             }
             Message::TrayItems(items) => {
                 self.tray_items = items;
@@ -373,10 +400,11 @@ impl App {
                 None => Task::none(),
             },
             Message::PullResult { name, value } => {
-                if let Err(e) = self.store.update(&name, &value) {
+                let (res, task) = self.apply_var_update(&name, &value);
+                if let Err(e) = res {
                     log::debug!("pull {name} update rejected: {e}");
                 }
-                Task::none()
+                task
             }
             Message::SmartRefresh => {
                 self.store.refresh();
@@ -434,10 +462,13 @@ impl App {
 
     fn dispatch_command(&mut self, command: Command) -> (Response, Task<Message>) {
         match command {
-            Command::Update { name, value } => match self.store.update(&name, &value) {
-                Ok(()) => (Response::Ok, Task::none()),
-                Err(e) => (Response::Error(e.to_string()), Task::none()),
-            },
+            Command::Update { name, value } => {
+                let (res, task) = self.apply_var_update(&name, &value);
+                match res {
+                    Ok(()) => (Response::Ok, task),
+                    Err(e) => (Response::Error(e.to_string()), Task::none()),
+                }
+            }
             Command::Get { name } => (self.get_value(&name), Task::none()),
             Command::Open { window } => {
                 if self.windows.values().any(|n| n == &window) {
@@ -489,6 +520,7 @@ impl App {
             }
             Command::Reload => match self.store.reload(&self.config_path) {
                 Ok(warns) => {
+                    self.watch_timers.clear();
                     let task = self.reapply();
                     let resp = if warns.is_empty() {
                         Response::Ok
@@ -625,6 +657,69 @@ impl App {
         let generation = st.timer_gen;
         let timeout = st.notification.expire_timeout;
         timeout_task(id, generation, timeout, &settings)
+    }
+
+    fn apply_var_update(
+        &mut self,
+        name: &str,
+        value: &str,
+    ) -> (Result<(), crate::config::store::UpdateError>, Task<Message>) {
+        use crate::config::types::VarValue;
+        let old = match self.store.var_value(name) {
+            Some(VarValue::Bool(b)) => Some(*b),
+            _ => None,
+        };
+        let res = self.store.update(name, value);
+        if res.is_err() {
+            return (res, Task::none());
+        }
+        let new = match self.store.var_value(name) {
+            Some(VarValue::Bool(b)) => Some(*b),
+            _ => None,
+        };
+        let task = match (old, new) {
+            (Some(o), Some(n)) if o != n => self.on_var_flip(name, n),
+            _ => Task::none(),
+        };
+        (res, task)
+    }
+
+    fn on_var_flip(&mut self, name: &str, now_true: bool) -> Task<Message> {
+        use crate::config::primitives::EventType;
+        let watches: Vec<crate::config::resolved::ResolvedWatch> = self
+            .store
+            .resolved()
+            .watches
+            .iter()
+            .filter(|w| w.var == name)
+            .cloned()
+            .collect();
+        let mut tasks = Vec::new();
+        for w in watches {
+            match w.evtype {
+                EventType::WatchOn if now_true => action::run_action(&w.action),
+                EventType::WatchOff if !now_true => action::run_action(&w.action),
+                EventType::Timeout => {
+                    if now_true {
+                        let Some(dur) = w.duration else { continue };
+                        self.watch_gen += 1;
+                        let generation = self.watch_gen;
+                        self.watch_timers.insert(w.id.clone(), generation);
+                        let id = w.id.clone();
+                        tasks.push(Task::perform(tokio::time::sleep(dur), move |_| {
+                            Message::WatchTimeout {
+                                id: id.clone(),
+                                generation,
+                            }
+                        }));
+                    } else {
+                        self.watch_timers.remove(&w.id);
+                    }
+                }
+                _ => {}
+            }
+        }
+        Task::batch(tasks)
     }
 
     fn restack(&self) -> Task<Message> {

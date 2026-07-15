@@ -56,6 +56,7 @@ pub struct ParsedConfig {
     pub widgets: IndexMap<String, Widget>,
     pub containers: IndexMap<String, Container>,
     pub revealers: IndexMap<String, Revealer>,
+    pub events: IndexMap<String, Event>,
     pub buttons: IndexMap<String, Button>,
     pub rows: IndexMap<String, Row>,
     pub columns: IndexMap<String, Column>,
@@ -114,6 +115,15 @@ pub struct Container {
 pub struct Revealer {
     pub transition: Option<FieldValue<crate::config::primitives::Transition>>,
     pub active: Option<FieldValue<bool>>,
+    pub duration: Option<FieldValue<std::time::Duration>>,
+    pub child: Option<FieldValue<String>>,
+    pub span: Span,
+}
+#[derive(Debug, Clone)]
+pub struct Event {
+    pub evtype: crate::config::primitives::EventType,
+    pub action: Option<FieldValue<String>>,
+    pub var: Option<String>,
     pub duration: Option<FieldValue<std::time::Duration>>,
     pub child: Option<FieldValue<String>>,
     pub span: Span,

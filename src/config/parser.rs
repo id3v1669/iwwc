@@ -1,7 +1,7 @@
 use crate::config::primitives::{
-    AnchorError, parse_align_x, parse_align_y, parse_anchor, parse_color, parse_font_stretch,
-    parse_font_style, parse_font_weight, parse_interval, parse_layer, parse_output,
-    parse_text_align_x, parse_transition,
+    AnchorError, parse_align_x, parse_align_y, parse_anchor, parse_color, parse_event_type,
+    parse_font_stretch, parse_font_style, parse_font_weight, parse_interval, parse_layer,
+    parse_output, parse_text_align_x, parse_transition,
 };
 use crate::config::types::PullDecl;
 use crate::config::types::{FieldValue, ParsedConfig, SourceText, Span};
@@ -177,6 +177,7 @@ pub(crate) fn parse_document(
                 "widget"
                     | "container"
                     | "revealer"
+                    | "event"
                     | "button"
                     | "row"
                     | "column"
@@ -225,6 +226,15 @@ pub(crate) fn parse_document(
                         errs.push(dup_id_warning(&id, "revealer", node, &source));
                     } else {
                         out.revealers.insert(id, r);
+                    }
+                }
+            }
+            "event" => {
+                if let Some((id, r)) = build_event(node, &source, &mut errs) {
+                    if out.events.contains_key(&id) {
+                        errs.push(dup_id_warning(&id, "event", node, &source));
+                    } else {
+                        out.events.insert(id, r);
                     }
                 }
             }
@@ -1025,6 +1035,174 @@ pub(crate) fn build_revealer(
         },
     };
     Some((id, r))
+}
+
+use crate::config::types::Event;
+
+fn event_err(
+    errs: &mut Vec<ConfigError>,
+    node: &kdl::KdlNode,
+    source: &SourceText,
+    kind: ConfigErrorKind,
+    message: String,
+) {
+    errs.push(ConfigError {
+        kind,
+        span: Span {
+            source: source.clone(),
+            span: node.span(),
+        },
+        message,
+        severity: Severity::Error,
+    });
+}
+
+pub(crate) fn build_event(
+    node: &kdl::KdlNode,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) -> Option<(String, Event)> {
+    let id = first_positional_string(node)?;
+    if prop(node, "type").is_none() {
+        event_err(
+            errs,
+            node,
+            source,
+            ConfigErrorKind::MissingRequiredField,
+            "event `type` is required".into(),
+        );
+        return None;
+    }
+    let evtype = match field_parsed(
+        "type",
+        node,
+        source,
+        errs,
+        parse_event_type,
+        "onhover, onhoverexit, rightclick, watchon, watchoff or timeout",
+    )? {
+        FieldValue::Literal(t) => t,
+        FieldValue::Expr(_) => {
+            event_err(
+                errs,
+                node,
+                source,
+                ConfigErrorKind::InvalidFieldType,
+                "event `type` must be a literal, not an expression".into(),
+            );
+            return None;
+        }
+    };
+    let var = match field_id_ref("var", node, source, errs) {
+        Some(FieldValue::Literal(s)) => Some(s),
+        Some(FieldValue::Expr(_)) => {
+            event_err(
+                errs,
+                node,
+                source,
+                ConfigErrorKind::InvalidFieldType,
+                "event `var` must be a variable name literal, not an expression".into(),
+            );
+            None
+        }
+        None => None,
+    };
+    let action = field_string("action", node, source, errs);
+    let duration = field_parsed(
+        "duration",
+        node,
+        source,
+        errs,
+        parse_interval,
+        "a duration string e.g. \"500ms\", \"1s\"",
+    );
+    let child = field_id_ref("child", node, source, errs);
+
+    if action.is_none() {
+        event_err(
+            errs,
+            node,
+            source,
+            ConfigErrorKind::MissingRequiredField,
+            "event `action` is required".into(),
+        );
+    }
+    use crate::config::primitives::EventType;
+    let is_pointer = matches!(
+        evtype,
+        EventType::OnHover | EventType::OnHoverExit | EventType::RightClick
+    );
+    if is_pointer {
+        if child.is_none() {
+            event_err(
+                errs,
+                node,
+                source,
+                ConfigErrorKind::MissingRequiredField,
+                "pointer event requires `child`".into(),
+            );
+        }
+        if var.is_some() {
+            event_err(
+                errs,
+                node,
+                source,
+                ConfigErrorKind::InvalidFieldType,
+                "`var` is only valid for watchon, watchoff and timeout events".into(),
+            );
+        }
+    } else {
+        if var.is_none() {
+            event_err(
+                errs,
+                node,
+                source,
+                ConfigErrorKind::MissingRequiredField,
+                "watch event requires `var`".into(),
+            );
+        }
+        if child.is_some() {
+            event_err(
+                errs,
+                node,
+                source,
+                ConfigErrorKind::InvalidFieldType,
+                "`child` is only valid for onhover, onhoverexit and rightclick events".into(),
+            );
+        }
+    }
+    if evtype == EventType::Timeout {
+        if duration.is_none() {
+            event_err(
+                errs,
+                node,
+                source,
+                ConfigErrorKind::MissingRequiredField,
+                "timeout event requires `duration`".into(),
+            );
+        }
+    } else if duration.is_some() {
+        event_err(
+            errs,
+            node,
+            source,
+            ConfigErrorKind::InvalidFieldType,
+            "`duration` is only valid for timeout events".into(),
+        );
+    }
+
+    let e = Event {
+        evtype,
+        action,
+        var,
+        duration,
+        child,
+        span: Span {
+            source: source.clone(),
+            span: node.span(),
+        },
+    };
+    Some((id, e))
 }
 
 use crate::config::types::Style;
@@ -2538,6 +2716,88 @@ mod tests {
                 label: "dup name",
                 kdl: "var dt=1\npull dt=\"date\" i=\"1s\"",
                 expect: Expect::Warn("variable dt is defined twice, using first"),
+            },
+        ]);
+    }
+
+    #[test]
+    fn event_field_matrix() {
+        run_cases(&[
+            Case {
+                label: "pointer event ok",
+                kdl: "widget bar child=e1\nevent e1 type=onhover action=\"true\" child=t1\ntext t1",
+                expect: Expect::Ok,
+            },
+            Case {
+                label: "watch event ok",
+                kdl: "var flag=#false\nevent e1 type=watchon var=flag action=\"true\"",
+                expect: Expect::Ok,
+            },
+            Case {
+                label: "timeout event ok",
+                kdl: "var flag=#false\nevent e1 type=timeout var=flag duration=\"1s\" action=\"true\"",
+                expect: Expect::Ok,
+            },
+            Case {
+                label: "type required",
+                kdl: "event e1 action=\"true\" child=t1\ntext t1",
+                expect: Expect::Err("event `type` is required"),
+            },
+            Case {
+                label: "action required",
+                kdl: "event e1 type=onhover child=t1\ntext t1",
+                expect: Expect::Err("event `action` is required"),
+            },
+            Case {
+                label: "pointer requires child",
+                kdl: "event e1 type=onhover action=\"true\"",
+                expect: Expect::Err("pointer event requires `child`"),
+            },
+            Case {
+                label: "pointer forbids var",
+                kdl: "var flag=#false\nevent e1 type=rightclick var=flag action=\"true\" child=t1\ntext t1",
+                expect: Expect::Err("`var` is only valid for watchon, watchoff and timeout events"),
+            },
+            Case {
+                label: "watch requires var",
+                kdl: "event e1 type=watchoff action=\"true\"",
+                expect: Expect::Err("watch event requires `var`"),
+            },
+            Case {
+                label: "var must be literal",
+                kdl: "var x=#false\nevent e1 type=watchon var=\"${x}\" action=\"true\"",
+                expect: Expect::Err(
+                    "event `var` must be a variable name literal, not an expression",
+                ),
+            },
+            Case {
+                label: "watch forbids child",
+                kdl: "var flag=#false\nevent e1 type=watchon var=flag action=\"true\" child=t1\ntext t1",
+                expect: Expect::Err(
+                    "`child` is only valid for onhover, onhoverexit and rightclick events",
+                ),
+            },
+            Case {
+                label: "timeout requires duration",
+                kdl: "var flag=#false\nevent e1 type=timeout var=flag action=\"true\"",
+                expect: Expect::Err("timeout event requires `duration`"),
+            },
+            Case {
+                label: "duration only for timeout",
+                kdl: "var flag=#false\nevent e1 type=watchon var=flag duration=\"1s\" action=\"true\"",
+                expect: Expect::Err("`duration` is only valid for timeout events"),
+            },
+            Case {
+                label: "type must be literal",
+                kdl: "event e1 type=\"${x}\" action=\"true\" child=t1\ntext t1",
+                expect: Expect::Err("event `type` must be a literal, not an expression"),
+            },
+            Case {
+                label: "type unrecognized",
+                kdl: "event e1 type=bogus action=\"true\" child=t1\ntext t1",
+                expect: Expect::Err(
+                    "invalid `type` \"bogus\", expected onhover, onhoverexit, rightclick, watchon, watchoff or timeout",
+                ),
             },
         ]);
     }
