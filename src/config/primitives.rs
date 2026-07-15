@@ -160,6 +160,17 @@ pub enum Transition {
     SlideRight,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum EventType {
+    #[default]
+    OnHover,
+    OnHoverExit,
+    RightClick,
+    WatchOn,
+    WatchOff,
+    Timeout,
+}
+
 pub fn parse_transition(s: &str) -> Option<Transition> {
     match s.trim() {
         "none" => Some(Transition::None),
@@ -167,6 +178,18 @@ pub fn parse_transition(s: &str) -> Option<Transition> {
         "slidedown" => Some(Transition::SlideDown),
         "slideleft" => Some(Transition::SlideLeft),
         "slideright" => Some(Transition::SlideRight),
+        _ => None,
+    }
+}
+
+pub fn parse_event_type(s: &str) -> Option<EventType> {
+    match s.trim() {
+        "onhover" => Some(EventType::OnHover),
+        "onhoverexit" => Some(EventType::OnHoverExit),
+        "rightclick" => Some(EventType::RightClick),
+        "watchon" => Some(EventType::WatchOn),
+        "watchoff" => Some(EventType::WatchOff),
+        "timeout" => Some(EventType::Timeout),
         _ => None,
     }
 }

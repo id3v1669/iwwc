@@ -37,6 +37,69 @@ pub fn resolve(config: &ParsedConfig) -> (Option<ResolvedConfig>, Vec<ConfigErro
         elements::resolve_apptray_settings(&mut ctx)
     };
 
+    let mut watches: Vec<crate::config::resolved::ResolvedWatch> = Vec::new();
+    for (id, e) in &config.events {
+        use crate::config::primitives::EventType;
+        if matches!(
+            e.evtype,
+            EventType::OnHover | EventType::OnHoverExit | EventType::RightClick
+        ) {
+            continue;
+        }
+        used.insert(id.clone());
+        let Some(var) = e.var.clone() else { continue };
+        match config.vars.get(&var).map(|d| &d.value) {
+            Some(crate::config::types::VarValue::Bool(_)) => {}
+            Some(_) => {
+                errs.push(ConfigError {
+                    kind: crate::config::ConfigErrorKind::TypeCoercion,
+                    span: e.span.clone(),
+                    message: format!("event \"{id}\": var \"{var}\" is not a bool variable"),
+                    severity: Severity::Error,
+                });
+                continue;
+            }
+            None => {
+                errs.push(ConfigError {
+                    kind: crate::config::ConfigErrorKind::UnresolvedReference,
+                    span: e.span.clone(),
+                    message: format!("event \"{id}\": unknown variable \"{var}\""),
+                    severity: Severity::Error,
+                });
+                continue;
+            }
+        }
+        used.insert(var.clone());
+        let mut ctx = elements::Ctx {
+            config,
+            env: &env,
+            errs: &mut errs,
+            used: &mut used,
+        };
+        let action = elements::resolve_field(
+            &e.action,
+            "action",
+            &e.span,
+            coerce::coerce_string,
+            &mut ctx,
+        );
+        let duration = elements::resolve_field(
+            &e.duration,
+            "duration",
+            &e.span,
+            coerce::coerce_duration,
+            &mut ctx,
+        );
+        let Some(action) = action else { continue };
+        watches.push(crate::config::resolved::ResolvedWatch {
+            id: id.clone(),
+            evtype: e.evtype,
+            var,
+            action,
+            duration,
+        });
+    }
+
     let smart_polls = env.smart_polls();
 
     let mut all_ids: Vec<(&str, &crate::config::types::Span, bool)> = Vec::new();
@@ -51,7 +114,7 @@ pub fn resolve(config: &ParsedConfig) -> (Option<ResolvedConfig>, Vec<ConfigErro
         };
     }
     collect_element_ids!(
-        containers, revealers, buttons, rows, columns, texts, styles, borders, shadows
+        containers, revealers, events, buttons, rows, columns, texts, styles, borders, shadows
     );
 
     for (id, span, is_var) in all_ids {
@@ -88,6 +151,7 @@ pub fn resolve(config: &ParsedConfig) -> (Option<ResolvedConfig>, Vec<ConfigErro
                 apptray,
                 smart_polls,
                 icon_theme,
+                watches,
             }),
             errs,
         )
@@ -481,5 +545,99 @@ mod tests {
         assert!(errs.iter().any(|e| e.kind == ConfigErrorKind::UnusedElement
             && e.severity == Severity::Warning
             && e.message.contains("\"rev\"")));
+    }
+
+    #[test]
+    fn watch_events_resolve_into_watches() {
+        let (cfg, perrs) = crate::config::parse_str(
+            "var flag=#false\nevent w1 type=watchon var=flag action=\"echo on\"\nevent t1 type=timeout var=flag duration=\"2s\" action=\"echo done\"",
+            "<test>",
+        );
+        let cfg = cfg.expect("parse ok");
+        assert!(
+            perrs.iter().all(|e| e.severity != Severity::Error),
+            "{perrs:?}"
+        );
+        let (rc, errs) = resolve(&cfg);
+        assert!(
+            errs.iter().all(|e| e.severity != Severity::Error),
+            "{errs:?}"
+        );
+        let rc = rc.expect("resolved");
+        assert_eq!(rc.watches.len(), 2);
+        let w1 = rc.watches.iter().find(|w| w.id == "w1").expect("w1");
+        assert_eq!(w1.var, "flag");
+        assert_eq!(w1.action, "echo on");
+        assert_eq!(w1.duration, None);
+        let t1 = rc.watches.iter().find(|w| w.id == "t1").expect("t1");
+        assert_eq!(t1.duration, Some(std::time::Duration::from_secs(2)));
+        assert!(
+            !errs.iter().any(|e| e.message.contains("never used")),
+            "watch events and their vars must count as used: {errs:?}"
+        );
+    }
+
+    #[test]
+    fn watch_on_non_bool_var_errors() {
+        let (cfg, _perrs) = crate::config::parse_str(
+            "var name=\"hi\"\nevent w1 type=watchon var=name action=\"true\"",
+            "<test>",
+        );
+        let (rc, errs) = resolve(&cfg.expect("parse ok"));
+        assert!(rc.is_none());
+        assert!(
+            errs.iter()
+                .any(|e| e.message.contains("is not a bool variable")),
+            "{errs:?}"
+        );
+    }
+
+    #[test]
+    fn watch_on_unknown_var_errors() {
+        let (cfg, _perrs) =
+            crate::config::parse_str("event w1 type=watchon var=nope action=\"true\"", "<test>");
+        let (rc, errs) = resolve(&cfg.expect("parse ok"));
+        assert!(rc.is_none());
+        assert!(
+            errs.iter().any(|e| e.message.contains("unknown variable")),
+            "{errs:?}"
+        );
+    }
+
+    #[test]
+    fn watch_event_as_child_errors() {
+        let (cfg, _perrs) = crate::config::parse_str(
+            "var flag=#false\nwidget bar child=w1\nevent w1 type=watchon var=flag action=\"true\"",
+            "<test>",
+        );
+        let (rc, errs) = resolve(&cfg.expect("parse ok"));
+        assert!(rc.is_none());
+        assert!(
+            errs.iter()
+                .any(|e| e.message.contains("cannot be used as a child")),
+            "{errs:?}"
+        );
+    }
+
+    #[test]
+    fn pointer_event_resolves_in_tree() {
+        let (cfg, _perrs) = crate::config::parse_str(
+            "widget bar child=e1\nevent e1 type=onhover action=\"true\" child=t1\ntext t1",
+            "<test>",
+        );
+        let (rc, errs) = resolve(&cfg.expect("parse ok"));
+        assert!(
+            errs.iter().all(|e| e.severity != Severity::Error),
+            "{errs:?}"
+        );
+        let rc = rc.expect("resolved");
+        let bar = rc.widgets.get("bar").expect("bar");
+        match bar.child.as_deref() {
+            Some(crate::config::resolved::ResolvedElement::Event(e)) => {
+                assert_eq!(e.action.as_deref(), Some("true"));
+            }
+            other => panic!("expected event child, got {other:?}"),
+        }
+        assert!(rc.watches.is_empty());
     }
 }

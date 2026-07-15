@@ -41,7 +41,7 @@ pub struct RenderCtx<'a> {
 
 use crate::config::resolved::{
     ResolvedApptraySettings, ResolvedButton, ResolvedColumn, ResolvedContainer, ResolvedElement,
-    ResolvedRevealer, ResolvedRow, ResolvedText, ResolvedWidget,
+    ResolvedEvent, ResolvedRevealer, ResolvedRow, ResolvedText, ResolvedWidget,
 };
 use crate::tray::types::TrayIcon;
 use iced::Element;
@@ -63,6 +63,7 @@ fn view_element(el: &ResolvedElement, ctx: &RenderCtx) -> Element<'static, UiMes
         ResolvedElement::Column(c) => build_column(c, ctx),
         ResolvedElement::Text(t) => build_text(t, ctx),
         ResolvedElement::Apptray(s) => build_apptray(s, ctx),
+        ResolvedElement::Event(e) => build_event(e, ctx),
     }
 }
 
@@ -123,6 +124,21 @@ fn build_revealer(r: &ResolvedRevealer, ctx: &RenderCtx) -> Element<'static, UiM
         r.duration,
     )
     .into()
+}
+
+fn build_event(e: &ResolvedEvent, ctx: &RenderCtx) -> Element<'static, UiMessage> {
+    use crate::config::primitives::EventType;
+    let mut area = iced::widget::mouse_area(view_element(&e.child, ctx));
+    if let Some(action) = &e.action {
+        let msg = UiMessage::Action(action.clone());
+        area = match e.evtype {
+            EventType::OnHover => area.on_enter(msg),
+            EventType::OnHoverExit => area.on_exit(msg),
+            EventType::RightClick => area.on_right_press(msg),
+            _ => area,
+        };
+    }
+    area.into()
 }
 
 fn build_button(b: &ResolvedButton, ctx: &RenderCtx) -> Element<'static, UiMessage> {
@@ -458,6 +474,21 @@ mod tests {
     fn renders_revealer_with_child() {
         let rc = render_kdl(
             "widget bar child=rev\nrevealer rev transition=slideleft active=#false duration=\"300ms\" child=t1\ntext t1 color=ffffff",
+        );
+        let w = rc.widgets.get("bar").unwrap();
+        let _el = view_widget(
+            w,
+            &RenderCtx {
+                tray: &[],
+                window: iced::window::Id::unique(),
+            },
+        );
+    }
+
+    #[test]
+    fn renders_event_with_child() {
+        let rc = render_kdl(
+            "widget bar child=e1\nevent e1 type=onhover action=\"true\" child=t1\ntext t1 color=ffffff",
         );
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(
