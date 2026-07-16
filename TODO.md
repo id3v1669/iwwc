@@ -52,4 +52,4 @@ Future:
 - [ ] since vars for iwwc.cpu are dynamic how to test them? call via cpu.0? research values
 - [ ] change default ration? #ratio
 - [ ] double declaration of action doesn't trigger any warning on reload
-- [ ] update var for bool filip option
+- [x] update var for bool filip option

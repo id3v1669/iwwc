@@ -176,7 +176,10 @@ impl Store {
         if !self.config.vars.contains_key(name) {
             return Err(UpdateError::UnknownVariable(name.to_string()));
         }
-        let parsed = parse_value(raw_value);
+        let parsed = match self.config.vars.get(name).map(|d| &d.value) {
+            Some(VarValue::Bool(b)) if raw_value == "toggle" => VarValue::Bool(!b),
+            _ => parse_value(raw_value),
+        };
         let mut candidate = self.config.clone();
         if let Some(decl) = candidate.vars.get_mut(name) {
             decl.value = parsed;

@@ -2,6 +2,10 @@ pub fn run_action(action: &str) {
     match std::process::Command::new("sh")
         .arg("-c")
         .arg(action)
+        .env(
+            "IWWC",
+            std::env::current_exe().unwrap_or_else(|_| "iwwc".into()),
+        )
         .spawn()
     {
         Ok(_child) => {}
