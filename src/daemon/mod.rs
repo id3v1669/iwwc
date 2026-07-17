@@ -63,6 +63,7 @@ pub enum Message {
         x: f32,
         y: f32,
     },
+    SurfaceOpened(WindowId),
     NotifRightClick(WindowId),
     NotifLeftClick(WindowId),
     NotifHoverEnter(WindowId),
@@ -181,6 +182,7 @@ impl App {
                 self.store.resolved().apptray.icon_size as u16,
             ),
             iced::window::close_events().map(Message::WindowClosed),
+            iced::window::open_events().map(Message::SurfaceOpened),
             iced::keyboard::listen().map(|ev| match ev {
                 iced::keyboard::Event::KeyPressed {
                     key: iced::keyboard::Key::Named(iced::keyboard::key::Named::Escape),
@@ -393,6 +395,10 @@ impl App {
                 self.cursor.insert(window, (x, y));
                 Task::none()
             }
+            Message::SurfaceOpened(window) => match self.widget_transparent(window) {
+                Some(transparent) => region_task(window, transparent),
+                None => Task::none(),
+            },
             Message::PullTick(name) => match self.store.pulls().get(&name) {
                 Some(decl) => {
                     run_pull_task(name.clone(), decl.command.clone(), decl.default.clone())
@@ -678,10 +684,24 @@ impl App {
             _ => None,
         };
         let task = match (old, new) {
-            (Some(o), Some(n)) if o != n => self.on_var_flip(name, n),
+            (Some(o), Some(n)) if o != n => {
+                Task::batch([self.on_var_flip(name, n), self.sync_input_regions()])
+            }
             _ => Task::none(),
         };
         (res, task)
+    }
+
+    fn widget_transparent(&self, window: WindowId) -> Option<bool> {
+        let name = self.windows.get(&window)?;
+        self.store.resolved().widgets.get(name)?.transparent
+    }
+
+    fn sync_input_regions(&self) -> Task<Message> {
+        Task::batch(self.windows.keys().filter_map(|&id| {
+            self.widget_transparent(id)
+                .map(|transparent| region_task(id, transparent))
+        }))
     }
 
     fn on_var_flip(&mut self, name: &str, now_true: bool) -> Task<Message> {
@@ -1114,6 +1134,15 @@ fn menu_layout_task(bus: String, path: String, notify: bool, icon_size: u16) -> 
             root,
         },
     )
+}
+
+fn region_task(id: WindowId, transparent: bool) -> Task<Message> {
+    let callback = iced_layershell::actions::ActionCallback::new(move |region| {
+        if !transparent {
+            region.add(0, 0, i32::MAX, i32::MAX);
+        }
+    });
+    Task::done(Message::SetInputRegion { id, callback })
 }
 
 fn run_pull_task(name: String, command: String, default: String) -> Task<Message> {

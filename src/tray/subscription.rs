@@ -58,6 +58,13 @@ fn tray_stream(args: &(Option<String>, u16)) -> futures::stream::BoxStream<'stat
                 return;
             }
         };
+        let mut noc = match dbus.receive_name_owner_changed().await {
+            Ok(s) => s,
+            Err(e) => {
+                log::error!("tray: name_owner_changed: {e}");
+                return;
+            }
+        };
         let watcher_taken = match WATCHER_NAME.try_into() {
             Ok(n) => dbus.name_has_owner(n).await.unwrap_or(false),
             Err(_) => false,
@@ -85,14 +92,6 @@ fn tray_stream(args: &(Option<String>, u16)) -> futures::stream::BoxStream<'stat
                 }
             }
         }
-
-        let mut noc = match dbus.receive_name_owner_changed().await {
-            Ok(s) => s,
-            Err(e) => {
-                log::error!("tray: name_owner_changed: {e}");
-                return;
-            }
-        };
 
         'outer: loop {
             let entries = { items.0.lock().unwrap().clone() };
