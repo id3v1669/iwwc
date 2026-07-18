@@ -28,6 +28,7 @@ pkgs.mkShell {
     dbus
 
     # Tools
+    mdbook
     cargo-audit
     cargo-deny
     clippy

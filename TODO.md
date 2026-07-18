@@ -15,6 +15,8 @@ Before Beta:
 - [x] figure out how to properly calculate menu and submenu width and rm temp statics (calc based on text and font or make proper eval via iced, test what is more efficient and stable).
 - [x] Rm bunch of leftover structures in favor of orig iced stucts (old code from iced fork and when layershell lib wasn't used.) #oldmigration
 - [x] add action support to have actions on hover enter, exit, rightclick
+- [ ] update defaults
+- [ ] fix menu text pos for tray menu to depend on rounded corners
 
 Beta:
 
@@ -53,3 +55,4 @@ Future:
 - [ ] change default ration? #ratio
 - [ ] double declaration of action doesn't trigger any warning on reload
 - [x] update var for bool filip option
+- [ ] add margins - create outer container and set paddings as margins for inner object
