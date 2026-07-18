@@ -48,6 +48,7 @@ pub enum ConfigErrorKind {
     UnusedElement,
     UnusedVariable,
     MissingSizeAnchor,
+    Import,
 }
 
 #[derive(Debug, Clone)]
@@ -92,31 +93,44 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-pub fn parse_str(input: &str, source_label: &str) -> (Option<ParsedConfig>, Vec<ConfigError>) {
+pub(crate) fn parse_into(
+    input: &str,
+    source_label: &str,
+    base_dir: Option<&Path>,
+    visited: &mut Vec<PathBuf>,
+    out: &mut ParsedConfig,
+    errs: &mut Vec<ConfigError>,
+) {
     let source = SourceText {
         label: Arc::from(source_label),
         text: Arc::from(input),
     };
 
-    let doc = match input.parse::<kdl::KdlDocument>() {
-        Ok(d) => d,
-        Err(e) => {
-            return (
-                None,
-                vec![ConfigError {
-                    kind: ConfigErrorKind::Syntax,
-                    span: crate::config::types::Span {
-                        source: source.clone(),
-                        span: miette::SourceSpan::new(0.into(), 0),
-                    },
-                    message: format!("KDL syntax error: {}", e),
-                    severity: Severity::Error,
-                }],
-            );
-        }
-    };
+    match input.parse::<kdl::KdlDocument>() {
+        Ok(doc) => parser::parse_document_into(&doc, &source, base_dir, visited, out, errs),
+        Err(e) => errs.push(ConfigError {
+            kind: ConfigErrorKind::Syntax,
+            span: crate::config::types::Span {
+                source: source.clone(),
+                span: miette::SourceSpan::new(0.into(), 0),
+            },
+            message: format!("KDL syntax error: {}", e),
+            severity: Severity::Error,
+        }),
+    }
+}
 
-    let (cfg, errs) = parser::parse_document(doc, source);
+pub fn parse_str(input: &str, source_label: &str) -> (Option<ParsedConfig>, Vec<ConfigError>) {
+    let mut cfg = ParsedConfig::default();
+    let mut errs = Vec::new();
+    parse_into(
+        input,
+        source_label,
+        None,
+        &mut Vec::new(),
+        &mut cfg,
+        &mut errs,
+    );
     let has_error = errs.iter().any(|e| e.severity == Severity::Error);
     if has_error {
         (None, errs)
@@ -128,7 +142,18 @@ pub fn parse_str(input: &str, source_label: &str) -> (Option<ParsedConfig>, Vec<
 pub fn load_from_path(path: &Path) -> Result<LoadOk, LoadError> {
     let text = fs::read_to_string(path).map_err(|e| LoadError::Io(e, path.to_path_buf()))?;
 
-    let (cfg, msgs) = parse_str(&text, &path.display().to_string());
+    let canon = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let mut visited = vec![canon.clone()];
+    let mut cfg = ParsedConfig::default();
+    let mut msgs = Vec::new();
+    parse_into(
+        &text,
+        &path.display().to_string(),
+        canon.parent(),
+        &mut visited,
+        &mut cfg,
+        &mut msgs,
+    );
     if let Some(e) = msgs.iter().find(|m| m.kind == ConfigErrorKind::Syntax) {
         return Err(LoadError::Syntax(e.clone()));
     }
@@ -137,7 +162,7 @@ pub fn load_from_path(path: &Path) -> Result<LoadOk, LoadError> {
         return Err(LoadError::Semantic(msgs));
     }
     Ok(LoadOk {
-        config: cfg.expect("no errors but no config"),
+        config: cfg,
         warnings: msgs,
     })
 }
