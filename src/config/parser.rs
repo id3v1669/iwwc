@@ -163,12 +163,14 @@ pub(crate) fn build_pull(
     ))
 }
 
-pub(crate) fn parse_document(
-    doc: kdl::KdlDocument,
-    source: SourceText,
-) -> (ParsedConfig, Vec<ConfigError>) {
-    let mut out = ParsedConfig::default();
-    let mut errs = Vec::new();
+pub(crate) fn parse_document_into(
+    doc: &kdl::KdlDocument,
+    source: &SourceText,
+    base_dir: Option<&std::path::Path>,
+    visited: &mut Vec<std::path::PathBuf>,
+    out: &mut ParsedConfig,
+    errs: &mut Vec<ConfigError>,
+) {
     for node in doc.nodes() {
         let name = node.name().value();
         if name != "apptray"
@@ -201,117 +203,117 @@ pub(crate) fn parse_document(
             continue;
         }
         match name {
-            "var" => build_var(node, &source, &mut errs, &mut out),
+            "var" => build_var(node, source, errs, out),
             "widget" => {
-                if let Some((id, w)) = build_widget(node, &source, &mut errs) {
+                if let Some((id, w)) = build_widget(node, source, errs) {
                     if out.widgets.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "widget", node, &source));
+                        errs.push(dup_id_warning(&id, "widget", node, source));
                     } else {
                         out.widgets.insert(id, w);
                     }
                 }
             }
             "container" => {
-                if let Some((id, c)) = build_container(node, &source, &mut errs) {
+                if let Some((id, c)) = build_container(node, source, errs) {
                     if out.containers.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "container", node, &source));
+                        errs.push(dup_id_warning(&id, "container", node, source));
                     } else {
                         out.containers.insert(id, c);
                     }
                 }
             }
             "revealer" => {
-                if let Some((id, r)) = build_revealer(node, &source, &mut errs) {
+                if let Some((id, r)) = build_revealer(node, source, errs) {
                     if out.revealers.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "revealer", node, &source));
+                        errs.push(dup_id_warning(&id, "revealer", node, source));
                     } else {
                         out.revealers.insert(id, r);
                     }
                 }
             }
             "event" => {
-                if let Some((id, r)) = build_event(node, &source, &mut errs) {
+                if let Some((id, r)) = build_event(node, source, errs) {
                     if out.events.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "event", node, &source));
+                        errs.push(dup_id_warning(&id, "event", node, source));
                     } else {
                         out.events.insert(id, r);
                     }
                 }
             }
             "style" => {
-                if let Some((id, s)) = build_style(node, &source, &mut errs) {
+                if let Some((id, s)) = build_style(node, source, errs) {
                     if out.styles.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "style", node, &source));
+                        errs.push(dup_id_warning(&id, "style", node, source));
                     } else {
                         out.styles.insert(id, s);
                     }
                 }
             }
             "border" => {
-                if let Some((id, b)) = build_border(node, &source, &mut errs) {
+                if let Some((id, b)) = build_border(node, source, errs) {
                     if out.borders.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "border", node, &source));
+                        errs.push(dup_id_warning(&id, "border", node, source));
                     } else {
                         out.borders.insert(id, b);
                     }
                 }
             }
             "shadow" => {
-                if let Some((id, s)) = build_shadow(node, &source, &mut errs) {
+                if let Some((id, s)) = build_shadow(node, source, errs) {
                     if out.shadows.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "shadow", node, &source));
+                        errs.push(dup_id_warning(&id, "shadow", node, source));
                     } else {
                         out.shadows.insert(id, s);
                     }
                 }
             }
             "font" => {
-                if let Some((id, f)) = build_font(node, &source, &mut errs) {
+                if let Some((id, f)) = build_font(node, source, errs) {
                     if out.fonts.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "font", node, &source));
+                        errs.push(dup_id_warning(&id, "font", node, source));
                     } else {
                         out.fonts.insert(id, f);
                     }
                 }
             }
             "button" => {
-                if let Some((id, b)) = build_button(node, &source, &mut errs) {
+                if let Some((id, b)) = build_button(node, source, errs) {
                     if out.buttons.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "button", node, &source));
+                        errs.push(dup_id_warning(&id, "button", node, source));
                     } else {
                         out.buttons.insert(id, b);
                     }
                 }
             }
             "row" => {
-                if let Some((id, r)) = build_row(node, &source, &mut errs) {
+                if let Some((id, r)) = build_row(node, source, errs) {
                     if out.rows.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "row", node, &source));
+                        errs.push(dup_id_warning(&id, "row", node, source));
                     } else {
                         out.rows.insert(id, r);
                     }
                 }
             }
             "column" => {
-                if let Some((id, c)) = build_column(node, &source, &mut errs) {
+                if let Some((id, c)) = build_column(node, source, errs) {
                     if out.columns.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "column", node, &source));
+                        errs.push(dup_id_warning(&id, "column", node, source));
                     } else {
                         out.columns.insert(id, c);
                     }
                 }
             }
             "text" => {
-                if let Some((id, t)) = build_text(node, &source, &mut errs) {
+                if let Some((id, t)) = build_text(node, source, errs) {
                     if out.texts.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "text", node, &source));
+                        errs.push(dup_id_warning(&id, "text", node, source));
                     } else {
                         out.texts.insert(id, t);
                     }
                 }
             }
             "notification" => {
-                let ns = build_notification(node, &source, &mut errs);
+                let ns = build_notification(node, source, errs);
                 if out.notification.is_some() {
                     errs.push(ConfigError {
                         kind: ConfigErrorKind::DuplicateElement,
@@ -327,7 +329,7 @@ pub(crate) fn parse_document(
                 }
             }
             "apptray" => {
-                let a = build_apptray_settings(node, &source, &mut errs);
+                let a = build_apptray_settings(node, source, errs);
                 if out.apptray.is_some() {
                     errs.push(ConfigError {
                         kind: ConfigErrorKind::DuplicateElement,
@@ -366,7 +368,7 @@ pub(crate) fn parse_document(
                 }),
             },
             "pull" => {
-                if let Some((id, decl)) = build_pull(node, &source, &mut errs) {
+                if let Some((id, decl)) = build_pull(node, source, errs) {
                     if out.vars.contains_key(&id) || out.pulls.contains_key(&id) {
                         errs.push(ConfigError {
                             kind: ConfigErrorKind::DuplicateVariable,
@@ -389,6 +391,51 @@ pub(crate) fn parse_document(
                     }
                 }
             }
+            "import" => {
+                let node_span = Span {
+                    source: source.clone(),
+                    span: node.span(),
+                };
+                let Some(dir) = base_dir else {
+                    errs.push(ConfigError {
+                        kind: ConfigErrorKind::Import,
+                        span: node_span,
+                        message: "import is only supported in configs loaded from a file".into(),
+                        severity: Severity::Error,
+                    });
+                    continue;
+                };
+                let mut paths = Vec::new();
+                for entry in node.entries() {
+                    match (entry.name(), entry.value().as_string()) {
+                        (None, Some(p)) => paths.push(p.to_string()),
+                        _ => errs.push(ConfigError {
+                            kind: ConfigErrorKind::Import,
+                            span: Span {
+                                source: source.clone(),
+                                span: entry.span(),
+                            },
+                            message: format!(
+                                "import only takes string file paths, got \"{}\"",
+                                entry.to_string().trim()
+                            ),
+                            severity: Severity::Error,
+                        }),
+                    }
+                }
+                if node.entries().is_empty() {
+                    errs.push(ConfigError {
+                        kind: ConfigErrorKind::Import,
+                        span: node_span,
+                        message: "import requires a file path, e.g. import \"./extra.kdl\"".into(),
+                        severity: Severity::Error,
+                    });
+                    continue;
+                }
+                for p in paths {
+                    import_file(&dir.join(&p), &node_span, visited, out, errs);
+                }
+            }
             _ => errs.push(ConfigError {
                 kind: ConfigErrorKind::UnknownNode,
                 span: Span {
@@ -400,7 +447,62 @@ pub(crate) fn parse_document(
             }),
         }
     }
-    (out, errs)
+}
+
+fn import_file(
+    path: &std::path::Path,
+    at: &Span,
+    visited: &mut Vec<std::path::PathBuf>,
+    out: &mut ParsedConfig,
+    errs: &mut Vec<ConfigError>,
+) {
+    let import_err = |errs: &mut Vec<ConfigError>, msg: String, severity: Severity| {
+        errs.push(ConfigError {
+            kind: ConfigErrorKind::Import,
+            span: at.clone(),
+            message: msg,
+            severity,
+        });
+    };
+    let canon = match std::fs::canonicalize(path) {
+        Ok(c) => c,
+        Err(e) => {
+            import_err(
+                errs,
+                format!("cannot import {}: {}", path.display(), e),
+                Severity::Error,
+            );
+            return;
+        }
+    };
+    if visited.contains(&canon) {
+        import_err(
+            errs,
+            format!("{} is already imported, skipping", path.display()),
+            Severity::Warning,
+        );
+        return;
+    }
+    visited.push(canon.clone());
+    let text = match std::fs::read_to_string(&canon) {
+        Ok(t) => t,
+        Err(e) => {
+            import_err(
+                errs,
+                format!("cannot import {}: {}", path.display(), e),
+                Severity::Error,
+            );
+            return;
+        }
+    };
+    crate::config::parse_into(
+        &text,
+        &path.display().to_string(),
+        canon.parent(),
+        visited,
+        out,
+        errs,
+    );
 }
 
 fn looks_like_expr(s: &str) -> bool {
