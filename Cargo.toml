@@ -3,6 +3,7 @@ description = "iced wayland widget center"
 edition = "2024"
 name = "iwwc"
 version = "0.1.0"
+license = "GPL-3.0-or-later"
 
 [dependencies]
 # base depsу
@@ -17,7 +18,7 @@ kdl = "6.7.1"
 miette = "7.6"
 
 # backend deps
-zbus = "5.17.0"
+zbus = "5.18.0"
 sysinfo = "0.39"
 
 # frontend deps
@@ -34,7 +35,7 @@ iced_layershell = { git = "https://github.com/waycrate/exwlshelleventloop", bran
 
 wayland-client = "0.31.14"
 wayland-protocols = { version = "0.32.13", features = ["client", "unstable"] }
-futures = "0.3.32"
+futures = "0.3.33"
 indexmap = "2.14"
 freedesktop-icons = { git = "https://github.com/id3v1669/freedesktop-icons", branch = "master" }
 xdg = "3.0"
@@ -42,10 +43,10 @@ xdg = "3.0"
 [dev-dependencies]
 tempfile = "3"
 
-#[profile.release]
-#opt-level = "z"
-#lto = true          # Enable Link Time Optimization
-#codegen-units = 1   # Reduce number of codegen units to increase optimizations.
-#strip = true
+[profile.release]
+opt-level = "z"
+lto = true          # Enable Link Time Optimization
+codegen-units = 1   # Reduce number of codegen units to increase optimizations.
+strip = true
 
 

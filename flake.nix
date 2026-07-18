@@ -33,6 +33,12 @@
       default = (pkgsFor system).callPackage ./nix/shell.nix {};
     });
 
+    nixosModules.default = import ./nix/module.nix {inherit self;};
+    homeModules.default = import ./nix/module.nix {
+      isHome = true;
+      inherit self;
+    };
+
     formatter.x86_64-linux = inputs.nixpkgs.legacyPackages.x86_64-linux.alejandra;
   };
 }

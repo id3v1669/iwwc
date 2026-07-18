@@ -25,7 +25,6 @@ rustPlatform.buildRustPackage rec {
     gdk-pixbuf
     atkmm
     libxkbcommon
-
     vulkan-loader
   ];
 
