@@ -18,15 +18,14 @@ impl FlatEnv {
         self.map.get(name)
     }
 
-    pub fn smart_polls(&self) -> Vec<(String, std::time::Duration)> {
+    pub fn smart_polls(&self) -> Vec<(String, Option<std::time::Duration>)> {
         let mut seen = HashSet::new();
         let mut out = Vec::new();
         for key in self.accessed_smart.borrow().iter() {
             if let Some(ns) = crate::config::smart::namespace_of(key)
                 && seen.insert(ns)
-                && let Some(d) = crate::config::smart::poll_interval(ns)
             {
-                out.push((ns.to_string(), d));
+                out.push((ns.to_string(), crate::config::smart::poll_interval(ns)));
             }
         }
         out
@@ -54,6 +53,9 @@ pub(crate) fn resolve_vars(
     };
     for (name, value) in crate::config::smart::values() {
         env.smart_keys.insert(name.clone());
+        if crate::config::smart::is_unset(&name, &value) && config.vars.contains_key(&name) {
+            continue;
+        }
         env.map.insert(name, value);
     }
     let mut resolving: HashSet<String> = HashSet::new();
@@ -157,7 +159,8 @@ pub(crate) fn referenced_vars(s: &str) -> Vec<String> {
             while j < bytes.len() && bytes[j] != b'}' {
                 if bytes[j].is_ascii_alphabetic() || bytes[j] == b'_' {
                     let start = j;
-                    while j < bytes.len() && (bytes[j].is_ascii_alphanumeric() || bytes[j] == b'_')
+                    while j < bytes.len()
+                        && (bytes[j].is_ascii_alphanumeric() || bytes[j] == b'_' || bytes[j] == b'.')
                     {
                         j += 1;
                     }

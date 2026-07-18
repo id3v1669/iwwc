@@ -2,6 +2,7 @@ pub mod config;
 pub mod daemon;
 pub mod iconlookup;
 pub mod ipc;
+pub mod mpris;
 pub mod notification;
 pub mod render;
 pub mod tray;

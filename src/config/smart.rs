@@ -4,9 +4,33 @@ use std::time::Duration;
 use sysinfo::{CpuRefreshKind, System};
 
 static SYS: OnceLock<Mutex<System>> = OnceLock::new();
+static ACTIVESONG: Mutex<Option<String>> = Mutex::new(None);
+
+pub fn set_activesong(title: Option<String>) -> bool {
+    let mut cur = ACTIVESONG.lock().unwrap();
+    if *cur == title {
+        return false;
+    }
+    *cur = title;
+    true
+}
+
+pub fn is_unset(key: &str, value: &VarValue) -> bool {
+    key == "iwwc.activesong" && matches!(value, VarValue::Str(s) if s.is_empty())
+}
+
+#[cfg(test)]
+pub fn test_lock() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: Mutex<()> = Mutex::new(());
+    LOCK.lock().unwrap_or_else(|e| e.into_inner())
+}
 
 pub fn values() -> Vec<(String, VarValue)> {
     let mut out = Vec::new();
+    out.push((
+        "iwwc.activesong".to_string(),
+        VarValue::Str(ACTIVESONG.lock().unwrap().clone().unwrap_or_default()),
+    ));
     if let Ok(text) = std::fs::read_to_string("/proc/meminfo")
         && let Some((total, used)) = read_meminfo(&text)
     {
@@ -54,6 +78,9 @@ pub fn children(values: &[(String, VarValue)], prefix: &str) -> Vec<String> {
 }
 
 pub fn namespace_of(name: &str) -> Option<&'static str> {
+    if name == "iwwc.activesong" {
+        return Some("iwwc.activesong");
+    }
     ["iwwc.ram", "iwwc.cpu"].into_iter().find(|ns| {
         name.strip_prefix(ns)
             .is_some_and(|rest| rest.starts_with('.'))
@@ -109,5 +136,7 @@ mod tests {
         assert_eq!(namespace_of("x"), None);
         assert_eq!(poll_interval("iwwc.ram"), Some(Duration::from_secs(1)));
         assert_eq!(poll_interval("iwwc.disk"), None);
+        assert_eq!(namespace_of("iwwc.activesong"), Some("iwwc.activesong"));
+        assert_eq!(poll_interval("iwwc.activesong"), None);
     }
 }
