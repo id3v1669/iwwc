@@ -199,13 +199,12 @@ impl App {
                     .map(|(name, _instant)| Message::PullTick(name)),
             );
         }
-        let mut intervals: Vec<std::time::Duration> = self
-            .store
-            .resolved()
-            .smart_polls
-            .iter()
-            .map(|(_, d)| *d)
-            .collect();
+        let polls = &self.store.resolved().smart_polls;
+        if polls.iter().any(|(ns, _)| ns == "iwwc.activesong") {
+            subs.push(crate::mpris::subscription());
+        }
+        let mut intervals: Vec<std::time::Duration> =
+            polls.iter().filter_map(|(_, d)| *d).collect();
         intervals.sort();
         intervals.dedup();
         for d in intervals {
@@ -544,6 +543,11 @@ impl App {
         if name == "iwwc" || name.starts_with("iwwc.") {
             let values = crate::config::smart::values();
             if let Some((_, v)) = values.iter().find(|(k, _)| k == name) {
+                if crate::config::smart::is_unset(name, v)
+                    && let Some(d) = self.store.var_value(name)
+                {
+                    return Response::Note(fmt_var(d));
+                }
                 return Response::Note(fmt_var(v));
             }
             let children = crate::config::smart::children(&values, name);

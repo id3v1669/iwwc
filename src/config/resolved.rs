@@ -11,7 +11,7 @@ pub struct ResolvedConfig {
     pub widgets: IndexMap<String, ResolvedWidget>,
     pub notification: ResolvedNotificationSettings,
     pub apptray: ResolvedApptraySettings,
-    pub smart_polls: Vec<(String, std::time::Duration)>,
+    pub smart_polls: Vec<(String, Option<std::time::Duration>)>,
     pub icon_theme: Option<String>,
     pub watches: Vec<ResolvedWatch>,
 }
