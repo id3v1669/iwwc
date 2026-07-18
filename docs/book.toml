@@ -1,0 +1,8 @@
+[book]
+title = "IWWC docs"
+authors = ["id3v1669"]
+language = "en"
+description = "User documentation for iwwc - Iced Wayland Widget Center"
+
+[output.html]
+git-repository-url = "https://github.com/id3v1669/iwwc"

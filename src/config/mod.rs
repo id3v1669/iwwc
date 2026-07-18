@@ -171,7 +171,7 @@ pub fn discover_path() -> Result<PathBuf, String> {
     let candidates = config_candidates();
     if candidates.is_empty() {
         return Err(
-            "no candidate config paths available — set $XDG_CONFIG_HOME, $HOME, or $USER".into(),
+            "no candidate config paths available, create proper config file in default location or pass it to -c flag".into(),
         );
     }
     for p in &candidates {
