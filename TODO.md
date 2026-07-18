@@ -15,8 +15,7 @@ Before Beta:
 - [x] figure out how to properly calculate menu and submenu width and rm temp statics (calc based on text and font or make proper eval via iced, test what is more efficient and stable).
 - [x] Rm bunch of leftover structures in favor of orig iced stucts (old code from iced fork and when layershell lib wasn't used.) #oldmigration
 - [x] add action support to have actions on hover enter, exit, rightclick
-- [ ] update defaults
-- [ ] fix menu text pos for tray menu to depend on rounded corners
+- [x] update defaults
 
 Beta:
 
@@ -27,6 +26,8 @@ Beta:
 
 Future:
 
+- [ ] expose tray menu options to donfig
+- [ ] fix menu text pos for tray menu to depend on rounded corners. [formulas](#formulas)
 - [ ] option for widgets to inherit output from another widet(useful for cases when first widget spawns via active)
 - [ ] iwwc.gpu.(load/temp/vram)(amd)
 - [ ] iwwc.temps.(*)
@@ -56,3 +57,11 @@ Future:
 - [ ] double declaration of action doesn't trigger any warning on reload
 - [x] update var for bool filip option
 - [ ] add margins - create outer container and set paddings as margins for inner object
+- [ ] image support
+- [ ] slider support
+- [ ] hint support - reuse xdg popup
+- [ ] integration with hyprland as build feature with default to false
+
+## formulas
+
+Tray menu button padding to be max(radius/2+x,x), x is not defined yet, will be calculated based on font or size

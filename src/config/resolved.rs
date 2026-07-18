@@ -184,31 +184,31 @@ impl Default for ResolvedMenu {
     fn default() -> Self {
         ResolvedMenu {
             font: None,
-            font_size: 16.0,
-            icon_size: 16.0,
-            row_spacing: 6.0,
-            menu_container_padding: Padding::from(10.0),
+            font_size: 14.0,
+            icon_size: 14.0,
+            row_spacing: 3.0,
+            menu_container_padding: Padding::from(6.0),
             menu_container_style: Some(container::Style {
                 background: Some(Background::Color(Color::from_str("3c3836").unwrap())),
                 border: Border {
                     width: 0.0,
-                    radius: Radius::from(15.0),
+                    radius: Radius::from(7.0),
                     ..Default::default()
                 },
                 shadow: Shadow {
                     color: Color::from_str("665c54").unwrap(),
-                    blur_radius: 4.0,
+                    blur_radius: 1.0,
                     ..Default::default()
                 },
                 ..Default::default()
             }),
-            button_padding: Padding::from([5.0, 2.0]),
+            button_padding: Padding::from([5.0, 8.0]),
             button_style: Some(button::Style {
                 background: Some(Background::Color(Color::from_str("3c3836").unwrap())),
                 text_color: Color::from_str("bdae93").unwrap(),
                 border: Border {
                     width: 0.0,
-                    radius: Radius::from(15.0),
+                    radius: Radius::from(7.0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -218,7 +218,7 @@ impl Default for ResolvedMenu {
                 text_color: Color::from_str("d65d0e").unwrap(),
                 border: Border {
                     width: 0.0,
-                    radius: Radius::from(15.0),
+                    radius: Radius::from(7.0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -228,7 +228,7 @@ impl Default for ResolvedMenu {
                 text_color: Color::from_str("fe8019").unwrap(),
                 border: Border {
                     width: 0.0,
-                    radius: Radius::from(15.0),
+                    radius: Radius::from(7.0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -238,7 +238,7 @@ impl Default for ResolvedMenu {
                 text_color: Color::from_str("bdae93").unwrap(),
                 border: Border {
                     width: 0.0,
-                    radius: Radius::from(15.0),
+                    radius: Radius::from(7.0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -310,7 +310,7 @@ impl Default for ResolvedNotificationSettings {
             bg: Color::from_str("3c3836").unwrap(),
             border: Some(Border {
                 color: Color::from_str("d65d0e").unwrap(),
-                width: 2.0,
+                width: 1.5,
                 radius: Radius::from(10.0),
             }),
             font: Some(Font::DEFAULT),
@@ -323,14 +323,86 @@ impl Default for ResolvedNotificationSettings {
             output: OutputOption::Active,
             respect_icon: true,
             freeze_on_hover: true,
-            ok_style: None,
-            ok_style_hover: None,
-            ok_style_active: None,
-            ok_style_disabled: None,
-            no_style: None,
-            no_style_hover: None,
-            no_style_active: None,
-            no_style_disabled: None,
+            ok_style: Some(button::Style {
+                background: Some(Background::Color(Color::from_str("d65d0e").unwrap())),
+                text_color: Color::from_str("e7d4a2").unwrap(),
+                border: Border {
+                    width: 0.0,
+                    radius: Radius::from(7.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+            ok_style_hover: Some(button::Style {
+                background: Some(Background::Color(Color::from_str("af3a03").unwrap())),
+                text_color: Color::from_str("e3cd92").unwrap(),
+                border: Border {
+                    width: 0.0,
+                    radius: Radius::from(7.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+            ok_style_active: Some(button::Style {
+                background: Some(Background::Color(Color::from_str("fe8019").unwrap())),
+                text_color: Color::from_str("ebdbb2").unwrap(),
+                border: Border {
+                    width: 0.0,
+                    radius: Radius::from(7.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+            ok_style_disabled: Some(button::Style {
+                background: Some(Background::Color(Color::from_str("d65d0e60").unwrap())),
+                text_color: Color::from_str("e7d4a2").unwrap(),
+                border: Border {
+                    width: 0.0,
+                    radius: Radius::from(7.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+            no_style: Some(button::Style {
+                background: Some(Background::Color(Color::from_str("504945").unwrap())),
+                text_color: Color::from_str("e7d4a2").unwrap(),
+                border: Border {
+                    width: 0.0,
+                    radius: Radius::from(7.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+            no_style_hover: Some(button::Style {
+                background: Some(Background::Color(Color::from_str("504945d0").unwrap())),
+                text_color: Color::from_str("e3cd92").unwrap(),
+                border: Border {
+                    width: 0.0,
+                    radius: Radius::from(7.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+            no_style_active: Some(button::Style {
+                background: Some(Background::Color(Color::from_str("504945a0").unwrap())),
+                text_color: Color::from_str("ebdbb2").unwrap(),
+                border: Border {
+                    width: 0.0,
+                    radius: Radius::from(7.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+            no_style_disabled: Some(button::Style {
+                background: Some(Background::Color(Color::from_str("50494560").unwrap())),
+                text_color: Color::from_str("e7d4a2").unwrap(),
+                border: Border {
+                    width: 0.0,
+                    radius: Radius::from(7.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
         }
     }
 }
