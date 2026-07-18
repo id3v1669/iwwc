@@ -19,8 +19,8 @@ Before Beta:
 
 Beta:
 
-- [ ] re-review nix packaging
-- [ ] create nix module
+- [x] re-review nix packaging
+- [x] create nix module(basic, to be updated later)
 - [ ] documentation
 - [ ] rework examples
 
@@ -61,6 +61,7 @@ Future:
 - [ ] slider support
 - [ ] hint support - reuse xdg popup
 - [ ] integration with hyprland as build feature with default to false
+- [ ] update nix module to support config
 
 ## formulas
 

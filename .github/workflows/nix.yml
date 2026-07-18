@@ -1,0 +1,21 @@
+name: Nix Checks
+
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+
+      - name: Check flake evaluation
+        run: nix flake check --no-build --all-systems
+
+      - name: Check formatting
+        run: nix fmt -- --check .
+
+      - name: Check build
+        run: nix build
