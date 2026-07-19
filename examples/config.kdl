@@ -1,8 +1,9 @@
-var ff="0xProto"
-var ffn="Nerd Font"
+font ff family="JetBrainsMonoNL Nerd Font"
+font notiffont family="JetBrains Mono"
 var lang="󰇧 en"
 var wss="1 2 3"
 var recsym="󰑊"
+var iwwc.activesong=none
 
 pull datetime="date '+%a, %d. %b  %H:%M'" i="1s" default="…"
 pull battery="cat /sys/class/power_supply/BAT0/capacity" i="30s" default="?"
@@ -13,28 +14,44 @@ pull soundvol="wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{print int($2*100)}'
 border round20 radius=20
 style pill bg="282828" text="e3cd92" border=round20
 style pillhover bg="3c3836" text="e7d4a2" border=round20
-style musicbtn bg="transparent" text="e3cd92" border=round20
+
+style pillred bg="cc241d" text="e3cd92" border=round20
+style pillredhover bg="a31c17" text="e7d4a2" border=round20
+style pillblue bg="458588" text="e3cd92" border=round20
+style pillbluehover bg="076678" text="e7d4a2" border=round20
+style pillyellow bg="d79921" text="e3cd92" border=round20
+style pillyellowhover bg="b57614" text="e7d4a2" border=round20
+
+
+style musicbtn bg="282828" text="e3cd92" border=round20
 style musichover bg="3c3836" text="e7d4a2" border=round20
 
 // ===================== LEFT GROUP =====================
-button launcher text="" action="anyrun" font="${ff}" style=pill style:hover=pillhover {
-  padding 5 13
+text launcher_txt text="" font=ff
+button launcher child=launcher_txt w=33 action="anyrun" style=pill style:hover=pillhover
+text lang_txt text="${lang}" font=ff
+button lang child=lang_txt style=pill
+text ram text="${round(iwwc.ram.used / 1073741824).1}/${round(iwwc.ram.total / 1073741824).1}G "
+text cputext text=" ${cputemp}°C "
+text disktext text=" ${disk}"
+text vertgreen text="│"
+row usagerow {
+  children ram vertgreen cputext vertgreen disktext
 }
-button lang text="${lang}" font="${ff}" style=pill {
-  padding 5 12
-}
-button usageinfo text="${round(iwwc.ram.used / 1073741824).1}/${round(iwwc.ram.total / 1073741824).1}G │ ${cputemp}°C │ ${disk}" action="kitty btop" font="${ff}" style=pill style:hover=pillhover {
+button usageinfo child=usagerow action="kitty btop" style=pill style:hover=pillhover {
   padding 5 15
 }
-button workspaces text="${wss}" font="${ff}" style=pill {
+text workspaces_txt text="${wss}" font=ff
+button workspaces child=workspaces_txt style=pill {
   padding 5 18
 }
 row leftgrp spacing=6 align=c {
-  children apptray launcher lang usageinfo workspaces
+  children launcher lang usageinfo workspaces
 }
 
 // ===================== CENTER GROUP =====================
-button clock text="${datetime}" action="true" font="${ff}" style=pill style:hover=pillhover {
+text clock_txt text="${datetime}" font=ff
+button clock child=clock_txt action="true" style=pill style:hover=pillhover {
   padding 5 16
 }
 row centergrp align=c {
@@ -42,13 +59,16 @@ row centergrp align=c {
 }
 
 // ===================== RIGHT GROUP =====================
-button mprev text="󰙤" action="playerctl previous" font="${ff}" style=musicbtn style:hover=musichover {
+text mprev_txt text="󰙤" font=ff
+button mprev child=mprev_txt action="playerctl previous" style=musicbtn style:hover=musichover {
   padding 2 7
 }
-button mplay text="󰐎" action="playerctl play-pause" font="${ff}" style=musicbtn style:hover=musichover {
+text mplay_txt text="󰐎" font=ff
+button mplay child=mplay_txt action="playerctl play-pause" style=musicbtn style:hover=musichover {
   padding 2 7
 }
-button mnext text="󰙢" action="playerctl next" font="${ff}" style=musicbtn style:hover=musichover {
+text mnext_txt text="󰙢" font=ff
+button mnext child=mnext_txt action="playerctl next" style=musicbtn style:hover=musichover {
   padding 2 7
 }
 row musicrow spacing=8 align=b {
@@ -58,41 +78,85 @@ container music style=pill child=musicrow {
   padding 2 8
 }
 
-button replay text="${recsym}" action="sp-play-pause" font="${ff}" style=pill style:hover=pillhover {
+var songfolded=#true
+var songunfolded=#false
+
+text songbtn_txt text="󰫔" font=ff
+button songbtn h=fill w=32 child=songbtn_txt style=musicbtn style:hover=musichover action="$IWWC update songunfolded true && $IWWC update songfolded false"
+revealer songrev transition=slideleft active="${songfolded}" duration="1000ms" child=songbtn
+
+text songnamebtn_txt text="${iwwc.activesong}" font=ff
+button songnamebtn h=fill child=songnamebtn_txt style=musicbtn style:hover=musichover action="$IWWC update songfolded true && $IWWC update songunfolded false"
+revealer songnamerev transition=slideright active="${songunfolded}" duration="1000ms" child=songnamebtn
+
+row songarea spacing=0 align=c {
+  children songrev songnamerev
+}
+
+text replay_txt text="${recsym}" font=ff
+button replay child=replay_txt action="sp-play-pause" style=pill style:hover=pillhover {
   padding 5 12
+}
+
+container apptraycon style=pill child=apptray {
+  padding 2 8
 }
 
 apptray swap_buttons=#true
 
-button sound text="󰕾 ${soundvol}" action="pwvucontrol" font="${ff}" style=pill style:hover=pillhover {
+text sound_txt text="󰕾 ${soundvol}" font=ff
+button sound child=sound_txt action="pwvucontrol" style=pill style:hover=pillhover {
   padding 4 14
 }
-button mic text="󰍬" action="wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle" font="${ff}" style=pill style:hover=pillhover {
+text mic_txt text="󰍬" font=ff
+button mic child=mic_txt action="wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle" style=pill style:hover=pillhover {
   padding 5 15
 }
-button battery text="${battery}%" font="${ff}" style=pill {
+text battery_txt text="${battery}%" font=ff
+button battery child=battery_txt style=pill {
   padding 5 13
 }
-button power text="󰐥" action="true" font="${ff}" style=pill style:hover=pillhover {
-  padding 5 15
+text power_txt text="󰐥" font=ff
+text sleep_txt text="" font=ff
+text reboot_txt text="" font=ff
+container power_txt_con child=power_txt {
+  padding 0 4 0 0
 }
+container sleep_txt_con child=sleep_txt {
+  padding 0 6 0 0
+}
+container reboot_txt_con child=reboot_txt {
+  padding 0 4 0 0
+}
+button power w=32 child=power_txt action="$IWWC update powerfolded true && $IWWC update powerhidden false" style=pill style:hover=pillhover
 row rightgrp spacing=6 align=c {
-  children music replay apptray sound mic battery power
+  children music songarea replay apptraycon sound mic battery power
 }
 
 // ===================== BAR (full width: top + left + right) =====================
 container leftbox w=fill align_x=l child=leftgrp
-container centerbox w=fill align_x=c child=centergrp
+container centerbox w=shrink align_x=c child=centergrp
 container rightbox w=fill align_x=r child=rightgrp
 
 row barrow w=fill align=c {
   children leftbox centerbox rightbox
 }
-widget bar layer=top anchor="t | l | r" h=30 exclusive=#true child=barrow {
+widget bar layer=top anchor="t | l | r" h=30 exclusive=#true child=barrow output=active {
   margin 5 8 0 8
 }
-widget bbar layer=top anchor="b | l | r" h=30 exclusive=#true child=barrow {
-  margin 5 8 0 8
+
+button sleep child=sleep_txt_con h=30 action="notify-send sleep" style=pillyellow style:hover=pillyellowhover
+button reboot child=reboot_txt_con h=30 action="notify-send reboot" style=pillblue style:hover=pillbluehover
+button powerdown child=power_txt_con h=30 action="notify-send off" style=pillred style:hover=pillredhover
+column pcolum allign=c spacing=3 {
+  children sleep reboot powerdown
+}
+var powerfolded=#false
+var powerhidden=#true
+revealer prevr transition=slidedown active="${powerfolded}" duration="400ms" child=pcolum
+event preve type=onhoverexit action="$IWWC update powerfolded '#false' && $IWWC update powerhidden '#true'" child=prevr
+widget powerbuttons layer=overlay anchor="t | r" w=32 h=400 child=preve transparent="${powerhidden}" excusive=#false output=active {
+  margin 5 8 0 0
 }
 
 notification width=400 height=90 \
@@ -100,11 +164,17 @@ notification width=400 height=90 \
       secondary_text="#e3cd92" \
       bg="#3c3836" \
       border="notif_border" \
-      font="JetBrains Mono" \
+      font=notiffont \
       anchor="t | r" \
       gap=8 \
       max=5 \
-      timeout=5000 \
+      dnd=0 \
+      timeout_low="5s" \
+      timeout_normal="5s" \
+      timeout_critical="0s" \
+      urgency_low="#928374" \
+      urgency_normal="#fabd2f" \
+      urgency_critical="#fb4934" \
       respect_notification_icon=#true \
       margin=12
 
