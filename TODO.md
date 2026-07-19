@@ -3,8 +3,8 @@
 Before Beta:
 
 - [x] fix overlap on exclusive zones for vertical widget. Doesn't recalc to shrink on foreign exclusive widget entry. (I didn't fix it, just works now, lib fix?)
-- [x] fix issue with conflicting anchors and 0 h or w should default to max availible(local patch, Furute fix lib)
-- [x] expose absolute mosue position as it's needed for correct apptray work (exwlshelleventloop patch): NOT VALID, IMPLEMENTED VIA xdg_popup
+- [x] fix issue with conflicting anchors and 0 h or w should default to max available(local patch, Future fix lib)
+- [x] expose absolute mouse position as it's needed for correct apptray work (exwlshelleventloop patch): NOT VALID, IMPLEMENTED VIA xdg_popup
 - [x] animation support
 - [x] iwwc.cpu.(load/per-core)
 - [x] fix styles for apptray
@@ -13,7 +13,7 @@ Before Beta:
 - [x] fix tests under clippy
 - [x] Tray menu direction is an ugly workaround that doesn't work well, replicate xdg_popup for layershell like one the eww uses.(exwlshelleventloop patch)
 - [x] figure out how to properly calculate menu and submenu width and rm temp statics (calc based on text and font or make proper eval via iced, test what is more efficient and stable).
-- [x] Rm bunch of leftover structures in favor of orig iced stucts (old code from iced fork and when layershell lib wasn't used.) #oldmigration
+- [x] Rm bunch of leftover structures in favor of orig iced structs (old code from iced fork and when layershell lib wasn't used.) #oldmigration
 - [x] add action support to have actions on hover enter, exit, rightclick
 - [x] update defaults
 
@@ -21,19 +21,19 @@ Beta:
 
 - [x] re-review nix packaging
 - [x] create nix module(basic, to be updated later)
-- [ ] documentation
-- [ ] rework examples
+- [ ] documentation WIP
+- [x] rework examples
 
 Future:
 
-- [ ] expose tray menu options to donfig
+- [ ] expose tray menu options to config
 - [ ] fix menu text pos for tray menu to depend on rounded corners. [formulas](#formulas)
 - [ ] option for widgets to inherit output from another widet(useful for cases when first widget spawns via active)
 - [ ] iwwc.gpu.(load/temp/vram)(amd)
 - [ ] iwwc.temps.(*)
 - [ ] re-review all tests
 - [ ] better handling of attempt to create layer with 0 h or w (exwlshelleventloop patch)
-- [ ] fix issue with conflicting anchors and 0 h or w should default to max availible (exwlshelleventloop patch)
+- [ ] fix issue with conflicting anchors and 0 h or w should default to max available (exwlshelleventloop patch)
 - [ ] predefined widget calendar
 - [ ] iwwc.gpu.(load/temp/vram)(nvidia/intel)
 - [ ] iwwc.battery??
@@ -50,7 +50,7 @@ Future:
 - [ ] animation guards for oversize?
 - [ ] duration int fallback to ms or keeps strings to parse?
 - [ ] animation options other than EaseInOut #rmstatic1
-- [ ] add min,max custom logic for dimentions of objects
+- [ ] add min,max custom logic for dimensions of objects
 - [ ] learn about fluid and enclose for Length
 - [ ] since vars for iwwc.cpu are dynamic how to test them? call via cpu.0? research values
 - [ ] change default ration? #ratio

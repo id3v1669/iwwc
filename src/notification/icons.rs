@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-// TODO: relpace with good icon on release
+// TODO: replace with good icon on release
 const DEFAULT_SVG: &[u8] = include_bytes!("../../assets/testing/default.svg");
 
 pub fn default_icon_path(config_dir: &Path) -> PathBuf {

@@ -148,7 +148,7 @@ widget bar layer=top anchor="t | l | r" h=30 exclusive=#true child=barrow output
 button sleep child=sleep_txt_con h=30 action="notify-send sleep" style=pillyellow style:hover=pillyellowhover
 button reboot child=reboot_txt_con h=30 action="notify-send reboot" style=pillblue style:hover=pillbluehover
 button powerdown child=power_txt_con h=30 action="notify-send off" style=pillred style:hover=pillredhover
-column pcolum allign=c spacing=3 {
+column pcolum align=c spacing=3 {
   children sleep reboot powerdown
 }
 var powerfolded=#false
