@@ -220,10 +220,31 @@ fn resolve_notification(
     if let Some(v) = elements::resolve_field(&ns.max, "max", span, coerce::coerce_f32, &mut ctx) {
         out.max = v.max(0.0) as u32;
     }
-    if let Some(v) =
-        elements::resolve_field(&ns.timeout, "timeout", span, coerce::coerce_f32, &mut ctx)
-    {
-        out.timeout_ms = v.max(0.0) as i32;
+    if let Some(v) = elements::resolve_field(&ns.dnd, "dnd", span, coerce::coerce_f32, &mut ctx) {
+        out.dnd = (v.max(0.0) as u8).min(2);
+    }
+    let timeouts = [
+        (&ns.timeout_low, "timeout_low"),
+        (&ns.timeout_normal, "timeout_normal"),
+        (&ns.timeout_critical, "timeout_critical"),
+    ];
+    for (i, (field, name)) in timeouts.into_iter().enumerate() {
+        if let Some(v) =
+            elements::resolve_field(field, name, span, coerce::coerce_duration, &mut ctx)
+        {
+            out.timeout_ms[i] = v.as_millis().min(i32::MAX as u128) as i32;
+        }
+    }
+    let urgency_colors = [
+        (&ns.urgency_low, "urgency_low"),
+        (&ns.urgency_normal, "urgency_normal"),
+        (&ns.urgency_critical, "urgency_critical"),
+    ];
+    for (i, (field, name)) in urgency_colors.into_iter().enumerate() {
+        if let Some(v) = elements::resolve_field(field, name, span, coerce::coerce_color, &mut ctx)
+        {
+            out.urgency_color[i] = v;
+        }
     }
     if let Some(v) =
         elements::resolve_field(&ns.layer, "layer", span, coerce::coerce_layer, &mut ctx)
@@ -440,14 +461,14 @@ mod tests {
         let n = &rc.unwrap().notification;
         assert_eq!(n.width, 400.0);
         assert_eq!(n.max, 5);
-        assert_eq!(n.timeout_ms, 5000);
+        assert_eq!(n.timeout_ms, [10000, 5000, 0]);
         assert!(matches!(
             n.output,
             iced_layershell::reexport::OutputOption::Active
         ));
 
         let (cfg, _) = parse_str(
-            "widget bar child=t1\ntext t1\nnotification width=300 max=3 timeout=2000 bg=000000 border=nb output=\"HDMI-A-1\"\nborder nb w=2",
+            "widget bar child=t1\ntext t1\nnotification width=300 max=3 dnd=1 timeout_normal=\"2s\" timeout_critical=\"1500ms\" urgency_critical=ff0000 bg=000000 border=nb output=\"HDMI-A-1\"\nborder nb w=2",
             "<t>",
         );
         let (rc, errs) = resolve(&cfg.unwrap());
@@ -459,7 +480,8 @@ mod tests {
         let n = &rc.unwrap().notification;
         assert_eq!(n.width, 300.0);
         assert_eq!(n.max, 3);
-        assert_eq!(n.timeout_ms, 2000);
+        assert_eq!(n.dnd, 1);
+        assert_eq!(n.timeout_ms, [10000, 2000, 1500]);
         assert_eq!(n.bg, iced::Color::BLACK);
         assert_eq!(n.border.unwrap().width, 2.0);
         assert!(matches!(

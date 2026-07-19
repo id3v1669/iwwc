@@ -156,7 +156,7 @@ pub fn view_notification<'a>(
 
     let bg = settings.bg;
     let border = settings.border;
-    container(inner)
+    let base = container(inner)
         .padding(precalc.general_padding)
         .width(Length::Fill)
         .height(Length::Fill)
@@ -164,6 +164,25 @@ pub fn view_notification<'a>(
             background: Some(iced::Background::Color(bg)),
             border: border.unwrap_or_default(),
             ..Default::default()
-        })
-        .into()
+        });
+
+    let dot_size = settings.width * 0.02;
+    let dot_color = settings.urgency_color[n.urgency.min(2) as usize];
+    let dot = container(column![])
+        .width(dot_size)
+        .height(dot_size)
+        .style(move |_| container::Style {
+            background: Some(iced::Background::Color(dot_color)),
+            border: iced::border::rounded(dot_size / 2.0),
+            ..Default::default()
+        });
+
+    iced::widget::stack![
+        base,
+        container(dot)
+            .width(Length::Fill)
+            .align_x(iced::alignment::Horizontal::Right)
+            .padding(precalc.general_padding)
+    ]
+    .into()
 }

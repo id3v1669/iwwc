@@ -26,6 +26,24 @@ fn hint_string(hints: &HashMap<String, Value<'_>>, key: &str) -> Option<String> 
     hints.get(key).and_then(|v| String::try_from(v).ok())
 }
 
+fn hint_urgency(hints: &HashMap<String, Value<'_>>) -> u8 {
+    let v = match hints.get("urgency") {
+        Some(v) => v,
+        None => return 1,
+    };
+    let n = match v {
+        Value::U8(n) => *n as i64,
+        Value::U16(n) => *n as i64,
+        Value::U32(n) => *n as i64,
+        Value::U64(n) => *n as i64,
+        Value::I16(n) => *n as i64,
+        Value::I32(n) => *n as i64,
+        Value::I64(n) => *n,
+        _ => return 1,
+    };
+    n.clamp(0, 2) as u8
+}
+
 #[zbus::interface(name = "org.freedesktop.Notifications")]
 impl NotificationHandler {
     #[allow(non_snake_case, clippy::too_many_arguments)]
@@ -48,6 +66,7 @@ impl NotificationHandler {
         };
         let desktop_entry = hint_string(&hints, "desktop-entry").unwrap_or_default();
         let image_path = hint_string(&hints, "image-path");
+        let urgency = hint_urgency(&hints);
         let n = Notification {
             app_name,
             app_icon,
@@ -59,6 +78,7 @@ impl NotificationHandler {
             notification_id,
             desktop_entry,
             image_path,
+            urgency,
         };
         self.sender.try_send(Message::Notify(n)).ok();
         Ok(notification_id)

@@ -12,6 +12,7 @@ pub struct Notification {
     pub notification_id: u32,
     pub desktop_entry: String,
     pub image_path: Option<String>,
+    pub urgency: u8,
 }
 
 pub fn action_pairs(actions: &[String]) -> Vec<(String, String)> {

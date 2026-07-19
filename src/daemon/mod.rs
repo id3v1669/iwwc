@@ -92,6 +92,7 @@ pub struct App {
     menu_refetch_pending: HashMap<(String, String), bool>,
     watch_timers: HashMap<String, u64>,
     watch_gen: u64,
+    dnd: u8,
 }
 
 struct NotifState {
@@ -144,8 +145,10 @@ fn hidden_initial() -> LayerShellSettings {
 
 impl App {
     fn new(store: Store, config_path: std::path::PathBuf) -> Self {
+        let dnd = store.resolved().notification.dnd;
         App {
             store,
+            dnd,
             config_path,
             windows: HashMap::new(),
             notifications: IndexMap::new(),
@@ -236,7 +239,13 @@ impl App {
                 }
                 Task::none()
             }
-            Message::Notify(n) => self.on_notify(n),
+            Message::Notify(n) => {
+                if dnd_blocks(self.dnd, n.urgency) {
+                    Task::none()
+                } else {
+                    self.on_notify(n)
+                }
+            }
             Message::NotifClose(id) => self.close_notification(id, 3),
             Message::NotifTimeout { id, generation } => {
                 if timer_is_current(&self.notifications, id, generation) {
@@ -468,6 +477,18 @@ impl App {
     fn dispatch_command(&mut self, command: Command) -> (Response, Task<Message>) {
         match command {
             Command::Update { name, value } => {
+                if name == "dnd" {
+                    return match value.trim().parse::<u8>() {
+                        Ok(v) if v <= 2 => {
+                            self.dnd = v;
+                            (Response::Ok, Task::none())
+                        }
+                        _ => (
+                            Response::Error("dnd must be 0, 1 or 2".to_string()),
+                            Task::none(),
+                        ),
+                    };
+                }
                 let (res, task) = self.apply_var_update(&name, &value);
                 match res {
                     Ok(()) => (Response::Ok, task),
@@ -540,6 +561,9 @@ impl App {
     }
 
     fn get_value(&self, name: &str) -> Response {
+        if name == "dnd" {
+            return Response::Note(self.dnd.to_string());
+        }
         if name == "iwwc" || name.starts_with("iwwc.") {
             let values = crate::config::smart::values();
             if let Some((_, v)) = values.iter().find(|(k, _)| k == name) {
@@ -666,7 +690,8 @@ impl App {
         st.timer_gen += 1;
         let generation = st.timer_gen;
         let timeout = st.notification.expire_timeout;
-        timeout_task(id, generation, timeout, &settings)
+        let default_ms = settings.timeout_ms[st.notification.urgency.min(2) as usize];
+        timeout_task(id, generation, timeout, default_ms)
     }
 
     fn apply_var_update(
@@ -1276,20 +1301,16 @@ fn timer_is_current(notifications: &IndexMap<u32, NotifState>, id: u32, generati
         .unwrap_or(false)
 }
 
-fn timeout_task(
-    id: u32,
-    generation: u64,
-    timeout: i32,
-    settings: &crate::config::resolved::ResolvedNotificationSettings,
-) -> Task<Message> {
-    if timeout == 0 {
+fn dnd_blocks(dnd: u8, urgency: u8) -> bool {
+    dnd >= 2 || (dnd == 1 && urgency < 2)
+}
+
+fn timeout_task(id: u32, generation: u64, timeout: i32, default_ms: i32) -> Task<Message> {
+    let effective = if timeout < 0 { default_ms } else { timeout };
+    if effective == 0 {
         return Task::none();
     }
-    let dur = std::time::Duration::from_millis(if timeout < 0 {
-        settings.timeout_ms as u64
-    } else {
-        timeout as u64
-    });
+    let dur = std::time::Duration::from_millis(effective as u64);
     Task::perform(tokio::time::sleep(dur), move |_| Message::NotifTimeout {
         id,
         generation,
