@@ -17,8 +17,11 @@ struct Arg {
     /// Enable debug logging
     #[arg(short = 'd', long = "debug", global = true)]
     debug: bool,
+    /// Check a config file. Warnings are treated as errors
+    #[arg(long = "check", value_name = "CONFIG", num_args = 0..=1)]
+    check: Option<Option<PathBuf>>,
     #[command(subcommand)]
-    cmd: Cmd,
+    cmd: Option<Cmd>,
 }
 
 #[derive(Subcommand)]
@@ -33,12 +36,21 @@ enum Cmd {
     Update { name: String, value: String },
     /// Read a variable: iwwc get <name>
     Get { name: String },
-    /// Open a window: iwwc open <window>
-    Open { window: String },
-    /// Close a window: iwwc close <window>
-    Close { window: String },
-    /// Toggle a window: iwwc toggle <window>
-    Toggle { window: String },
+    /// Open windows: iwwc open <window>
+    Open {
+        #[arg(required = true)]
+        windows: Vec<String>,
+    },
+    /// Close windows: iwwc close <window>
+    Close {
+        #[arg(required = true)]
+        windows: Vec<String>,
+    },
+    /// Toggle windows: iwwc toggle <window>
+    Toggle {
+        #[arg(required = true)]
+        windows: Vec<String>,
+    },
     /// Reload the daemon's config: iwwc reload
     Reload,
 }
@@ -46,15 +58,78 @@ enum Cmd {
 pub fn main() {
     let cli = Arg::parse();
     init_logger(cli.debug);
-    match cli.cmd {
-        Cmd::Daemon { config } => run_daemon(config),
-        Cmd::Update { name, value } => client_dispatch(Command::Update { name, value }),
-        Cmd::Get { name } => client_dispatch(Command::Get { name }),
-        Cmd::Open { window } => client_dispatch(Command::Open { window }),
-        Cmd::Close { window } => client_dispatch(Command::Close { window }),
-        Cmd::Toggle { window } => client_dispatch(Command::Toggle { window }),
-        Cmd::Reload => client_dispatch(Command::Reload),
+    if let Some(path) = cli.check {
+        check_config(path);
     }
+    match cli.cmd {
+        Some(Cmd::Daemon { config }) => run_daemon(config),
+        Some(Cmd::Update { name, value }) => client_dispatch(Command::Update { name, value }),
+        Some(Cmd::Get { name }) => client_dispatch(Command::Get { name }),
+        Some(Cmd::Open { windows }) => {
+            for window in windows {
+                client_dispatch(Command::Open { window });
+            }
+        }
+        Some(Cmd::Close { windows }) => {
+            for window in windows {
+                client_dispatch(Command::Close { window });
+            }
+        }
+        Some(Cmd::Toggle { windows }) => {
+            for window in windows {
+                client_dispatch(Command::Toggle { window });
+            }
+        }
+        Some(Cmd::Reload) => client_dispatch(Command::Reload),
+        None => {
+            use clap::CommandFactory;
+            let _ = Arg::command().print_help();
+            std::process::exit(2);
+        }
+    }
+}
+
+fn check_config(path: Option<PathBuf>) -> ! {
+    use crate::config::store::Store;
+    use crate::config::{self, LoadError};
+
+    let path = match path {
+        Some(p) => p,
+        None => match config::discover_path() {
+            Ok(p) => p,
+            Err(msg) => {
+                eprintln!("error: {}", msg);
+                std::process::exit(1);
+            }
+        },
+    };
+
+    let mut msgs: Vec<String> = Vec::new();
+    match config::load_from_path(&path) {
+        Ok(ok) => {
+            msgs.extend(ok.warnings.iter().map(|w| w.to_string()));
+            match Store::new(ok.config) {
+                Ok(store) => {
+                    msgs.extend(store.warnings().iter().map(|w| w.to_string()));
+                    msgs.extend(store.validate_surfaces().iter().map(|e| e.to_string()));
+                }
+                Err(errs) => msgs.extend(errs.iter().map(|e| e.to_string())),
+            }
+        }
+        Err(LoadError::Semantic(errs)) => msgs.extend(errs.iter().map(|e| e.to_string())),
+        Err(LoadError::Io(e, p)) => msgs.push(format!("error: cannot read {}: {}", p.display(), e)),
+        Err(LoadError::PathDiscovery(msg)) => msgs.push(format!("error: {}", msg)),
+        Err(LoadError::Syntax(e)) => msgs.push(e.to_string()),
+    }
+
+    if msgs.is_empty() {
+        println!("{}: ok", path.display());
+        std::process::exit(0);
+    }
+    for m in &msgs {
+        eprintln!("{}", m);
+    }
+    std::process::exit(1);
 }
 
 fn init_logger(debug: bool) {

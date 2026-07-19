@@ -160,7 +160,9 @@ pub(crate) fn referenced_vars(s: &str) -> Vec<String> {
                 if bytes[j].is_ascii_alphabetic() || bytes[j] == b'_' {
                     let start = j;
                     while j < bytes.len()
-                        && (bytes[j].is_ascii_alphanumeric() || bytes[j] == b'_' || bytes[j] == b'.')
+                        && (bytes[j].is_ascii_alphanumeric()
+                            || bytes[j] == b'_'
+                            || bytes[j] == b'.')
                     {
                         j += 1;
                     }

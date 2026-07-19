@@ -1,0 +1,21 @@
+name: examples
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: cachix/install-nix-action@v31
+
+      - name: Build
+        run: nix develop --command cargo build
+
+      - name: Check example configs
+        run: nix develop --command bash -c "find examples -name config.kdl -print0 | xargs -0 -r -n1 -t ./target/debug/iwwc --check"
