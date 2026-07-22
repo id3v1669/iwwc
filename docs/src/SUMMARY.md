@@ -21,3 +21,6 @@
 # Reference
 
 - [Element Reference](./reference/elements.md)
+- [Style Properties](./reference/style-properties.md)
+- [Built-in Variables](./reference/variables.md)
+- [CLI Commands & IPC](./reference/cli.md)
