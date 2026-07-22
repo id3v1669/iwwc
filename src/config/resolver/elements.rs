@@ -83,8 +83,10 @@ pub(crate) fn resolve_widget(_name: &str, w: &Widget, ctx: &mut Ctx) -> Resolved
         anchor: resolve_field(&w.anchor, "anchor", &w.span, coerce::coerce_anchor, ctx),
         exclusive: resolve_field(&w.exclusive, "exclusive", &w.span, coerce::coerce_bool, ctx),
         margin: resolve_field(&w.margin, "margin", &w.span, coerce::coerce_margin, ctx),
-        output: resolve_field(&w.output, "output", &w.span, coerce::coerce_output, ctx)
-            .unwrap_or(iced_layershell::reexport::OutputOption::LastOutput),
+        output: resolve_field(&w.output, "output", &w.span, coerce::coerce_output_spec, ctx)
+            .unwrap_or(crate::config::primitives::OutputSpec::Direct(
+                iced_layershell::reexport::OutputOption::LastOutput,
+            )),
         keyboard: resolve_field(&w.keyboard, "keyboard", &w.span, coerce::coerce_bool, ctx),
         transparent: resolve_field(
             &w.transparent,

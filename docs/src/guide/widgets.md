@@ -37,6 +37,7 @@ all sides) or a block with 1, 2 (vertical, horizontal), or 4 (top, right, bottom
 
 ## Output, keyboard, and click-through
 
-- `output` picks the monitor: `active`, `last` (default), or an output name like `"HDMI-A-1"`.
+- `output` picks the monitor: `active`, `last` (default), an output name like `"HDMI-A-1"`, or
+  `"@other-widget"` to open on whatever monitor another widget is currently on.
 - `keyboard=#true` grabs keyboard focus exclusively while the widget is open (for popup-style widgets).
 - `transparent=#true` makes the surface ignore pointer events - clicks pass through to whatever is underneath.

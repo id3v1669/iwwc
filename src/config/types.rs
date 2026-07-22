@@ -93,7 +93,7 @@ pub struct Widget {
     pub anchor: Option<FieldValue<Anchor>>,
     pub exclusive: Option<FieldValue<bool>>,
     pub margin: Option<FieldValue<(f32, f32, f32, f32)>>,
-    pub output: Option<FieldValue<OutputOption>>,
+    pub output: Option<FieldValue<crate::config::primitives::OutputSpec>>,
     pub keyboard: Option<FieldValue<bool>>,
     pub transparent: Option<FieldValue<bool>>,
     pub child: Option<FieldValue<String>>,

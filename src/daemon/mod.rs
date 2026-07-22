@@ -31,6 +31,7 @@ pub enum Message {
         reply: Arc<Mutex<Option<oneshot::Sender<Response>>>>,
     },
     WindowClosed(WindowId),
+    OutputChanged(iced_layershell::output::OutputEvent),
     Notify(crate::notification::types::Notification),
     NotifClose(u32),
     NotifTimeout {
@@ -81,6 +82,7 @@ pub struct App {
     store: Store,
     config_path: std::path::PathBuf,
     windows: HashMap<WindowId, String>,
+    window_outputs: HashMap<WindowId, String>,
     notifications: IndexMap<u32, NotifState>,
     notif_windows: HashMap<WindowId, u32>,
     tray_items: Vec<crate::tray::types::TrayItem>,
@@ -151,6 +153,7 @@ impl App {
             dnd,
             config_path,
             windows: HashMap::new(),
+            window_outputs: HashMap::new(),
             notifications: IndexMap::new(),
             notif_windows: HashMap::new(),
             tray_items: Vec::new(),
@@ -185,6 +188,7 @@ impl App {
                 self.store.resolved().apptray.icon_size as u16,
             ),
             iced::window::close_events().map(Message::WindowClosed),
+            iced_layershell::output::listen().map(Message::OutputChanged),
             iced::window::open_events().map(Message::SurfaceOpened),
             iced::keyboard::listen().map(|ev| match ev {
                 iced::keyboard::Event::KeyPressed {
@@ -227,8 +231,16 @@ impl App {
                 let close = self.close_notification(id, 2);
                 Task::batch([emit, close])
             }
+            Message::OutputChanged(event) => {
+                match event.output {
+                    Some(info) => self.window_outputs.insert(event.window, info.name),
+                    None => self.window_outputs.remove(&event.window),
+                };
+                Task::none()
+            }
             Message::WindowClosed(id) => {
                 self.windows.remove(&id);
+                self.window_outputs.remove(&id);
                 self.cursor.remove(&id);
                 if let Some(nid) = self.notif_windows.remove(&id) {
                     self.notifications.shift_remove(&nid);
@@ -500,8 +512,9 @@ impl App {
                 if self.windows.values().any(|n| n == &window) {
                     return (Response::Ok, Task::none());
                 }
+                let output = self.output_for(&window);
                 let settings = match self.store.resolved().widgets.get(&window) {
-                    Some(w) => window::layer_settings_for(w),
+                    Some(w) => window::layer_settings_for(w, output),
                     None => {
                         return (
                             Response::Error(format!("no such widget \"{window}\"")),
@@ -917,13 +930,27 @@ impl App {
         Task::batch(tasks)
     }
 
+    fn output_for(&self, name: &str) -> iced_layershell::reexport::OutputOption {
+        let live: HashMap<String, String> = self
+            .windows
+            .iter()
+            .filter_map(|(id, widget)| {
+                self.window_outputs
+                    .get(id)
+                    .map(|output| (widget.clone(), output.clone()))
+            })
+            .collect();
+        window::resolve_output(&self.store.resolved().widgets, &live, name)
+    }
+
     fn reapply(&mut self) -> Task<Message> {
         let mut tasks = vec![self.close_menus()];
         for (old_id, name) in std::mem::take(&mut self.windows) {
             tasks.push(Task::done(Message::RemoveWindow(old_id)));
             self.cursor.remove(&old_id);
+            let output = self.output_for(&name);
             let settings = match self.store.resolved().widgets.get(&name) {
-                Some(w) => window::layer_settings_for(w),
+                Some(w) => window::layer_settings_for(w, output),
                 None => continue,
             };
             let (new_id, open_task) = Message::layershell_open(settings);

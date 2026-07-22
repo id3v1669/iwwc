@@ -26,6 +26,8 @@ pub fn resolve(config: &ParsedConfig) -> (Option<ResolvedConfig>, Vec<ConfigErro
         widgets.insert(name.clone(), rw);
     }
 
+    validate_output_refs(&widgets, &mut errs);
+
     let notification = resolve_notification(config, &env, &mut used, &mut errs);
     let apptray = {
         let mut ctx = elements::Ctx {
@@ -155,6 +157,42 @@ pub fn resolve(config: &ParsedConfig) -> (Option<ResolvedConfig>, Vec<ConfigErro
             }),
             errs,
         )
+    }
+}
+
+fn validate_output_refs(
+    widgets: &IndexMap<String, crate::config::resolved::ResolvedWidget>,
+    errs: &mut Vec<ConfigError>,
+) {
+    use crate::config::primitives::OutputSpec;
+
+    for (name, widget) in widgets {
+        let OutputSpec::Inherit(target) = &widget.output else {
+            continue;
+        };
+        if !widgets.contains_key(target) {
+            errs.push(ConfigError {
+                kind: crate::config::ConfigErrorKind::UnresolvedReference,
+                span: widget.span.clone(),
+                message: format!("output references unknown widget \"{target}\""),
+                severity: Severity::Error,
+            });
+            continue;
+        }
+        let mut seen = HashSet::from([name.clone()]);
+        let mut at = target;
+        while let Some(OutputSpec::Inherit(next)) = widgets.get(at).map(|w| &w.output) {
+            if !seen.insert(at.clone()) {
+                errs.push(ConfigError {
+                    kind: crate::config::ConfigErrorKind::CircularReference,
+                    span: widget.span.clone(),
+                    message: format!("circular output reference detected at \"{at}\""),
+                    severity: Severity::Error,
+                });
+                break;
+            }
+            at = next;
+        }
     }
 }
 

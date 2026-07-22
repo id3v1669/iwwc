@@ -28,7 +28,7 @@ Future:
 
 - [ ] expose tray menu options to config
 - [ ] fix menu text pos for tray menu to depend on rounded corners. [formulas](#formulas)
-- [ ] option for widgets to inherit output from another widet(useful for cases when first widget spawns via active)
+- [x] option for widgets to inherit output from another widet(useful for cases when first widget spawns via active)
 - [ ] iwwc.gpu.(load/temp/vram)(amd)
 - [ ] iwwc.temps.(*)
 - [ ] re-review all tests

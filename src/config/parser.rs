@@ -1027,8 +1027,8 @@ pub(crate) fn build_widget(
             node,
             source,
             errs,
-            |s| Some(parse_output(s)),
-            "a string or `last`",
+            |s| Some(crate::config::primitives::parse_output_spec(s)),
+            "a string, `last`, `active`, or `@widget`",
         ),
         keyboard: field_bool("keyboard", node, source, errs),
         transparent: field_bool("transparent", node, source, errs),
@@ -1807,8 +1807,8 @@ pub(crate) fn build_notification(
             node,
             source,
             errs,
-            |s| Some(parse_output(s)),
-            "a string or `last`",
+            |s| (!s.starts_with('@')).then(|| parse_output(s)),
+            "a string or `last` (`@widget` is widget-only)",
         ),
         respect_notification_icon: field_bool("respect_notification_icon", node, source, errs),
         freeze_on_hover: field_bool("freeze_on_hover", node, source, errs),
@@ -2237,7 +2237,9 @@ mod tests {
             Case {
                 label: "output invalid (int)",
                 kdl: "widget bar output=123 child=box1",
-                expect: Expect::Err("field `output` expects a string or `last`"),
+                expect: Expect::Err(
+                    "field `output` expects a string, `last`, `active`, or `@widget`",
+                ),
             },
         ]);
     }

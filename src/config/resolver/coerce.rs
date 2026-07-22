@@ -144,6 +144,17 @@ pub fn coerce_output(v: Value, field: &str, span: &Span) -> Result<OutputOption,
     }
 }
 
+pub fn coerce_output_spec(
+    v: Value,
+    field: &str,
+    span: &Span,
+) -> Result<primitives::OutputSpec, ConfigError> {
+    match v {
+        Value::Str(s) => Ok(primitives::parse_output_spec(&s)),
+        _ => Err(type_err(field, "an output string", span)),
+    }
+}
+
 pub fn coerce_row_align(v: Value, field: &str, span: &Span) -> Result<Vertical, ConfigError> {
     match v {
         Value::Str(s) => {

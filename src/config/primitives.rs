@@ -121,6 +121,19 @@ pub fn parse_text_align_x(s: &str) -> Option<TextAlignment> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum OutputSpec {
+    Direct(OutputOption),
+    Inherit(String),
+}
+
+pub fn parse_output_spec(s: &str) -> OutputSpec {
+    match s.strip_prefix('@') {
+        Some(id) => OutputSpec::Inherit(id.to_string()),
+        None => OutputSpec::Direct(parse_output(s)),
+    }
+}
+
 pub fn parse_output(s: &str) -> OutputOption {
     if s == "last" {
         OutputOption::LastOutput
