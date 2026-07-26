@@ -24,6 +24,7 @@ pub enum Severity {
 pub enum ConfigErrorKind {
     Syntax,
     UnknownNode,
+    UnknownField,
     MissingRequiredField,
     InvalidEnumValue,
     InvalidColor,

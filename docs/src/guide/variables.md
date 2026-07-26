@@ -1,6 +1,6 @@
 # Variables & Polling
 
-A variable is a named value any property can reference.
+A variable is a named value any field can reference.
 
 Values change three ways:
 
@@ -24,11 +24,14 @@ declaration wins.
 
 ## Using variables: `${…}`
 
-Reference a variable inside any quoted property value. Text around and between `${…}` blocks passes through:
+Reference a variable inside any quoted field value. Text around and between `${…}` blocks passes through:
 
 ```kdl
-widget bar h="${myintvar}" child=t1
-text t1 text="${round(iwwc.ram.used / 1073741824).1}G used, height ${myintvar / 2 + 10}"
+widget bar {
+  h "${myintvar}"
+  child t1
+}
+text t1 "${round(iwwc.ram.used / 1073741824).1}G used, height ${myintvar / 2 + 10}"
 ```
 
 Inside `${…}` full math is available: `+ - * / % ^`, comparisons (`< > <= >= == !=`), and the functions

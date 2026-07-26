@@ -219,14 +219,15 @@ mod tests {
 
     #[test]
     fn new_ok_exposes_resolved() {
-        let store = store_from("widget bar child=t1\ntext t1 color=ffffff").expect("should build");
+        let store =
+            store_from("widget bar { child t1 }\ntext t1 { color ffffff }").expect("should build");
         let _: &ResolvedConfig = store.resolved();
         assert!(store.resolved().widgets.contains_key("bar"));
     }
 
     #[test]
     fn new_ok_collects_warnings() {
-        let store = store_from("widget bar child=t1\ntext t1\ntext t2").expect("should build");
+        let store = store_from("widget bar { child t1 }\ntext t1\ntext t2").expect("should build");
         assert!(
             store
                 .warnings()
@@ -237,7 +238,7 @@ mod tests {
 
     #[test]
     fn new_err_on_resolution_error() {
-        let res = store_from("widget bar child=nope");
+        let res = store_from("widget bar { child nope }");
         assert!(res.is_err());
         let errs = res.err().unwrap();
         assert!(
@@ -266,7 +267,7 @@ mod tests {
     fn parse_value_string() {
         assert!(matches!(parse_value("hello"), VarValue::Str(s) if s == "hello"));
         assert!(
-            matches!(parse_value("container c1 child=t1"), VarValue::Str(s) if s == "container c1 child=t1")
+            matches!(parse_value("container c1 { child t1 }"), VarValue::Str(s) if s == "container c1 { child t1 }")
         );
         assert!(matches!(parse_value("${x/2}"), VarValue::Str(s) if s == "${x/2}"));
     }
@@ -275,7 +276,8 @@ mod tests {
 
     #[test]
     fn update_numeric_changes_resolved() {
-        let mut store = store_from("var hh=40\nwidget bar h=\"${hh}\" child=t1\ntext t1").unwrap();
+        let mut store =
+            store_from("var hh=40\nwidget bar { h \"${hh}\"; child t1 }\ntext t1").unwrap();
         assert_eq!(store.resolved().widgets.get("bar").unwrap().h, Some(40.0));
         store.update("hh", "80").expect("update ok");
         assert_eq!(store.resolved().widgets.get("bar").unwrap().h, Some(80.0));
@@ -283,7 +285,7 @@ mod tests {
 
     #[test]
     fn update_unknown_var_errors() {
-        let mut store = store_from("widget bar child=t1\ntext t1").unwrap();
+        let mut store = store_from("widget bar { child t1 }\ntext t1").unwrap();
         match store.update("nope", "5") {
             Err(UpdateError::UnknownVariable(n)) => assert_eq!(n, "nope"),
             other => panic!("expected UnknownVariable, got {:?}", other),
@@ -293,7 +295,8 @@ mod tests {
 
     #[test]
     fn update_invalid_keeps_old_state() {
-        let mut store = store_from("var hh=40\nwidget bar h=\"${hh}\" child=t1\ntext t1").unwrap();
+        let mut store =
+            store_from("var hh=40\nwidget bar { h \"${hh}\"; child t1 }\ntext t1").unwrap();
         let before = store.resolved().widgets.get("bar").unwrap().h;
         assert_eq!(before, Some(40.0));
         match store.update("hh", "notanumber") {
@@ -305,9 +308,10 @@ mod tests {
 
     #[test]
     fn update_compounds() {
-        let mut store =
-            store_from("var a=10\nvar b=20\nwidget bar w=\"${a}\" h=\"${b}\" child=t1\ntext t1")
-                .unwrap();
+        let mut store = store_from(
+            "var a=10\nvar b=20\nwidget bar { w \"${a}\"; h \"${b}\"; child t1 }\ntext t1",
+        )
+        .unwrap();
         store.update("a", "11").unwrap();
         store.update("b", "22").unwrap();
         let bar = store.resolved().widgets.get("bar").unwrap();
@@ -317,9 +321,10 @@ mod tests {
 
     #[test]
     fn update_struct_var() {
-        let mut store =
-            store_from("var x=\"container c1 child=t1\"\nwidget bar child=x\ntext t1\ntext t2")
-                .unwrap();
+        let mut store = store_from(
+            "var x=\"container c1 { child t1 }\"\nwidget bar { child x }\ntext t1\ntext t2",
+        )
+        .unwrap();
         assert!(matches!(
             store
                 .resolved()
@@ -331,7 +336,7 @@ mod tests {
             Some(ResolvedElement::Container(_))
         ));
         store
-            .update("x", "container c2 child=t2")
+            .update("x", "container c2 { child t2 }")
             .expect("valid fragment");
         assert!(matches!(
             store
@@ -343,14 +348,17 @@ mod tests {
                 .as_deref(),
             Some(ResolvedElement::Container(_))
         ));
-        let err = store.update("x", "container c3 child=missing").unwrap_err();
+        let err = store
+            .update("x", "container c3 { child missing }")
+            .unwrap_err();
         assert!(matches!(err, UpdateError::Invalid(_)));
     }
 
     #[test]
     fn update_warning_not_blocking() {
         let mut store =
-            store_from("var hh=40\nwidget bar h=\"${hh}\" child=t1\ntext t1\ntext unused").unwrap();
+            store_from("var hh=40\nwidget bar { h \"${hh}\"; child t1 }\ntext t1\ntext unused")
+                .unwrap();
         store
             .update("hh", "50")
             .expect("commit despite unused-element warning");
@@ -359,7 +367,7 @@ mod tests {
 
     #[test]
     fn update_error_display() {
-        let mut store = store_from("widget bar child=t1\ntext t1").unwrap();
+        let mut store = store_from("widget bar { child t1 }\ntext t1").unwrap();
         let err = store.update("nope", "5").unwrap_err();
         let msg = format!("{}", err);
         assert!(
@@ -368,7 +376,8 @@ mod tests {
             msg
         );
 
-        let mut store2 = store_from("var hh=40\nwidget bar h=\"${hh}\" child=t1\ntext t1").unwrap();
+        let mut store2 =
+            store_from("var hh=40\nwidget bar { h \"${hh}\"; child t1 }\ntext t1").unwrap();
         let err2 = store2.update("hh", "notanumber").unwrap_err();
         let msg2 = format!("{}", err2);
         assert!(!msg2.is_empty(), "invalid display should not be empty");
@@ -378,13 +387,17 @@ mod tests {
     fn reload_valid_commits_change() {
         use std::io::Write;
         let mut store =
-            store_from("widget bar anchor=\"t | l | r\" h=30 child=t1\ntext t1").unwrap();
+            store_from("widget bar { anchor \"t | l | r\"; h 30; child t1 }\ntext t1").unwrap();
         assert_eq!(store.resolved().widgets.get("bar").unwrap().h, Some(30.0));
 
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("c.kdl");
         let mut f = std::fs::File::create(&path).unwrap();
-        write!(f, "widget bar anchor=\"t | l | r\" h=50 child=t1\ntext t1").unwrap();
+        write!(
+            f,
+            "widget bar {{ anchor \"t | l | r\"; h 50; child t1 }}\ntext t1"
+        )
+        .unwrap();
         drop(f);
 
         let warns = store.reload(&path).expect("valid reload");
@@ -395,12 +408,12 @@ mod tests {
     #[test]
     fn reload_resolve_error_keeps_state() {
         use std::io::Write;
-        let mut store = store_from("widget bar h=30 child=t1\ntext t1").unwrap();
+        let mut store = store_from("widget bar { h 30; child t1 }\ntext t1").unwrap();
 
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("c.kdl");
         let mut f = std::fs::File::create(&path).unwrap();
-        write!(f, "widget bar child=missing").unwrap();
+        write!(f, "widget bar {{ child missing }}").unwrap();
         drop(f);
 
         let errs = store.reload(&path).unwrap_err();
@@ -411,7 +424,7 @@ mod tests {
     #[test]
     fn reload_syntax_error_keeps_state() {
         use std::io::Write;
-        let mut store = store_from("widget bar h=30 child=t1\ntext t1").unwrap();
+        let mut store = store_from("widget bar { h 30; child t1 }\ntext t1").unwrap();
 
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("c.kdl");
@@ -426,7 +439,7 @@ mod tests {
 
     #[test]
     fn reload_io_error_keeps_state() {
-        let mut store = store_from("widget bar h=30 child=t1\ntext t1").unwrap();
+        let mut store = store_from("widget bar { h 30; child t1 }\ntext t1").unwrap();
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("does-not-exist.kdl");
 
@@ -437,7 +450,7 @@ mod tests {
 
     #[test]
     fn validate_surfaces_single_top_anchor_full_width_ok() {
-        let s = store_from("widget bar anchor=t h=30 child=t1\ntext t1").unwrap();
+        let s = store_from("widget bar { anchor t; h 30; child t1 }\ntext t1").unwrap();
         assert!(
             s.validate_surfaces().is_empty(),
             "got {:?}",
@@ -447,7 +460,7 @@ mod tests {
 
     #[test]
     fn validate_surfaces_single_left_without_w_errors() {
-        let s = store_from("widget bar anchor=l h=30 child=t1\ntext t1").unwrap();
+        let s = store_from("widget bar { anchor l; h 30; child t1 }\ntext t1").unwrap();
         let errs = s.validate_surfaces();
         assert!(
             errs.iter()
@@ -459,7 +472,8 @@ mod tests {
 
     #[test]
     fn validate_surfaces_size_with_both_edges_conflicts() {
-        let s = store_from("widget bar anchor=\"l | r\" w=500 h=30 child=t1\ntext t1").unwrap();
+        let s =
+            store_from("widget bar { anchor \"l | r\"; w 500; h 30; child t1 }\ntext t1").unwrap();
         let errs = s.validate_surfaces();
         assert!(
             errs.iter()
@@ -471,7 +485,7 @@ mod tests {
 
     #[test]
     fn validate_surfaces_full_width_bar_ok() {
-        let s = store_from("widget bar anchor=\"t | l | r\" h=30 child=t1\ntext t1").unwrap();
+        let s = store_from("widget bar { anchor \"t | l | r\"; h 30; child t1 }\ntext t1").unwrap();
         assert!(
             s.validate_surfaces().is_empty(),
             "got {:?}",
@@ -481,13 +495,13 @@ mod tests {
 
     #[test]
     fn validate_surfaces_explicit_width_ok() {
-        let s = store_from("widget bar anchor=\"t\" w=1920 h=30 child=t1\ntext t1").unwrap();
+        let s = store_from("widget bar { anchor \"t\"; w 1920; h 30; child t1 }\ntext t1").unwrap();
         assert!(s.validate_surfaces().is_empty());
     }
 
     #[test]
     fn validate_surfaces_left_panel_full_height_ok() {
-        let s = store_from("widget side anchor=l w=300 child=t1\ntext t1").unwrap();
+        let s = store_from("widget side { anchor l; w 300; child t1 }\ntext t1").unwrap();
         assert!(
             s.validate_surfaces().is_empty(),
             "got {:?}",
@@ -497,13 +511,13 @@ mod tests {
 
     #[test]
     fn validate_surfaces_full_screen_ok() {
-        let s = store_from("widget full anchor=\"t | b | l | r\" child=t1\ntext t1").unwrap();
+        let s = store_from("widget full { anchor \"t | b | l | r\"; child t1 }\ntext t1").unwrap();
         assert!(s.validate_surfaces().is_empty());
     }
 
     #[test]
     fn validate_surfaces_no_anchor_no_size_is_fullscreen_ok() {
-        let s = store_from("widget bar child=t1\ntext t1").unwrap();
+        let s = store_from("widget bar { child t1 }\ntext t1").unwrap();
         assert!(
             s.validate_surfaces().is_empty(),
             "got {:?}",
@@ -515,14 +529,14 @@ mod tests {
     fn reload_warning_only_commits_and_returns_warnings() {
         use std::io::Write;
         let mut store =
-            store_from("widget bar anchor=\"t | l | r\" h=30 child=t1\ntext t1").unwrap();
+            store_from("widget bar { anchor \"t | l | r\"; h 30; child t1 }\ntext t1").unwrap();
 
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("c.kdl");
         let mut f = std::fs::File::create(&path).unwrap();
         write!(
             f,
-            "widget bar anchor=\"t | l | r\" h=30 child=t1\ntext t1\ntext unused"
+            "widget bar {{ anchor \"t | l | r\"; h 30; child t1 }}\ntext t1\ntext unused"
         )
         .unwrap();
         drop(f);
@@ -539,12 +553,12 @@ mod tests {
     fn reload_invalid_surface_keeps_state() {
         use std::io::Write;
         let mut store =
-            store_from("widget bar anchor=\"t | l | r\" h=30 child=t1\ntext t1").unwrap();
+            store_from("widget bar { anchor \"t | l | r\"; h 30; child t1 }\ntext t1").unwrap();
 
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("c.kdl");
         let mut f = std::fs::File::create(&path).unwrap();
-        write!(f, "widget bar anchor=l h=30 child=t1\ntext t1").unwrap();
+        write!(f, "widget bar {{ anchor l; h 30; child t1 }}\ntext t1").unwrap();
         drop(f);
 
         let errs = store.reload(&path).unwrap_err();

@@ -1,9 +1,9 @@
 use crate::config::resolved::ResolvedWidget;
+use iced_layershell::reexport::{
+    Anchor, BlurOption, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
+};
 use indexmap::IndexMap;
 use std::collections::{HashMap, HashSet};
-use iced_layershell::reexport::{
-    Anchor, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
-};
 
 pub fn layer_settings_for(w: &ResolvedWidget, output: OutputOption) -> NewLayerShellSettings {
     let width = w.w.map(|v| v as u32).unwrap_or(0);
@@ -27,6 +27,7 @@ pub fn layer_settings_for(w: &ResolvedWidget, output: OutputOption) -> NewLayerS
             Some(true) => KeyboardInteractivity::Exclusive,
             _ => KeyboardInteractivity::None,
         },
+        blur_option: BlurOption::None,
         output_option: output,
         events_transparent: w.transparent.unwrap_or(false),
         namespace: Some("iwwc".to_string()),
@@ -108,7 +109,7 @@ mod tests {
     #[test]
     fn top_bar_exclusive_zone_is_height() {
         let w = widget(
-            "widget bar layer=top anchor=\"t\" h=30 w=1920 exclusive=#true child=t1\ntext t1",
+            "widget bar { layer top; anchor \"t\"; h 30; w 1920; exclusive #true; child t1 }\ntext t1",
             "bar",
         );
         let s = layer_settings_for(&w, OutputOption::LastOutput);
@@ -120,7 +121,7 @@ mod tests {
     #[test]
     fn corner_anchor_reserves_nothing() {
         let w = widget(
-            "widget corner anchor=\"t | l\" h=30 w=200 exclusive=#true child=t1\ntext t1",
+            "widget corner { anchor \"t | l\"; h 30; w 200; exclusive #true; child t1 }\ntext t1",
             "corner",
         );
         assert_eq!(
@@ -132,7 +133,7 @@ mod tests {
     #[test]
     fn left_panel_exclusive_zone_is_width() {
         let w = widget(
-            "widget side layer=top anchor=\"l\" w=300 h=1080 exclusive=#true child=t1\ntext t1",
+            "widget side { layer top; anchor \"l\"; w 300; h 1080; exclusive #true; child t1 }\ntext t1",
             "side",
         );
         let s = layer_settings_for(&w, OutputOption::LastOutput);
@@ -142,7 +143,7 @@ mod tests {
     #[test]
     fn non_exclusive_zone_zero() {
         let w = widget(
-            "widget bar anchor=\"t\" h=30 w=100 exclusive=#false child=t1\ntext t1",
+            "widget bar { anchor \"t\"; h 30; w 100; exclusive #false; child t1 }\ntext t1",
             "bar",
         );
         assert_eq!(
@@ -154,7 +155,7 @@ mod tests {
     #[test]
     fn output_and_transparent_and_keyboard() {
         let w = widget(
-            "widget bar anchor=\"t\" h=30 w=100 transparent=#true keyboard=#true child=t1\ntext t1",
+            "widget bar { anchor \"t\"; h 30; w 100; transparent #true; keyboard #true; child t1 }\ntext t1",
             "bar",
         );
         let s = layer_settings_for(&w, OutputOption::OutputName("HDMI-A-1".to_string()));
@@ -169,11 +170,12 @@ mod tests {
     #[test]
     fn output_last_default() {
         let w = widget(
-            "widget bar anchor=\"t\" h=30 w=100 child=t1\ntext t1",
+            "widget bar { anchor \"t\"; h 30; w 100; child t1 }\ntext t1",
             "bar",
         );
         assert!(matches!(
-            layer_settings_for(&w, iced_layershell::reexport::OutputOption::LastOutput).output_option,
+            layer_settings_for(&w, iced_layershell::reexport::OutputOption::LastOutput)
+                .output_option,
             iced_layershell::reexport::OutputOption::LastOutput
         ));
     }
@@ -181,7 +183,7 @@ mod tests {
     #[test]
     fn output_active() {
         let w = widget(
-            "widget bar anchor=\"t\" h=30 w=100 output=\"active\" child=t1\ntext t1",
+            "widget bar { anchor \"t\"; h 30; w 100; output \"active\"; child t1 }\ntext t1",
             "bar",
         );
         assert!(matches!(

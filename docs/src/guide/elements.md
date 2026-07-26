@@ -1,14 +1,18 @@
 # Elements
 
 Elements are the building blocks inside a widget. Each is declared at the top level with
-an id and composed via `child=` (single child) or a `children` block (multiple).
+an id and composed via a `child` field (single child) or a `children` field (multiple).
 
 ```kdl
-text clock_txt text="${datetime}"
-button clock child=clock_txt action="gnome-calendar" style=pill {
+text clock_txt "${datetime}"
+button clock {
+  child clock_txt
+  action "gnome-calendar"
+  style pill
   padding 5 16
 }
-row centergrp align=c {
+row centergrp {
+  align c
   children clock
 }
 ```
@@ -17,7 +21,7 @@ An element may be used as a child in several places; each use renders its own co
 
 ## text
 
-Renders a string. The content lives in the `text` property. Optional: `color`,
+Renders a string. The content is the node's second argument (or a `text` field). Optional: `color`,
 `font` (id of a `font` node), `align_x` (`l`/`c`/`r`/`j`), `align_y` (`t`/`c`/`b`),
 `w`, `h`.
 
@@ -36,14 +40,28 @@ for columns. Also `w`, `h`, `padding`, `clip`.
 ## container
 
 Wraps a single `child` to give it size, padding, alignment (`align_x`, `align_y`) and a
-`style`. The classic pattern for a three-part bar is three `w=fill` containers aligned
+`style`. The classic pattern for a three-part bar is three `w fill` containers aligned
 left, center, and right inside one row:
 
 ```kdl
-container leftbox w=fill align_x=l child=x
-container centerbox w=fill align_x=c child=y
-container rightbox w=fill align_x=r child=z
-row barrow w=fill align=c {
+container leftbox {
+  w fill
+  align_x l
+  child x
+}
+container centerbox {
+  w fill
+  align_x c
+  child y
+}
+container rightbox {
+  w fill
+  align_x r
+  child z
+}
+row barrow {
+  w fill
+  align c
   children leftbox centerbox rightbox
 }
 ```
@@ -61,8 +79,12 @@ variable, flipped with `iwwc update <var> toggle`:
 
 ```kdl
 var show_extras=#true
-revealer extras transition=slideleft duration="250ms" \
-  active="${show_extras}" child=extras_row
+revealer extras {
+  transition slideleft
+  duration "250ms"
+  active "${show_extras}"
+  child extras_row
+}
 ```
 
 ## event
@@ -72,15 +94,16 @@ Invisible wrapper that reacts to pointer events - see [Events & Actions](events-
 ## apptray
 
 The built-in system tray, referenced by the fixed name `apptray` in a `children` list or
-`child=apptray` - see [System Tray](tray.md).
+`child apptray` - see [System Tray](tray.md).
 
 ## Sizes
 
-`w` and `h` on elements accept a number (fixed pixels), `fill`, `shrink`, or a portion block
-for proportional sizing:
+`w` and `h` on elements accept a number (fixed pixels), `fill`, `shrink`, or `portion` followed
+by a number for proportional sizing:
 
 ```kdl
-container half child=stuff {
-  w portion=1
+container half {
+  child stuff
+  w portion 1
 }
 ```

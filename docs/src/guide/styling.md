@@ -4,14 +4,31 @@ Styling is split into small named nodes that elements reference by id, so one lo
 be shared across many elements.
 
 ```kdl
-border round20 radius=20
-shadow soft color="00000080" blur_radius=4 {
+border round20 {
+  radius 20
+}
+shadow soft {
+  color "00000080"
+  blur_radius 4
   offset 0 2
 }
-style pill bg="282828" text="e3cd92" border=round20 shadow=soft
-style pillhover bg="3c3836" text="e7d4a2" border=round20
+style pill {
+  bg "282828"
+  text "e3cd92"
+  border round20
+  shadow soft
+}
+style pillhover {
+  bg "3c3836"
+  text "e7d4a2"
+  border round20
+}
 
-button lang child=lang_txt style=pill style:hover=pillhover
+button lang {
+  child lang_txt
+  style pill
+  style:hover pillhover
+}
 ```
 
 ## style
@@ -24,16 +41,15 @@ A `style` node bundles:
 - `shadow`: id of a `shadow` node
 - `snap`: bool, snaps the element to the pixel grid
 
-Every property is optional. Styles apply to `container` (via `style=`), `button` (via
-`style=`, `style:hover=`, `style:active=`, `style:disabled=`), and notification action
+Every field is optional. Styles apply to `container` (via `style`), `button` (via
+`style`, `style:hover`, `style:active`, `style:disabled`), and notification action
 buttons (via `ok:style` / `no:style`, see [Notifications](./notifications.md#clicks-and-action-buttons)).
 
 ## border
 
 - `color`
 - `w`: line width
-- `radius`: radius takes one value as a property (`radius=10`) or a block with 1 or 4 values (top-left,
-top-right, bottom-right, bottom-left)
+- `radius`: takes 1 value (`radius 10`) or 4 (top-left, top-right, bottom-right, bottom-left)
 
 ```kdl
 border topround {
@@ -45,10 +61,12 @@ border topround {
 
 - `color`: shadow color
 - `blur_radius`: blur amount in pixels
-- `offset`: block with exactly 2 values (x, y)
+- `offset`: exactly 2 numbers (x, y)
 
 ```kdl
-shadow soft color="00000080" blur_radius=4 {
+shadow soft {
+  color "00000080"
+  blur_radius 4
   offset 0 2
 }
 ```
@@ -66,8 +84,14 @@ Named font definitions, referenced from `text` elements and the `notification` b
 Values are case-insensitive and the hyphens are optional (`extralight`, `semi-bold`, …).
 
 ```kdl
-font ff family="JetBrainsMonoNL Nerd Font" weight="bold" style="italic"
-text lang_txt text="en" font=ff
+font ff {
+  family "JetBrainsMonoNL Nerd Font"
+  weight "bold"
+  style "italic"
+}
+text lang_txt "en" {
+  font ff
+}
 ```
 
 ## Colors
@@ -83,11 +107,12 @@ Anywhere a color is expected:
 
 `container`, `button`, `row`, `column`, and the tray take padding:
 
-- one value as a property (`padding=5`): all four sides
-- a block with 1, 2 (vertical, horizontal), or 4 (top, right, bottom, left) values
+- one value (`padding 5`): all four sides
+- 2 (vertical, horizontal) or 4 (top, right, bottom, left) numbers
 
 ```kdl
-button b child=t {
+button b {
+  child t
   padding 5 13
 }
 ```

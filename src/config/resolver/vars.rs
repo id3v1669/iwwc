@@ -224,10 +224,10 @@ mod tests {
 
     #[test]
     fn element_fragment_passthrough() {
-        let (env, errs) = flat("var x=\"container c1 child=t1\"");
+        let (env, errs) = flat("var x=\"container c1 { child t1 }\"");
         assert!(errs.is_empty());
         assert!(
-            matches!(env.lookup("x"), Some(crate::config::types::VarValue::Str(s)) if s == "container c1 child=t1")
+            matches!(env.lookup("x"), Some(crate::config::types::VarValue::Str(s)) if s == "container c1 { child t1 }")
         );
     }
 

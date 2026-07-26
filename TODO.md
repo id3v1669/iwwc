@@ -62,6 +62,9 @@ Future:
 - [ ] hint support - reuse xdg popup
 - [ ] integration with hyprland as build feature with default to false
 - [ ] update nix module to support config
+- [ ] subscribtion to ext-workspace-v1. Where to implement, local, custom lib or exwlshelleventloop
+- [ ] predefined widget launcher
+- [ ] connect to base16x2-color-shemes
 
 ## formulas
 

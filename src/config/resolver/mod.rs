@@ -351,7 +351,7 @@ mod tests {
 
     #[test]
     fn unused_element_warns() {
-        let (rc, errs) = resolve_kdl("widget bar child=t1\ntext t1\ntext t2");
+        let (rc, errs) = resolve_kdl("widget bar { child t1 }\ntext t1\ntext t2");
         assert!(rc.is_some(), "should resolve (warning, not error)");
         assert!(
             errs.iter().any(
@@ -364,7 +364,7 @@ mod tests {
 
     #[test]
     fn unused_variable_warns() {
-        let (rc, errs) = resolve_kdl("var unused=5\nwidget bar child=t1\ntext t1");
+        let (rc, errs) = resolve_kdl("var unused=5\nwidget bar { child t1 }\ntext t1");
         assert!(rc.is_some());
         assert!(
             errs.iter()
@@ -378,7 +378,7 @@ mod tests {
     #[test]
     fn used_var_no_warning() {
         // A variable used inside a ${...} expression must be marked used and NOT warn.
-        let (rc, errs) = resolve_kdl("var hh=40\nwidget bar h=\"${hh}\" child=t1\ntext t1");
+        let (rc, errs) = resolve_kdl("var hh=40\nwidget bar { h \"${hh}\"; child t1 }\ntext t1");
         assert!(rc.is_some());
         assert!(
             !errs
@@ -392,7 +392,7 @@ mod tests {
     #[test]
     fn transitive_var_usage_no_warning() {
         let (rc, errs) =
-            resolve_kdl("var a=1\nvar b=\"${a}\"\nwidget bar h=\"${b}\" child=t1\ntext t1");
+            resolve_kdl("var a=1\nvar b=\"${a}\"\nwidget bar { h \"${b}\"; child t1 }\ntext t1");
         assert!(rc.is_some());
         assert!(
             !errs
@@ -405,7 +405,7 @@ mod tests {
 
     #[test]
     fn text_interpolation_content() {
-        let (rc, errs) = resolve_kdl("var x=5\ntext t1 text=\"hi ${x}\"\nwidget bar child=t1");
+        let (rc, errs) = resolve_kdl("var x=5\ntext t1 \"hi ${x}\"\nwidget bar { child t1 }");
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
             "errs: {:?}",
@@ -421,7 +421,7 @@ mod tests {
     #[test]
     fn apptray_reference_resolves_to_element() {
         let (cfg, _) = parse_str(
-            "widget bar child=apptray\napptray icon_size=30 swap_buttons=#true",
+            "widget bar { child apptray }\napptray { icon_size 30; swap_buttons #true }",
             "<t>",
         );
         let (rc, errs) = resolve(&cfg.unwrap());
@@ -443,7 +443,7 @@ mod tests {
 
     #[test]
     fn apptray_reference_defaults_without_block() {
-        let (cfg, _) = parse_str("widget bar child=apptray", "<t>");
+        let (cfg, _) = parse_str("widget bar { child apptray }", "<t>");
         let (rc, errs) = resolve(&cfg.unwrap());
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
@@ -461,7 +461,7 @@ mod tests {
     #[test]
     fn smart_ram_resolves_and_is_polled() {
         let (cfg, _) = parse_str(
-            "widget bar child=t1\ntext t1 text=\"${iwwc.ram.used / 1073741824}\"",
+            "widget bar { child t1 }\ntext t1 \"${iwwc.ram.used / 1073741824}\"",
             "<t>",
         );
         let (rc, errs) = resolve(&cfg.unwrap());
@@ -476,7 +476,7 @@ mod tests {
 
     #[test]
     fn bare_namespace_is_unresolved() {
-        let (cfg, _) = parse_str("widget bar child=t1\ntext t1 text=\"${iwwc.ram}\"", "<t>");
+        let (cfg, _) = parse_str("widget bar { child t1 }\ntext t1 \"${iwwc.ram}\"", "<t>");
         let (rc, errs) = resolve(&cfg.unwrap());
         assert!(rc.is_none());
         assert!(errs.iter().any(|e| e.severity == Severity::Error));
@@ -484,7 +484,7 @@ mod tests {
 
     #[test]
     fn no_smart_use_means_no_polls() {
-        let (cfg, _) = parse_str("widget bar child=t1\ntext t1 text=\"hi\"", "<t>");
+        let (cfg, _) = parse_str("widget bar { child t1 }\ntext t1 \"hi\"", "<t>");
         let (rc, _) = resolve(&cfg.unwrap());
         assert!(rc.unwrap().smart_polls.is_empty());
     }
@@ -492,7 +492,7 @@ mod tests {
     #[test]
     fn notification_defaults_and_override() {
         let (rc, errs) = {
-            let (cfg, _) = parse_str("widget bar child=t1\ntext t1", "<t>");
+            let (cfg, _) = parse_str("widget bar { child t1 }\ntext t1", "<t>");
             resolve(&cfg.unwrap())
         };
         assert!(errs.iter().all(|e| e.severity != Severity::Error));
@@ -506,7 +506,7 @@ mod tests {
         ));
 
         let (cfg, _) = parse_str(
-            "widget bar child=t1\ntext t1\nnotification width=300 max=3 dnd=1 timeout_normal=\"2s\" timeout_critical=\"1500ms\" urgency_critical=ff0000 bg=000000 border=nb output=\"HDMI-A-1\"\nborder nb w=2",
+            "widget bar { child t1 }\ntext t1\nnotification { width 300; max 3; dnd 1; timeout_normal \"2s\"; timeout_critical \"1500ms\"; urgency_critical ff0000; bg 000000; border nb; output \"HDMI-A-1\" }\nborder nb { w 2 }",
             "<t>",
         );
         let (rc, errs) = resolve(&cfg.unwrap());
@@ -534,7 +534,7 @@ mod tests {
         use crate::config::primitives::Transition;
         use crate::config::resolved::ResolvedElement;
         let (cfg, _) = parse_str(
-            "widget bar child=rev\nrevealer rev child=t1\ntext t1",
+            "widget bar { child rev }\nrevealer rev { child t1 }\ntext t1",
             "<t>",
         );
         let (rc, errs) = resolve(&cfg.unwrap());
@@ -561,7 +561,7 @@ mod tests {
         use crate::config::parse_str;
         use crate::config::resolved::ResolvedElement;
         let (cfg, _) = parse_str(
-            "var folded=#false\nwidget bar child=rev\nrevealer rev active=\"${folded}\" child=t1\ntext t1",
+            "var folded=#false\nwidget bar { child rev }\nrevealer rev { active \"${folded}\"; child t1 }\ntext t1",
             "<t>",
         );
         let (rc, errs) = resolve(&cfg.unwrap());
@@ -582,7 +582,7 @@ mod tests {
     fn revealer_expression_active_non_bool_is_error() {
         use crate::config::parse_str;
         let (cfg, _) = parse_str(
-            "var folded=\"yes\"\nwidget bar child=rev\nrevealer rev active=\"${folded}\" child=t1\ntext t1",
+            "var folded=\"yes\"\nwidget bar { child rev }\nrevealer rev { active \"${folded}\"; child t1 }\ntext t1",
             "<t>",
         );
         let (rc, errs) = resolve(&cfg.unwrap());
@@ -598,7 +598,7 @@ mod tests {
         use crate::config::parse_str;
         use crate::config::{ConfigErrorKind, Severity};
         let (cfg, _) = parse_str(
-            "widget bar child=t2\ntext t2\nrevealer rev child=t1\ntext t1",
+            "widget bar { child t2 }\ntext t2\nrevealer rev { child t1 }\ntext t1",
             "<t>",
         );
         let (_, errs) = resolve(&cfg.unwrap());
@@ -610,7 +610,7 @@ mod tests {
     #[test]
     fn watch_events_resolve_into_watches() {
         let (cfg, perrs) = crate::config::parse_str(
-            "var flag=#false\nevent w1 type=watchon var=flag action=\"echo on\"\nevent t1 type=timeout var=flag duration=\"2s\" action=\"echo done\"",
+            "var flag=#false\nevent w1 { type watchon; var flag; action \"echo on\" }\nevent t1 { type timeout; var flag; duration \"2s\"; action \"echo done\" }",
             "<test>",
         );
         let cfg = cfg.expect("parse ok");
@@ -640,7 +640,7 @@ mod tests {
     #[test]
     fn watch_on_non_bool_var_errors() {
         let (cfg, _perrs) = crate::config::parse_str(
-            "var name=\"hi\"\nevent w1 type=watchon var=name action=\"true\"",
+            "var name=\"hi\"\nevent w1 { type watchon; var name; action \"true\" }",
             "<test>",
         );
         let (rc, errs) = resolve(&cfg.expect("parse ok"));
@@ -654,8 +654,10 @@ mod tests {
 
     #[test]
     fn watch_on_unknown_var_errors() {
-        let (cfg, _perrs) =
-            crate::config::parse_str("event w1 type=watchon var=nope action=\"true\"", "<test>");
+        let (cfg, _perrs) = crate::config::parse_str(
+            "event w1 { type watchon; var nope; action \"true\" }",
+            "<test>",
+        );
         let (rc, errs) = resolve(&cfg.expect("parse ok"));
         assert!(rc.is_none());
         assert!(
@@ -667,7 +669,7 @@ mod tests {
     #[test]
     fn watch_event_as_child_errors() {
         let (cfg, _perrs) = crate::config::parse_str(
-            "var flag=#false\nwidget bar child=w1\nevent w1 type=watchon var=flag action=\"true\"",
+            "var flag=#false\nwidget bar { child w1 }\nevent w1 { type watchon; var flag; action \"true\" }",
             "<test>",
         );
         let (rc, errs) = resolve(&cfg.expect("parse ok"));
@@ -682,7 +684,7 @@ mod tests {
     #[test]
     fn pointer_event_resolves_in_tree() {
         let (cfg, _perrs) = crate::config::parse_str(
-            "widget bar child=e1\nevent e1 type=onhover action=\"true\" child=t1\ntext t1",
+            "widget bar { child e1 }\nevent e1 { type onhover; action \"true\"; child t1 }\ntext t1",
             "<test>",
         );
         let (rc, errs) = resolve(&cfg.expect("parse ok"));

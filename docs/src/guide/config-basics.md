@@ -16,9 +16,13 @@ In config each top-level node declares one thing: a variable, an element, a styl
 // comment
 var ff="0xProto"
 
-text greeting_txt text="Hello World" font="${ff}"
+text greeting_txt "Hello World" {
+  font "${ff}"
+}
 
-button greeting child=greeting_txt action="notify-send hi" {
+button greeting {
+  child greeting_txt
+  action "notify-send hi"
   padding 5 13
 }
 ```
@@ -28,10 +32,60 @@ The pieces of a declaration:
 - **Node name** (`var`, `text`, `button`, `widget`, …) says what is being declared.
 Unknown node names are an error.
 - **First bare argument** is the declaration's *id* that will be used to call that element.
-- **Properties** are `key=value` pairs. Booleans are written `#true` and `#false` (KDL 2 syntax).
-Strings are quoted; a trailing `\` continues a node on the next line.
-- **A block `{ … }`** holds multi-value fields that don't fit in a single property: `padding 5 13`,
-`margin 5 8 0 8`, `radius 10 10 0 0`, `offset 2 2`, and `children a b c`.
+- **A block `{ … }`** holds the fields, one child node per field: `child greeting_txt`,
+`action "notify-send hi"`, `padding 5 13`, `margin 5 8 0 8`, `radius 10 10 0 0`, `offset 2 2`,
+and `children a b c`.
+
+## Fields are child nodes
+
+An element node carries only its id in the header. Everything else is a child node inside the
+block: the node name is the field name, its arguments are the value.
+
+```kdl
+button greeting {
+  child greeting_txt
+  action "notify-send hi"
+  w 120
+  style pill
+  style:hover pillhover
+  padding 5 13
+}
+```
+
+Fields that take several values simply take several arguments - `padding 5 13`,
+`margin 5 8 0 8`, `radius 10 10 0 0`, `offset 2 2`, `children a b c`, `w portion 2`. A block
+spans as many lines as it needs, so nothing has to be continued with a trailing `\`.
+
+`text` is the one element that also accepts its content as an optional second argument, which
+keeps short labels on one line:
+
+```kdl
+text greeting_txt "Hello World"
+text clock_txt "${datetime}" {
+  font ff
+}
+```
+
+Booleans are written `#true` and `#false` (KDL 2 syntax) - bare `true` and `false` are reserved
+words and a syntax error. Strings are quoted; an unquoted value is fine as long as it is a valid
+KDL identifier, so a color that starts with a digit has to be quoted (`bg "3c3836"`).
+
+`var`, `pull`, `import`, and `icon_theme` are not elements and keep their own shape. `var` and
+`pull` still write `name=value`, because there the name is data - the variable being declared -
+and not a field of the node; `import` and `icon_theme` take a single string argument:
+
+```kdl
+var lang="en"
+pull battery="cat /sys/class/power_supply/BAT0/capacity" i="30s" default="0%"
+import "./colors.kdl"
+icon_theme "Gruvbox-Plus-Dark"
+```
+
+Only `var` and `pull` take `name=value` properties. Writing one on an element - either on the
+header (`button b child=t1`) or on a field (`w portion=2`) - is an error, and so is giving a
+field the wrong number of values (`clip #true #false`, `padding 1 2 3`). A field name the node
+doesn't recognise is a warning and is ignored, so a misspelled field silently does nothing -
+run `iwwc --check` after editing and fix the warnings too, not just the errors.
 
 ## Splitting the config with `import`
 
@@ -49,8 +103,8 @@ an already-loaded file (including circular chains) is skipped with a warning.
 ## References and order
 
 Declarations can appear in any order - an element may reference another that is defined later in
-the file. All references are checked when the config loads: a `child=`, `style=`, `border=`,
-`shadow=` or `font=` that names a missing id is an `unresolved reference` error, and rejected.
+the file. All references are checked when the config loads: a `child`, `style`, `border`,
+`shadow` or `font` field that names a missing id is an `unresolved reference` error, and rejected.
 
 ## Reloading
 

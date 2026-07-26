@@ -83,10 +83,16 @@ pub(crate) fn resolve_widget(_name: &str, w: &Widget, ctx: &mut Ctx) -> Resolved
         anchor: resolve_field(&w.anchor, "anchor", &w.span, coerce::coerce_anchor, ctx),
         exclusive: resolve_field(&w.exclusive, "exclusive", &w.span, coerce::coerce_bool, ctx),
         margin: resolve_field(&w.margin, "margin", &w.span, coerce::coerce_margin, ctx),
-        output: resolve_field(&w.output, "output", &w.span, coerce::coerce_output_spec, ctx)
-            .unwrap_or(crate::config::primitives::OutputSpec::Direct(
-                iced_layershell::reexport::OutputOption::LastOutput,
-            )),
+        output: resolve_field(
+            &w.output,
+            "output",
+            &w.span,
+            coerce::coerce_output_spec,
+            ctx,
+        )
+        .unwrap_or(crate::config::primitives::OutputSpec::Direct(
+            iced_layershell::reexport::OutputOption::LastOutput,
+        )),
         keyboard: resolve_field(&w.keyboard, "keyboard", &w.span, coerce::coerce_bool, ctx),
         transparent: resolve_field(
             &w.transparent,
@@ -711,7 +717,7 @@ mod tests {
 
     #[test]
     fn widget_with_text_child() {
-        let (rc, errs) = resolve_kdl("widget bar child=t1\ntext t1 color=ffffff");
+        let (rc, errs) = resolve_kdl("widget bar { child t1 }\ntext t1 { color ffffff }");
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
             "errs: {:?}",
@@ -729,7 +735,7 @@ mod tests {
 
     #[test]
     fn widget_field_expression() {
-        let (rc, errs) = resolve_kdl("var hh=40\nwidget bar h=\"${hh}\" child=t1\ntext t1");
+        let (rc, errs) = resolve_kdl("var hh=40\nwidget bar { h \"${hh}\"; child t1 }\ntext t1");
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
             "errs: {:?}",
@@ -741,7 +747,7 @@ mod tests {
 
     #[test]
     fn unresolved_child() {
-        let (rc, errs) = resolve_kdl("widget bar child=nope");
+        let (rc, errs) = resolve_kdl("widget bar { child nope }");
         assert!(rc.is_none());
         assert!(
             errs.iter()
@@ -751,8 +757,9 @@ mod tests {
 
     #[test]
     fn widget_container_text_chain() {
-        let (rc, errs) =
-            resolve_kdl("widget bar child=box1\ncontainer box1 child=t1\ntext t1 color=ffffff");
+        let (rc, errs) = resolve_kdl(
+            "widget bar { child box1 }\ncontainer box1 { child t1 }\ntext t1 { color ffffff }",
+        );
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
             "errs: {:?}",
@@ -770,7 +777,8 @@ mod tests {
 
     #[test]
     fn out_of_order_definitions() {
-        let (rc, errs) = resolve_kdl("text t1\nwidget bar child=box1\ncontainer box1 child=t1");
+        let (rc, errs) =
+            resolve_kdl("text t1\nwidget bar { child box1 }\ncontainer box1 { child t1 }");
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
             "errs: {:?}",
@@ -782,7 +790,7 @@ mod tests {
     #[test]
     fn circular_container_refs() {
         let (rc, errs) =
-            resolve_kdl("widget bar child=a\ncontainer a child=b\ncontainer b child=a");
+            resolve_kdl("widget bar { child a }\ncontainer a { child b }\ncontainer b { child a }");
         assert!(rc.is_none());
         assert!(
             errs.iter()
@@ -794,8 +802,9 @@ mod tests {
 
     #[test]
     fn button_with_child() {
-        let (rc, errs) =
-            resolve_kdl("widget bar child=btn\nbutton btn child=t1 action=\"echo hi\"\ntext t1");
+        let (rc, errs) = resolve_kdl(
+            "widget bar { child btn }\nbutton btn { child t1; action \"echo hi\" }\ntext t1",
+        );
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
             "errs: {:?}",
@@ -811,7 +820,7 @@ mod tests {
     #[test]
     fn row_with_multiple_children() {
         let (rc, errs) = resolve_kdl(
-            "widget bar child=r1\nrow r1 {\n  children a b\n}\nbutton a child=t1\nbutton b child=t1\ntext t1",
+            "widget bar { child r1 }\nrow r1 {\n  children a b\n}\nbutton a { child t1 }\nbutton b { child t1 }\ntext t1",
         );
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
@@ -828,7 +837,7 @@ mod tests {
     #[test]
     fn column_with_shared_child_duplicated() {
         let (rc, errs) = resolve_kdl(
-            "widget bar child=c1\ncolumn c1 {\n  children b b\n}\nbutton b child=t1\ntext t1",
+            "widget bar { child c1 }\ncolumn c1 {\n  children b b\n}\nbutton b { child t1 }\ntext t1",
         );
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
@@ -845,7 +854,7 @@ mod tests {
     #[test]
     fn container_style_inlined_with_border() {
         let (rc, errs) = resolve_kdl(
-            "widget bar child=box1\ncontainer box1 style=s1 child=t1\ntext t1\nstyle s1 bg=000000 border=b1\nborder b1 radius=5",
+            "widget bar { child box1 }\ncontainer box1 { style s1; child t1 }\ntext t1\nstyle s1 { bg 000000; border b1 }\nborder b1 { radius 5 }",
         );
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
@@ -868,8 +877,9 @@ mod tests {
 
     #[test]
     fn unresolved_style_ref() {
-        let (rc, errs) =
-            resolve_kdl("widget bar child=box1\ncontainer box1 style=nope child=t1\ntext t1");
+        let (rc, errs) = resolve_kdl(
+            "widget bar { child box1 }\ncontainer box1 { style nope; child t1 }\ntext t1",
+        );
         assert!(rc.is_none());
         assert!(
             errs.iter()
@@ -879,7 +889,8 @@ mod tests {
 
     #[test]
     fn var_redirect_to_element_id() {
-        let (rc, errs) = resolve_kdl("var y=\"t1\"\nwidget bar child=y\ntext t1 color=ffffff");
+        let (rc, errs) =
+            resolve_kdl("var y=\"t1\"\nwidget bar { child y }\ntext t1 { color ffffff }");
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),
             "errs: {:?}",
@@ -895,7 +906,7 @@ mod tests {
     #[test]
     fn var_fragment_expands() {
         let (rc, errs) = resolve_kdl(
-            "var x=\"container c1 child=t1\"\nwidget bar child=x\ntext t1 color=ffffff",
+            "var x=\"container c1 { child t1 }\"\nwidget bar { child x }\ntext t1 { color ffffff }",
         );
         assert!(
             errs.iter().all(|e| e.severity != Severity::Error),

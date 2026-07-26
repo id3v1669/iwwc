@@ -334,7 +334,7 @@ mod tests {
     #[test]
     fn renders_text_widget() {
         let rc = render_kdl(
-            "widget bar child=t1\ntext t1 color=ffffff font=f1 align_x=c\nfont f1 family=\"Sans\" style=italic",
+            "widget bar { child t1 }\ntext t1 { color ffffff; font f1; align_x c }\nfont f1 { family \"Sans\"; style italic }",
         );
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(
@@ -349,7 +349,7 @@ mod tests {
     #[test]
     fn renders_container_with_nested_text() {
         let rc = render_kdl(
-            "widget bar child=box1\ncontainer box1 w=200 h=40 padding=5 align_x=c align_y=c clip=#true child=t1\ntext t1 color=ffffff",
+            "widget bar { child box1 }\ncontainer box1 { w 200; h 40; padding 5; align_x c; align_y c; clip #true; child t1 }\ntext t1 { color ffffff }",
         );
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(
@@ -364,7 +364,7 @@ mod tests {
     #[test]
     fn renders_container_with_style() {
         let rc = render_kdl(
-            "widget bar child=box1\ncontainer box1 style=s1 child=t1\ntext t1\nstyle s1 bg=000000 text=ffffff border=b1 shadow=sh1\nborder b1 color=ffffff w=2 radius=5\nshadow sh1 color=000000 blur_radius=1 {\n  offset 1 2\n}",
+            "widget bar { child box1 }\ncontainer box1 { style s1; child t1 }\ntext t1\nstyle s1 { bg 000000; text ffffff; border b1; shadow sh1 }\nborder b1 { color ffffff; w 2; radius 5 }\nshadow sh1 { color 000000; blur_radius 1\n  offset 1 2\n}",
         );
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(
@@ -378,7 +378,7 @@ mod tests {
 
     #[test]
     fn renders_empty_child() {
-        let rc = render_kdl("widget bar layer=top");
+        let rc = render_kdl("widget bar { layer top }");
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(
             w,
@@ -392,7 +392,7 @@ mod tests {
     #[test]
     fn renders_button_with_action_and_styles() {
         let rc = render_kdl(
-            "widget bar child=btn\nbutton btn child=t1 action=\"echo x\" w=40 padding=5 clip=#true style=s1 style:hover=s2 style:active=s1 style:disabled=s2\ntext t1 text=\"hi\"\nstyle s1 bg=ffffff text=000000\nstyle s2 bg=000000 text=ffffff",
+            "widget bar { child btn }\nbutton btn { child t1; action \"echo x\"; w 40; padding 5; clip #true; style s1; style:hover s2; style:active s1; style:disabled s2 }\ntext t1 \"hi\"\nstyle s1 { bg ffffff; text 000000 }\nstyle s2 { bg 000000; text ffffff }",
         );
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(
@@ -406,7 +406,7 @@ mod tests {
 
     #[test]
     fn renders_button_minimal() {
-        let rc = render_kdl("widget bar child=btn\nbutton btn child=t1\ntext t1");
+        let rc = render_kdl("widget bar { child btn }\nbutton btn { child t1 }\ntext t1");
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(
             w,
@@ -420,7 +420,7 @@ mod tests {
     #[test]
     fn renders_row_with_children() {
         let rc = render_kdl(
-            "widget bar child=r1\nrow r1 spacing=5 align=c w=fill {\n  children a b\n}\nbutton a child=t1\nbutton b child=t1\ntext t1",
+            "widget bar { child r1 }\nrow r1 { spacing 5; align c; w fill\n  children a b\n}\nbutton a { child t1 }\nbutton b { child t1 }\ntext t1",
         );
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(
@@ -435,7 +435,7 @@ mod tests {
     #[test]
     fn renders_column_with_children() {
         let rc = render_kdl(
-            "widget bar child=c1\ncolumn c1 spacing=2 align=l {\n  children a b\n}\ntext a\ntext b",
+            "widget bar { child c1 }\ncolumn c1 { spacing 2; align l\n  children a b\n}\ntext a\ntext b",
         );
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(
@@ -450,7 +450,7 @@ mod tests {
     #[test]
     fn renders_apptray_with_items() {
         use crate::tray::types::{TrayIcon, TrayItem};
-        let rc = render_kdl("widget bar child=apptray\napptray icon_size=20");
+        let rc = render_kdl("widget bar { child apptray }\napptray { icon_size 20 }");
         let w = rc.widgets.get("bar").unwrap();
         let items = vec![TrayItem {
             bus_name: ":1.1".into(),
@@ -473,7 +473,7 @@ mod tests {
     #[test]
     fn renders_revealer_with_child() {
         let rc = render_kdl(
-            "widget bar child=rev\nrevealer rev transition=slideleft active=#false duration=\"300ms\" child=t1\ntext t1 color=ffffff",
+            "widget bar { child rev }\nrevealer rev { transition slideleft; active #false; duration \"300ms\"; child t1 }\ntext t1 { color ffffff }",
         );
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(
@@ -488,7 +488,7 @@ mod tests {
     #[test]
     fn renders_event_with_child() {
         let rc = render_kdl(
-            "widget bar child=e1\nevent e1 type=onhover action=\"true\" child=t1\ntext t1 color=ffffff",
+            "widget bar { child e1 }\nevent e1 { type onhover; action \"true\"; child t1 }\ntext t1 { color ffffff }",
         );
         let w = rc.widgets.get("bar").unwrap();
         let _el = view_widget(

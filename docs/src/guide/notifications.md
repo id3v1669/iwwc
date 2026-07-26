@@ -6,26 +6,34 @@ Notifications work with zero configuration. The optional top-level `notification
 overrides the defaults:
 
 ```kdl
-notification width=400 \
-      primary_text="#e7d4a2" \
-      secondary_text="#e3cd92" \
-      bg="#3c3836" \
-      border="notif_border" \
-      font=notif_font \
-      anchor="t | r" \
-      gap=8 \
-      max=5 \
-      timeout_low="5s" \
-      timeout_normal="5s" \
-      timeout_critical="0s" \
-      urgency_low="#888786" \
-      urgency_normal="#2b6d19" \
-      urgency_critical="#8c1d10" \
-      respect_notification_icon=#true \
-      margin=12
+notification {
+  width 400
+  primary_text "#e7d4a2"
+  secondary_text "#e3cd92"
+  bg "#3c3836"
+  border notif_border
+  font notif_font
+  anchor "t | r"
+  gap 8
+  max 5
+  timeout_low "5s"
+  timeout_normal "5s"
+  timeout_critical "0s"
+  urgency_low "#888786"
+  urgency_normal "#2b6d19"
+  urgency_critical "#8c1d10"
+  respect_notification_icon #true
+  margin 12
+}
 
-border notif_border radius=10 color="#d65d0e" w=2
-font notif_font family="JetBrains Mono"
+border notif_border {
+  radius 10
+  color "#d65d0e"
+  w 2
+}
+font notif_font {
+  family "JetBrains Mono"
+}
 ```
 
 ## Urgency
@@ -49,16 +57,16 @@ iwwc get dnd
 `0` shows all notifications, `1` shows only critical, `2` suppresses everything.
 Suppressed notifications are dropped, not queued(TODO - will be queued ). Senders still get a valid reply.
 
-The optional `dnd` attribute on the `notification`. `iwwc reload` does **not** touch the runtime
+The optional `dnd` field on the `notification`. `iwwc reload` does **not** touch the runtime
 value - only a daemon restart re-reads the config default.
 
-## Properties
+## Fields
 
 Placement:
 
 - `width` (default 400) - popup width in pixels. Height is computed from content.
 - `anchor` (default `t | r`) - screen corner, same flag syntax as widgets.
-- `margin` (default 12) - distance from the anchored screen edges. One or four numbers.
+- `margin` (default 12) - distance from the anchored screen edges. 1, 2 or 4 numbers.
 - `gap` (default 8) - spacing between stacked popups.
 - `max` (default 5) - popups shown at once. Oldest is evicted when a new one arrives.
 - `layer` (default `overlay`) - layershell layer: `top`, `bottom`, `background`, `overlay`.
@@ -91,7 +99,16 @@ shows the fallback icon `default.svg`.
 `no:style` and its variants - each referencing `style` nodes:
 
 ```kdl
-style okbtn bg="3c3836" text="b8bb26"
-style nobtn bg="3c3836" text="fb4934"
-notification ok:style="okbtn" no:style="nobtn"
+style okbtn {
+  bg "3c3836"
+  text "b8bb26"
+}
+style nobtn {
+  bg "3c3836"
+  text "fb4934"
+}
+notification {
+  ok:style "okbtn"
+  no:style "nobtn"
+}
 ```

@@ -2,7 +2,7 @@
 
 ## style
 
-| Property | Type | Notes |
+| Field | Type | Notes |
 |---|---|---|
 | `bg` | color | background |
 | `text` | color | text/foreground |
@@ -10,29 +10,29 @@
 | `shadow` | id of `shadow` | |
 | `snap` | bool | pixel snapping |
 
-Used by `container` (`style=`), `button` (`style=`, `style:hover=`,
-`style:active=`, `style:disabled=`), and the `notification` node's
+Used by `container` (`style`), `button` (`style`, `style:hover`,
+`style:active`, `style:disabled`), and the `notification` node's
 `ok:style*` / `no:style*` button styles.
 
 ## border
 
-| Property | Type | Notes |
+| Field | Type | Notes |
 |---|---|---|
 | `color` | color | |
 | `w` | number | line width |
-| `radius` | number, or block with 1 or 4 values | 4 values: top-left, top-right, bottom-right, bottom-left |
+| `radius` | 1 or 4 numbers | 4 values: top-left, top-right, bottom-right, bottom-left |
 
 ## shadow
 
-| Property | Type | Notes |
+| Field | Type | Notes |
 |---|---|---|
 | `color` | color | |
 | `blur_radius` | number | |
-| `offset` block | exactly 2 values | x, y |
+| `offset` | exactly 2 numbers | x, y |
 
 ## font
 
-| Property | Values |
+| Field | Values |
 |---|---|
 | `family` | font family name string |
 | `weight` | `thin` `extra-light` `light` `normal` `medium` `semibold` `bold` `extra-bold` `black` |
@@ -45,5 +45,5 @@ Used by `container` (`style=`), `button` (`style=`, `style:hover=`,
 
 ## Lengths
 
-Element `w`/`h`: a number (fixed px), `fill`, `shrink`, or a
-proportional `portion` block.
+Element `w`/`h`: a number (fixed px), `fill`, `shrink`, or `portion`
+followed by a number for proportional sizing (`w portion 2`).

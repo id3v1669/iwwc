@@ -17,11 +17,6 @@ pub(crate) fn build_var(
     errs: &mut Vec<ConfigError>,
     out: &mut ParsedConfig,
 ) {
-    let node_span = Span {
-        source: source.clone(),
-        span: node.span(),
-    };
-
     let prop_entries: Vec<&kdl::KdlEntry> = node
         .entries()
         .iter()
@@ -29,12 +24,11 @@ pub(crate) fn build_var(
         .collect();
 
     if prop_entries.is_empty() {
-        errs.push(ConfigError {
-            kind: ConfigErrorKind::VariableMissingValue,
-            span: node_span,
-            message: "variable declaration requires a value".into(),
-            severity: Severity::Error,
-        });
+        errs.push(err_at(
+            span_of_node(node, source),
+            ConfigErrorKind::VariableMissingValue,
+            "variable declaration requires a value".into(),
+        ));
         return;
     }
 
@@ -46,37 +40,28 @@ pub(crate) fn build_var(
             kdl::KdlValue::Bool(b) => VarValue::Bool(*b),
             kdl::KdlValue::String(s) => VarValue::Str(s.clone()),
             kdl::KdlValue::Null => {
-                errs.push(ConfigError {
-                    kind: ConfigErrorKind::VariableMissingValue,
-                    span: Span {
-                        source: source.clone(),
-                        span: entry.span(),
-                    },
-                    message: "variable declaration requires a value".into(),
-                    severity: Severity::Error,
-                });
+                errs.push(err_at(
+                    span_of_entry(entry, source),
+                    ConfigErrorKind::VariableMissingValue,
+                    "variable declaration requires a value".into(),
+                ));
                 continue;
             }
         };
-        let decl = VarDecl {
-            value,
-            span: Span {
-                source: source.clone(),
-                span: entry.span(),
-            },
-        };
         if out.vars.contains_key(&name) {
-            errs.push(ConfigError {
-                kind: ConfigErrorKind::DuplicateVariable,
-                span: Span {
-                    source: source.clone(),
-                    span: entry.span(),
-                },
-                message: format!("variable {} is defined twice, using first", name),
-                severity: Severity::Warning,
-            });
+            errs.push(warn_at(
+                span_of_entry(entry, source),
+                ConfigErrorKind::DuplicateVariable,
+                format!("variable {} is defined twice, using first", name),
+            ));
         } else {
-            out.vars.insert(name, decl);
+            out.vars.insert(
+                name,
+                VarDecl {
+                    value,
+                    span: span_of_entry(entry, source),
+                },
+            );
         }
     }
 }
@@ -86,17 +71,13 @@ pub(crate) fn build_pull(
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
 ) -> Option<(String, PullDecl)> {
-    let node_span = Span {
-        source: source.clone(),
-        span: node.span(),
-    };
+    let node_span = span_of_node(node, source);
     let err = |errs: &mut Vec<ConfigError>, msg: &str| {
-        errs.push(ConfigError {
-            kind: ConfigErrorKind::InvalidFieldType,
-            span: node_span.clone(),
-            message: msg.into(),
-            severity: Severity::Error,
-        });
+        errs.push(err_at(
+            node_span.clone(),
+            ConfigErrorKind::InvalidFieldType,
+            msg.into(),
+        ));
     };
 
     let mut interval_str: Option<String> = None;
@@ -163,6 +144,43 @@ pub(crate) fn build_pull(
     ))
 }
 
+fn node_spec(name: &str) -> Option<(usize, &'static str)> {
+    Some(match name {
+        "widget" => (
+            1,
+            "h w layer anchor exclusive margin output keyboard transparent child",
+        ),
+        "container" => (1, "w h padding align_x align_y clip style child"),
+        "button" => (
+            1,
+            "w h padding action clip style style:hover style:active style:disabled child",
+        ),
+        "row" | "column" => (1, "children w h padding spacing clip align"),
+        "text" => (2, "w h align_x align_y color font text"),
+        "style" => (1, "text bg border shadow snap"),
+        "border" => (1, "color w radius"),
+        "shadow" => (1, "color offset blur_radius"),
+        "font" => (1, "family weight stretch style"),
+        "revealer" => (1, "transition active duration child"),
+        "event" => (1, "type var action duration child"),
+        "apptray" => (
+            0,
+            "icon_size spacing padding bg border swap_buttons vertical
+             menu_bg menu_text menu_disabled",
+        ),
+        "notification" => (
+            0,
+            "width primary_text secondary_text bg border font anchor margin gap max dnd
+             timeout_low timeout_normal timeout_critical
+             urgency_low urgency_normal urgency_critical
+             layer output respect_notification_icon freeze_on_hover
+             ok:style ok:style:hover ok:style:active ok:style:disabled
+             no:style no:style:hover no:style:active no:style:disabled",
+        ),
+        _ => return None,
+    })
+}
+
 pub(crate) fn parse_document_into(
     doc: &kdl::KdlDocument,
     source: &SourceText,
@@ -173,157 +191,48 @@ pub(crate) fn parse_document_into(
 ) {
     for node in doc.nodes() {
         let name = node.name().value();
-        if name != "apptray"
-            && matches!(
-                name,
-                "widget"
-                    | "container"
-                    | "revealer"
-                    | "event"
-                    | "button"
-                    | "row"
-                    | "column"
-                    | "text"
-                    | "style"
-                    | "border"
-                    | "shadow"
-                    | "font"
-            )
-            && first_positional_string(node).as_deref() == Some("apptray")
-        {
-            errs.push(ConfigError {
-                kind: ConfigErrorKind::DuplicateElement,
-                span: Span {
-                    source: source.clone(),
-                    span: node.span(),
-                },
-                message: "\"apptray\" is a reserved id".into(),
-                severity: Severity::Error,
-            });
-            continue;
+        if let Some((max_positional, known)) = node_spec(name) {
+            if max_positional > 0 && first_positional_string(node).as_deref() == Some("apptray") {
+                errs.push(err_at(
+                    span_of_node(node, source),
+                    ConfigErrorKind::DuplicateElement,
+                    "\"apptray\" is a reserved id".into(),
+                ));
+                continue;
+            }
+            if !check_node(node, name, max_positional, known, source, errs) {
+                continue;
+            }
+        }
+        macro_rules! insert {
+            ($map:expr, $build:ident) => {
+                if let Some((id, value)) = $build(node, source, errs) {
+                    if $map.contains_key(&id) {
+                        errs.push(dup_warning(format!("{} {}", name, id), node, source));
+                    } else {
+                        $map.insert(id, value);
+                    }
+                }
+            };
         }
         match name {
             "var" => build_var(node, source, errs, out),
-            "widget" => {
-                if let Some((id, w)) = build_widget(node, source, errs) {
-                    if out.widgets.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "widget", node, source));
-                    } else {
-                        out.widgets.insert(id, w);
-                    }
-                }
-            }
-            "container" => {
-                if let Some((id, c)) = build_container(node, source, errs) {
-                    if out.containers.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "container", node, source));
-                    } else {
-                        out.containers.insert(id, c);
-                    }
-                }
-            }
-            "revealer" => {
-                if let Some((id, r)) = build_revealer(node, source, errs) {
-                    if out.revealers.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "revealer", node, source));
-                    } else {
-                        out.revealers.insert(id, r);
-                    }
-                }
-            }
-            "event" => {
-                if let Some((id, r)) = build_event(node, source, errs) {
-                    if out.events.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "event", node, source));
-                    } else {
-                        out.events.insert(id, r);
-                    }
-                }
-            }
-            "style" => {
-                if let Some((id, s)) = build_style(node, source, errs) {
-                    if out.styles.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "style", node, source));
-                    } else {
-                        out.styles.insert(id, s);
-                    }
-                }
-            }
-            "border" => {
-                if let Some((id, b)) = build_border(node, source, errs) {
-                    if out.borders.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "border", node, source));
-                    } else {
-                        out.borders.insert(id, b);
-                    }
-                }
-            }
-            "shadow" => {
-                if let Some((id, s)) = build_shadow(node, source, errs) {
-                    if out.shadows.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "shadow", node, source));
-                    } else {
-                        out.shadows.insert(id, s);
-                    }
-                }
-            }
-            "font" => {
-                if let Some((id, f)) = build_font(node, source, errs) {
-                    if out.fonts.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "font", node, source));
-                    } else {
-                        out.fonts.insert(id, f);
-                    }
-                }
-            }
-            "button" => {
-                if let Some((id, b)) = build_button(node, source, errs) {
-                    if out.buttons.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "button", node, source));
-                    } else {
-                        out.buttons.insert(id, b);
-                    }
-                }
-            }
-            "row" => {
-                if let Some((id, r)) = build_row(node, source, errs) {
-                    if out.rows.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "row", node, source));
-                    } else {
-                        out.rows.insert(id, r);
-                    }
-                }
-            }
-            "column" => {
-                if let Some((id, c)) = build_column(node, source, errs) {
-                    if out.columns.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "column", node, source));
-                    } else {
-                        out.columns.insert(id, c);
-                    }
-                }
-            }
-            "text" => {
-                if let Some((id, t)) = build_text(node, source, errs) {
-                    if out.texts.contains_key(&id) {
-                        errs.push(dup_id_warning(&id, "text", node, source));
-                    } else {
-                        out.texts.insert(id, t);
-                    }
-                }
-            }
+            "widget" => insert!(out.widgets, build_widget),
+            "container" => insert!(out.containers, build_container),
+            "revealer" => insert!(out.revealers, build_revealer),
+            "event" => insert!(out.events, build_event),
+            "style" => insert!(out.styles, build_style),
+            "border" => insert!(out.borders, build_border),
+            "shadow" => insert!(out.shadows, build_shadow),
+            "font" => insert!(out.fonts, build_font),
+            "button" => insert!(out.buttons, build_button),
+            "row" => insert!(out.rows, build_row),
+            "column" => insert!(out.columns, build_column),
+            "text" => insert!(out.texts, build_text),
             "notification" => {
                 let ns = build_notification(node, source, errs);
                 if out.notification.is_some() {
-                    errs.push(ConfigError {
-                        kind: ConfigErrorKind::DuplicateElement,
-                        span: Span {
-                            source: source.clone(),
-                            span: node.span(),
-                        },
-                        message: "notification block is defined twice, using first".into(),
-                        severity: Severity::Warning,
-                    });
+                    errs.push(dup_warning("notification block".into(), node, source));
                 } else {
                     out.notification = Some(ns);
                 }
@@ -331,54 +240,27 @@ pub(crate) fn parse_document_into(
             "apptray" => {
                 let a = build_apptray_settings(node, source, errs);
                 if out.apptray.is_some() {
-                    errs.push(ConfigError {
-                        kind: ConfigErrorKind::DuplicateElement,
-                        span: Span {
-                            source: source.clone(),
-                            span: node.span(),
-                        },
-                        message: "apptray block is defined twice, using first".into(),
-                        severity: Severity::Warning,
-                    });
+                    errs.push(dup_warning("apptray block".into(), node, source));
                 } else {
                     out.apptray = Some(a);
                 }
             }
             "icon_theme" => match first_positional_string(node) {
-                Some(_) if out.icon_theme.is_some() => errs.push(ConfigError {
-                    kind: ConfigErrorKind::DuplicateElement,
-                    span: Span {
-                        source: source.clone(),
-                        span: node.span(),
-                    },
-                    message: "icon_theme is defined twice, using first".into(),
-                    severity: Severity::Warning,
-                }),
+                Some(_) if out.icon_theme.is_some() => {
+                    errs.push(dup_warning("icon_theme".into(), node, source))
+                }
                 Some(theme) => out.icon_theme = Some(theme),
-                None => errs.push(ConfigError {
-                    kind: ConfigErrorKind::MissingRequiredField,
-                    span: Span {
-                        source: source.clone(),
-                        span: node.span(),
-                    },
-                    message:
-                        "icon_theme requires a string value, e.g. icon_theme \"Gruvbox-Plus-Dark\""
-                            .into(),
-                    severity: Severity::Warning,
-                }),
+                None => errs.push(warn_at(
+                    span_of_node(node, source),
+                    ConfigErrorKind::MissingRequiredField,
+                    "icon_theme requires a string value, e.g. icon_theme \"Gruvbox-Plus-Dark\""
+                        .into(),
+                )),
             },
             "pull" => {
                 if let Some((id, decl)) = build_pull(node, source, errs) {
                     if out.vars.contains_key(&id) || out.pulls.contains_key(&id) {
-                        errs.push(ConfigError {
-                            kind: ConfigErrorKind::DuplicateVariable,
-                            span: Span {
-                                source: source.clone(),
-                                span: node.span(),
-                            },
-                            message: format!("variable {} is defined twice, using first", id),
-                            severity: Severity::Warning,
-                        });
+                        errs.push(dup_warning(format!("variable {}", id), node, source));
                     } else {
                         out.vars.insert(
                             id.clone(),
@@ -392,59 +274,46 @@ pub(crate) fn parse_document_into(
                 }
             }
             "import" => {
-                let node_span = Span {
-                    source: source.clone(),
-                    span: node.span(),
-                };
+                let node_span = span_of_node(node, source);
                 let Some(dir) = base_dir else {
-                    errs.push(ConfigError {
-                        kind: ConfigErrorKind::Import,
-                        span: node_span,
-                        message: "import is only supported in configs loaded from a file".into(),
-                        severity: Severity::Error,
-                    });
+                    errs.push(err_at(
+                        node_span,
+                        ConfigErrorKind::Import,
+                        "import is only supported in configs loaded from a file".into(),
+                    ));
                     continue;
                 };
+                if node.entries().is_empty() {
+                    errs.push(err_at(
+                        node_span,
+                        ConfigErrorKind::Import,
+                        "import requires a file path, e.g. import \"./extra.kdl\"".into(),
+                    ));
+                    continue;
+                }
                 let mut paths = Vec::new();
                 for entry in node.entries() {
                     match (entry.name(), entry.value().as_string()) {
                         (None, Some(p)) => paths.push(p.to_string()),
-                        _ => errs.push(ConfigError {
-                            kind: ConfigErrorKind::Import,
-                            span: Span {
-                                source: source.clone(),
-                                span: entry.span(),
-                            },
-                            message: format!(
+                        _ => errs.push(err_at(
+                            span_of_entry(entry, source),
+                            ConfigErrorKind::Import,
+                            format!(
                                 "import only takes string file paths, got \"{}\"",
                                 entry.to_string().trim()
                             ),
-                            severity: Severity::Error,
-                        }),
+                        )),
                     }
-                }
-                if node.entries().is_empty() {
-                    errs.push(ConfigError {
-                        kind: ConfigErrorKind::Import,
-                        span: node_span,
-                        message: "import requires a file path, e.g. import \"./extra.kdl\"".into(),
-                        severity: Severity::Error,
-                    });
-                    continue;
                 }
                 for p in paths {
                     import_file(&dir.join(&p), &node_span, visited, out, errs);
                 }
             }
-            _ => errs.push(ConfigError {
-                kind: ConfigErrorKind::UnknownNode,
-                span: Span {
-                    source: source.clone(),
-                    span: node.span(),
-                },
-                message: format!("unknown node \"{}\"", name),
-                severity: Severity::Error,
-            }),
+            _ => errs.push(err_at(
+                span_of_node(node, source),
+                ConfigErrorKind::UnknownNode,
+                format!("unknown node \"{}\"", name),
+            )),
         }
     }
 }
@@ -516,10 +385,150 @@ fn span_of_entry(entry: &kdl::KdlEntry, source: &SourceText) -> Span {
     }
 }
 
-fn prop<'a>(node: &'a kdl::KdlNode, name: &str) -> Option<&'a kdl::KdlEntry> {
-    node.entries()
+fn span_of_node(node: &kdl::KdlNode, source: &SourceText) -> Span {
+    Span {
+        source: source.clone(),
+        span: node.span(),
+    }
+}
+
+fn err_at(span: Span, kind: ConfigErrorKind, message: String) -> ConfigError {
+    ConfigError {
+        kind,
+        span,
+        message,
+        severity: Severity::Error,
+    }
+}
+
+fn warn_at(span: Span, kind: ConfigErrorKind, message: String) -> ConfigError {
+    ConfigError {
+        kind,
+        span,
+        message,
+        severity: Severity::Warning,
+    }
+}
+
+fn field_node<'a>(node: &'a kdl::KdlNode, name: &str) -> Option<&'a kdl::KdlNode> {
+    node.children()?
+        .nodes()
         .iter()
-        .find(|e| e.name().map(|n| n.value() == name).unwrap_or(false))
+        .find(|c| c.name().value() == name)
+}
+
+fn field_args<'a>(
+    child: &'a kdl::KdlNode,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) -> Vec<&'a kdl::KdlEntry> {
+    let mut args = Vec::new();
+    for entry in child.entries() {
+        match entry.name() {
+            Some(n) => errs.push(err_at(
+                span_of_entry(entry, source),
+                ConfigErrorKind::UnknownField,
+                format!(
+                    "field `{}` takes values, not `{}=`",
+                    child.name().value(),
+                    n.value()
+                ),
+            )),
+            None => args.push(entry),
+        }
+    }
+    args
+}
+
+fn field<'a>(
+    node: &'a kdl::KdlNode,
+    name: &str,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) -> Option<&'a kdl::KdlEntry> {
+    let child = field_node(node, name)?;
+    match field_args(child, source, errs).as_slice() {
+        [one] => Some(one),
+        args => {
+            errs.push(err_at(
+                span_of_node(child, source),
+                ConfigErrorKind::InvalidFieldType,
+                format!("field `{}` takes one value, got {}", name, args.len()),
+            ));
+            None
+        }
+    }
+}
+
+fn check_node(
+    node: &kdl::KdlNode,
+    kind: &str,
+    max_positional: usize,
+    known: &str,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) -> bool {
+    let mut ok = true;
+    let mut positional = 0usize;
+    for entry in node.entries() {
+        match entry.name() {
+            Some(n) => {
+                ok = false;
+                errs.push(err_at(
+                    span_of_entry(entry, source),
+                    ConfigErrorKind::UnknownField,
+                    format!(
+                        "`{}` takes no properties, write `{} {}` inside the block",
+                        kind,
+                        n.value(),
+                        entry.value()
+                    ),
+                ));
+            }
+            None => positional += 1,
+        }
+    }
+    if positional > max_positional {
+        ok = false;
+        errs.push(err_at(
+            span_of_node(node, source),
+            ConfigErrorKind::InvalidFieldType,
+            format!(
+                "{} takes {} argument(s), got {}",
+                kind, max_positional, positional
+            ),
+        ));
+    }
+    if max_positional > 0 && first_positional_string(node).is_none() {
+        ok = false;
+        errs.push(err_at(
+            span_of_node(node, source),
+            ConfigErrorKind::MissingRequiredField,
+            format!("{} requires an id", kind),
+        ));
+    }
+    let mut seen: Vec<&str> = Vec::new();
+    if let Some(block) = node.children() {
+        for child in block.nodes() {
+            let name = child.name().value();
+            if !known.split_whitespace().any(|k| k == name) {
+                errs.push(warn_at(
+                    span_of_node(child, source),
+                    ConfigErrorKind::UnknownField,
+                    format!("unknown field `{}` on `{}`", name, kind),
+                ));
+            } else if seen.contains(&name) {
+                errs.push(warn_at(
+                    span_of_node(child, source),
+                    ConfigErrorKind::DuplicateElement,
+                    format!("field {} is defined twice on {}, using first", name, kind),
+                ));
+            } else {
+                seen.push(name);
+            }
+        }
+    }
+    ok
 }
 
 pub(crate) fn field_bool(
@@ -528,7 +537,7 @@ pub(crate) fn field_bool(
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
 ) -> Option<FieldValue<bool>> {
-    let entry = prop(node, name)?;
+    let entry = field(node, name, source, errs)?;
     match entry.value() {
         kdl::KdlValue::Bool(b) => Some(FieldValue::Literal(*b)),
         kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
@@ -552,7 +561,7 @@ pub(crate) fn field_parsed<T>(
     parse: fn(&str) -> Option<T>,
     expected: &str,
 ) -> Option<FieldValue<T>> {
-    let entry = prop(node, name)?;
+    let entry = field(node, name, source, errs)?;
     match entry.value() {
         kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
         kdl::KdlValue::String(s) => match parse(s) {
@@ -585,7 +594,7 @@ pub(crate) fn field_f32(
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
 ) -> Option<FieldValue<f32>> {
-    let entry = prop(node, name)?;
+    let entry = field(node, name, source, errs)?;
     match entry.value() {
         kdl::KdlValue::Integer(i) => Some(FieldValue::Literal(*i as f32)),
         kdl::KdlValue::Float(f) => Some(FieldValue::Literal(*f as f32)),
@@ -608,7 +617,7 @@ pub(crate) fn field_color(
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
 ) -> Option<FieldValue<iced::Color>> {
-    let entry = prop(node, name)?;
+    let entry = field(node, name, source, errs)?;
     let text = match entry.value() {
         kdl::KdlValue::String(s) => s.clone(),
         kdl::KdlValue::Integer(i) => format!("{:06}", i),
@@ -643,7 +652,7 @@ pub(crate) fn field_id_ref(
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
 ) -> Option<FieldValue<String>> {
-    let entry = prop(node, name)?;
+    let entry = field(node, name, source, errs)?;
     match entry.value() {
         kdl::KdlValue::String(s) => Some(if looks_like_expr(s) {
             FieldValue::Expr(s.clone())
@@ -665,13 +674,12 @@ pub(crate) fn field_id_ref(
     }
 }
 
-pub(crate) fn field_string(
+fn string_field_from_entry(
+    entry: &kdl::KdlEntry,
     name: &str,
-    node: &kdl::KdlNode,
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
 ) -> Option<FieldValue<String>> {
-    let entry = prop(node, name)?;
     match entry.value() {
         kdl::KdlValue::String(s) => Some(if looks_like_expr(s) {
             FieldValue::Expr(s.clone())
@@ -693,13 +701,23 @@ pub(crate) fn field_string(
     }
 }
 
+pub(crate) fn field_string(
+    name: &str,
+    node: &kdl::KdlNode,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) -> Option<FieldValue<String>> {
+    let entry = field(node, name, source, errs)?;
+    string_field_from_entry(entry, name, source, errs)
+}
+
 pub(crate) fn field_anchor(
     name: &str,
     node: &kdl::KdlNode,
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
 ) -> Option<FieldValue<Anchor>> {
-    let entry = prop(node, name)?;
+    let entry = field(node, name, source, errs)?;
     let text = match entry.value() {
         kdl::KdlValue::String(s) => s.clone(),
         _ => {
@@ -743,17 +761,38 @@ fn push_anchor_err(
     None
 }
 
-fn collect_f32_vals(child: &kdl::KdlNode) -> Vec<f32> {
-    child
-        .entries()
+fn field_nums<T>(
+    name: &str,
+    node: &kdl::KdlNode,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+    kind: ConfigErrorKind,
+    expected: &str,
+    map: impl FnOnce(&[f32]) -> Option<T>,
+) -> Option<FieldValue<T>> {
+    let child = field_node(node, name)?;
+    let args = field_args(child, source, errs);
+    if let [only] = args.as_slice()
+        && let kdl::KdlValue::String(s) = only.value()
+        && looks_like_expr(s)
+    {
+        return Some(FieldValue::Expr(s.clone()));
+    }
+    let nums: Option<Vec<f32>> = args
         .iter()
-        .filter(|e| e.name().is_none())
-        .filter_map(|e| match e.value() {
+        .map(|e| match e.value() {
             kdl::KdlValue::Integer(i) => Some(*i as f32),
             kdl::KdlValue::Float(f) => Some(*f as f32),
             _ => None,
         })
-        .collect()
+        .collect();
+    match nums.as_deref().and_then(map) {
+        Some(v) => Some(FieldValue::Literal(v)),
+        None => {
+            errs.push(err_at(span_of_node(child, source), kind, expected.into()));
+            None
+        }
+    }
 }
 
 pub(crate) fn field_margin(
@@ -762,51 +801,14 @@ pub(crate) fn field_margin(
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
 ) -> Option<FieldValue<(f32, f32, f32, f32)>> {
-    if let Some(entry) = prop(node, name) {
-        let v = match entry.value() {
-            kdl::KdlValue::Integer(i) => *i as f32,
-            kdl::KdlValue::Float(f) => *f as f32,
-            kdl::KdlValue::String(s) if looks_like_expr(s) => {
-                return Some(FieldValue::Expr(s.clone()));
-            }
-            _ => {
-                errs.push(ConfigError {
-                    kind: ConfigErrorKind::InvalidMarginArity,
-                    span: span_of_entry(entry, source),
-                    message: "margin accepts 1, 2, or 4 values".into(),
-                    severity: Severity::Error,
-                });
-                return None;
-            }
-        };
-        return Some(FieldValue::Literal((v, v, v, v)));
-    }
-    if let Some(children) = node.children() {
-        for child in children.nodes() {
-            if child.name().value() != name {
-                continue;
-            }
-            let vals = collect_f32_vals(child);
-            return match vals.as_slice() {
-                [a] => Some(FieldValue::Literal((*a, *a, *a, *a))),
-                [v, h] => Some(FieldValue::Literal((*v, *h, *v, *h))),
-                [t, r, b, l] => Some(FieldValue::Literal((*t, *r, *b, *l))),
-                _ => {
-                    errs.push(ConfigError {
-                        kind: ConfigErrorKind::InvalidMarginArity,
-                        span: Span {
-                            source: source.clone(),
-                            span: child.span(),
-                        },
-                        message: "margin accepts 1, 2, or 4 values".into(),
-                        severity: Severity::Error,
-                    });
-                    None
-                }
-            };
-        }
-    }
-    None
+    let expected = "margin accepts 1, 2, or 4 numbers";
+    let kind = ConfigErrorKind::InvalidMarginArity;
+    field_nums(name, node, source, errs, kind, expected, |v| match v {
+        [a] => Some((*a, *a, *a, *a)),
+        [y, x] => Some((*y, *x, *y, *x)),
+        [t, r, b, l] => Some((*t, *r, *b, *l)),
+        _ => None,
+    })
 }
 
 pub(crate) fn field_padding(
@@ -815,56 +817,19 @@ pub(crate) fn field_padding(
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
 ) -> Option<FieldValue<Padding>> {
-    if let Some(entry) = prop(node, name) {
-        let v = match entry.value() {
-            kdl::KdlValue::Integer(i) => *i as f32,
-            kdl::KdlValue::Float(f) => *f as f32,
-            kdl::KdlValue::String(s) if looks_like_expr(s) => {
-                return Some(FieldValue::Expr(s.clone()));
-            }
-            _ => {
-                errs.push(ConfigError {
-                    kind: ConfigErrorKind::InvalidPaddingArity,
-                    span: span_of_entry(entry, source),
-                    message: "padding accepts 1, 2, or 4 values".into(),
-                    severity: Severity::Error,
-                });
-                return None;
-            }
-        };
-        return Some(FieldValue::Literal(Padding::from(v)));
-    }
-    if let Some(children) = node.children() {
-        for child in children.nodes() {
-            if child.name().value() != name {
-                continue;
-            }
-            let vals = collect_f32_vals(child);
-            return match vals.as_slice() {
-                [a] => Some(FieldValue::Literal(Padding::from(*a))),
-                [v, h] => Some(FieldValue::Literal(Padding::from([*v, *h]))),
-                [t, r, b, l] => Some(FieldValue::Literal(Padding {
-                    top: *t,
-                    right: *r,
-                    bottom: *b,
-                    left: *l,
-                })),
-                _ => {
-                    errs.push(ConfigError {
-                        kind: ConfigErrorKind::InvalidPaddingArity,
-                        span: Span {
-                            source: source.clone(),
-                            span: child.span(),
-                        },
-                        message: "padding accepts 1, 2, or 4 values".into(),
-                        severity: Severity::Error,
-                    });
-                    None
-                }
-            };
-        }
-    }
-    None
+    let expected = "padding accepts 1, 2, or 4 numbers";
+    let kind = ConfigErrorKind::InvalidPaddingArity;
+    field_nums(name, node, source, errs, kind, expected, |v| match v {
+        [a] => Some(Padding::from(*a)),
+        [y, x] => Some(Padding::from([*y, *x])),
+        [t, r, b, l] => Some(Padding {
+            top: *t,
+            right: *r,
+            bottom: *b,
+            left: *l,
+        }),
+        _ => None,
+    })
 }
 
 pub(crate) fn field_radius(
@@ -873,55 +838,44 @@ pub(crate) fn field_radius(
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
 ) -> Option<FieldValue<Radius>> {
-    if let Some(entry) = prop(node, name) {
-        let v = match entry.value() {
-            kdl::KdlValue::Integer(i) => *i as f32,
-            kdl::KdlValue::Float(f) => *f as f32,
-            kdl::KdlValue::String(s) if looks_like_expr(s) => {
-                return Some(FieldValue::Expr(s.clone()));
-            }
-            _ => {
-                errs.push(ConfigError {
-                    kind: ConfigErrorKind::InvalidRadiusArity,
-                    span: span_of_entry(entry, source),
-                    message: "radius accepts 1 or 4 values".into(),
-                    severity: Severity::Error,
-                });
-                return None;
-            }
-        };
-        return Some(FieldValue::Literal(Radius::from(v)));
-    }
-    if let Some(children) = node.children() {
-        for child in children.nodes() {
-            if child.name().value() != name {
-                continue;
-            }
-            let vals = collect_f32_vals(child);
-            return match vals.as_slice() {
-                [a] => Some(FieldValue::Literal(Radius::from(*a))),
-                [tl, tr, br, bl] => Some(FieldValue::Literal(Radius {
-                    top_left: *tl,
-                    top_right: *tr,
-                    bottom_right: *br,
-                    bottom_left: *bl,
-                })),
-                _ => {
-                    errs.push(ConfigError {
-                        kind: ConfigErrorKind::InvalidRadiusArity,
-                        span: Span {
-                            source: source.clone(),
-                            span: child.span(),
-                        },
-                        message: "radius accepts 1 or 4 values".into(),
-                        severity: Severity::Error,
-                    });
-                    None
-                }
-            };
+    let expected = "radius accepts 1 or 4 numbers";
+    let kind = ConfigErrorKind::InvalidRadiusArity;
+    field_nums(name, node, source, errs, kind, expected, |v| match v {
+        [a] => Some(Radius::from(*a)),
+        [tl, tr, br, bl] => Some(Radius {
+            top_left: *tl,
+            top_right: *tr,
+            bottom_right: *br,
+            bottom_left: *bl,
+        }),
+        _ => None,
+    })
+}
+
+fn portion(
+    entry: &kdl::KdlEntry,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) -> Option<FieldValue<iced::Length>> {
+    let kdl::KdlValue::Integer(i) = entry.value() else {
+        errs.push(err_at(
+            span_of_entry(entry, source),
+            ConfigErrorKind::PortionMissingInt,
+            "portion requires an integer argument".into(),
+        ));
+        return None;
+    };
+    match u16::try_from(*i) {
+        Ok(v) if v > 0 => Some(FieldValue::Literal(iced::Length::FillPortion(v))),
+        _ => {
+            errs.push(err_at(
+                span_of_entry(entry, source),
+                ConfigErrorKind::InvalidLengthValue,
+                format!("portion must be between 1 and 65535, got {}", i),
+            ));
+            None
         }
     }
-    None
 }
 
 pub(crate) fn field_length(
@@ -930,74 +884,54 @@ pub(crate) fn field_length(
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
 ) -> Option<FieldValue<iced::Length>> {
-    if let Some(entry) = prop(node, name) {
-        return match entry.value() {
+    let child = field_node(node, name)?;
+    let args = field_args(child, source, errs);
+    let is_portion = |e: &kdl::KdlEntry| e.value().as_string() == Some("portion");
+    let bad_length = |errs: &mut Vec<ConfigError>, span| {
+        errs.push(err_at(
+            span,
+            ConfigErrorKind::InvalidLengthValue,
+            format!("field `{}` expects a length", name),
+        ));
+    };
+    match args.as_slice() {
+        [p, n] if is_portion(p) => portion(n, source, errs),
+        [p] if is_portion(p) => {
+            errs.push(err_at(
+                span_of_node(child, source),
+                ConfigErrorKind::PortionMissingInt,
+                "portion requires an integer argument".into(),
+            ));
+            None
+        }
+        [one] => match one.value() {
             kdl::KdlValue::String(s) if looks_like_expr(s) => Some(FieldValue::Expr(s.clone())),
-            kdl::KdlValue::String(s) => match s.as_str() {
-                "fill" => Some(FieldValue::Literal(iced::Length::Fill)),
-                "shrink" => Some(FieldValue::Literal(iced::Length::Shrink)),
-                "portion" => {
-                    errs.push(ConfigError {
-                        kind: ConfigErrorKind::PortionMissingInt,
-                        span: span_of_entry(entry, source),
-                        message: "portion requires an integer argument".into(),
-                        severity: Severity::Error,
-                    });
-                    None
-                }
-                _ => {
-                    errs.push(ConfigError {
-                        kind: ConfigErrorKind::InvalidLengthValue,
-                        span: span_of_entry(entry, source),
-                        message: format!("invalid length value \"{}\"", s),
-                        severity: Severity::Error,
-                    });
-                    None
-                }
-            },
+            kdl::KdlValue::String(s) if s == "fill" => {
+                Some(FieldValue::Literal(iced::Length::Fill))
+            }
+            kdl::KdlValue::String(s) if s == "shrink" => {
+                Some(FieldValue::Literal(iced::Length::Shrink))
+            }
+            kdl::KdlValue::String(s) => {
+                errs.push(err_at(
+                    span_of_entry(one, source),
+                    ConfigErrorKind::InvalidLengthValue,
+                    format!("invalid length value \"{}\"", s),
+                ));
+                None
+            }
             kdl::KdlValue::Integer(i) => Some(FieldValue::Literal(iced::Length::Fixed(*i as f32))),
             kdl::KdlValue::Float(f) => Some(FieldValue::Literal(iced::Length::Fixed(*f as f32))),
-            _ => None,
-        };
-    }
-    if let Some(children) = node.children() {
-        for child in children.nodes() {
-            if child.name().value() != name {
-                continue;
+            _ => {
+                bad_length(errs, span_of_entry(one, source));
+                None
             }
-            if let Some(p) = prop(child, "portion") {
-                if let kdl::KdlValue::Integer(i) = p.value() {
-                    return match u16::try_from(*i) {
-                        Ok(v) if v > 0 => Some(FieldValue::Literal(iced::Length::FillPortion(v))),
-                        _ => {
-                            errs.push(ConfigError {
-                                kind: ConfigErrorKind::InvalidLengthValue,
-                                span: Span {
-                                    source: source.clone(),
-                                    span: p.span(),
-                                },
-                                message: format!("portion must be between 1 and 65535, got {}", i),
-                                severity: Severity::Error,
-                            });
-                            None
-                        }
-                    };
-                } else {
-                    errs.push(ConfigError {
-                        kind: ConfigErrorKind::PortionMissingInt,
-                        span: Span {
-                            source: source.clone(),
-                            span: p.span(),
-                        },
-                        message: "portion requires an integer argument".into(),
-                        severity: Severity::Error,
-                    });
-                    return None;
-                }
-            }
+        },
+        _ => {
+            bad_length(errs, span_of_node(child, source));
+            None
         }
     }
-    None
 }
 
 use crate::config::types::Widget;
@@ -1033,10 +967,7 @@ pub(crate) fn build_widget(
         keyboard: field_bool("keyboard", node, source, errs),
         transparent: field_bool("transparent", node, source, errs),
         child: field_id_ref("child", node, source, errs),
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
+        span: span_of_node(node, source),
     };
     Some((id, w))
 }
@@ -1050,17 +981,7 @@ pub(crate) fn build_container(
 ) -> Option<(String, Container)> {
     let id = first_positional_string(node)?;
     let child = field_id_ref("child", node, source, errs);
-    if child.is_none() {
-        errs.push(ConfigError {
-            kind: ConfigErrorKind::MissingRequiredField,
-            span: Span {
-                source: source.clone(),
-                span: node.span(),
-            },
-            message: "child is required".into(),
-            severity: Severity::Error,
-        });
-    }
+    require_child(&child, node, source, errs);
     let c = Container {
         w: field_length("w", node, source, errs),
         h: field_length("h", node, source, errs),
@@ -1084,10 +1005,7 @@ pub(crate) fn build_container(
         clip: field_bool("clip", node, source, errs),
         style: field_id_ref("style", node, source, errs),
         child,
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
+        span: span_of_node(node, source),
     };
     Some((id, c))
 }
@@ -1101,17 +1019,7 @@ pub(crate) fn build_revealer(
 ) -> Option<(String, Revealer)> {
     let id = first_positional_string(node)?;
     let child = field_id_ref("child", node, source, errs);
-    if child.is_none() {
-        errs.push(ConfigError {
-            kind: ConfigErrorKind::MissingRequiredField,
-            span: Span {
-                source: source.clone(),
-                span: node.span(),
-            },
-            message: "child is required".into(),
-            severity: Severity::Error,
-        });
-    }
+    require_child(&child, node, source, errs);
     let r = Revealer {
         transition: field_parsed(
             "transition",
@@ -1131,10 +1039,7 @@ pub(crate) fn build_revealer(
             "a duration string e.g. \"500ms\", \"1s\"",
         ),
         child,
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
+        span: span_of_node(node, source),
     };
     Some((id, r))
 }
@@ -1150,10 +1055,7 @@ fn event_err(
 ) {
     errs.push(ConfigError {
         kind,
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
+        span: span_of_node(node, source),
         message,
         severity: Severity::Error,
     });
@@ -1165,7 +1067,7 @@ pub(crate) fn build_event(
     errs: &mut Vec<ConfigError>,
 ) -> Option<(String, Event)> {
     let id = first_positional_string(node)?;
-    if prop(node, "type").is_none() {
+    if field_node(node, "type").is_none() {
         event_err(
             errs,
             node,
@@ -1299,10 +1201,7 @@ pub(crate) fn build_event(
         var,
         duration,
         child,
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
+        span: span_of_node(node, source),
     };
     Some((id, e))
 }
@@ -1321,10 +1220,7 @@ pub(crate) fn build_style(
         border: field_id_ref("border", node, source, errs),
         shadow: field_id_ref("shadow", node, source, errs),
         snap: field_bool("snap", node, source, errs),
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
+        span: span_of_node(node, source),
     };
     Some((id, s))
 }
@@ -1339,7 +1235,7 @@ fn font_enum<T>(
     parse: impl Fn(&str) -> Option<T>,
     expected: &str,
 ) -> Option<T> {
-    let entry = prop(node, name)?;
+    let entry = field(node, name, source, errs)?;
     match entry.value() {
         kdl::KdlValue::String(s) => match parse(s) {
             Some(v) => Some(v),
@@ -1372,7 +1268,7 @@ pub(crate) fn build_font(
 ) -> Option<(String, iced::Font)> {
     let id = first_positional_string(node)?;
     let mut font = iced::Font::DEFAULT;
-    if let Some(entry) = prop(node, "family") {
+    if let Some(entry) = field(node, "family", source, errs) {
         match entry.value() {
             kdl::KdlValue::String(s) => {
                 font.family = iced::font::Family::Name(Box::leak(s.to_string().into_boxed_str()))
@@ -1428,10 +1324,7 @@ pub(crate) fn build_border(
         color: field_color("color", node, source, errs),
         w: field_f32("w", node, source, errs),
         radius: field_radius("radius", node, source, errs),
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
+        span: span_of_node(node, source),
     };
     Some((id, b))
 }
@@ -1443,15 +1336,26 @@ fn first_positional_string(node: &kdl::KdlNode) -> Option<String> {
         .and_then(|e| e.value().as_string().map(|s| s.to_string()))
 }
 
-fn dup_id_warning(id: &str, kind: &str, node: &kdl::KdlNode, source: &SourceText) -> ConfigError {
-    ConfigError {
-        kind: ConfigErrorKind::DuplicateElement,
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
-        message: format!("{} {} is defined twice, using first", kind, id),
-        severity: Severity::Warning,
+fn dup_warning(what: String, node: &kdl::KdlNode, source: &SourceText) -> ConfigError {
+    warn_at(
+        span_of_node(node, source),
+        ConfigErrorKind::DuplicateElement,
+        format!("{} is defined twice, using first", what),
+    )
+}
+
+fn require_child(
+    child: &Option<FieldValue<String>>,
+    node: &kdl::KdlNode,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) {
+    if child.is_none() {
+        errs.push(err_at(
+            span_of_node(node, source),
+            ConfigErrorKind::MissingRequiredField,
+            "child is required".into(),
+        ));
     }
 }
 
@@ -1461,38 +1365,12 @@ pub(crate) fn field_offset(
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
 ) -> Option<FieldValue<(f32, f32)>> {
-    let children = node.children()?;
-    for child in children.nodes() {
-        if child.name().value() != name {
-            continue;
-        }
-        let vals: Vec<f32> = child
-            .entries()
-            .iter()
-            .filter(|e| e.name().is_none())
-            .filter_map(|e| match e.value() {
-                kdl::KdlValue::Integer(i) => Some(*i as f32),
-                kdl::KdlValue::Float(f) => Some(*f as f32),
-                _ => None,
-            })
-            .collect();
-        return match vals.as_slice() {
-            [a, b] => Some(FieldValue::Literal((*a, *b))),
-            _ => {
-                errs.push(ConfigError {
-                    kind: ConfigErrorKind::InvalidOffsetArity,
-                    span: Span {
-                        source: source.clone(),
-                        span: child.span(),
-                    },
-                    message: "offset requires exactly 2 values".into(),
-                    severity: Severity::Error,
-                });
-                None
-            }
-        };
-    }
-    None
+    let expected = "offset requires exactly 2 numbers";
+    let kind = ConfigErrorKind::InvalidOffsetArity;
+    field_nums(name, node, source, errs, kind, expected, |v| match v {
+        [a, b] => Some((*a, *b)),
+        _ => None,
+    })
 }
 
 pub(crate) fn field_children(
@@ -1500,32 +1378,30 @@ pub(crate) fn field_children(
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
 ) -> Option<FieldValue<Vec<String>>> {
-    let children = node.children()?;
-    for child in children.nodes() {
-        if child.name().value() != "children" {
-            continue;
+    let child = field_node(node, "children")?;
+    let mut ids = Vec::new();
+    for entry in field_args(child, source, errs) {
+        match entry.value().as_string() {
+            Some(s) => ids.push(s.to_string()),
+            None => {
+                errs.push(err_at(
+                    span_of_entry(entry, source),
+                    ConfigErrorKind::EmptyChildrenList,
+                    "children takes element ids".into(),
+                ));
+                return None;
+            }
         }
-        let ids: Vec<String> = child
-            .entries()
-            .iter()
-            .filter(|e| e.name().is_none())
-            .filter_map(|e| e.value().as_string().map(|s| s.to_string()))
-            .collect();
-        if ids.is_empty() {
-            errs.push(ConfigError {
-                kind: ConfigErrorKind::EmptyChildrenList,
-                span: Span {
-                    source: source.clone(),
-                    span: child.span(),
-                },
-                message: "children requires at least one id".into(),
-                severity: Severity::Error,
-            });
-            return None;
-        }
-        return Some(FieldValue::Literal(ids));
     }
-    None
+    if ids.is_empty() {
+        errs.push(err_at(
+            span_of_node(child, source),
+            ConfigErrorKind::EmptyChildrenList,
+            "children requires at least one id".into(),
+        ));
+        return None;
+    }
+    Some(FieldValue::Literal(ids))
 }
 
 use crate::config::types::Button;
@@ -1537,17 +1413,7 @@ pub(crate) fn build_button(
 ) -> Option<(String, Button)> {
     let id = first_positional_string(node)?;
     let child = field_id_ref("child", node, source, errs);
-    if child.is_none() {
-        errs.push(ConfigError {
-            kind: ConfigErrorKind::MissingRequiredField,
-            span: Span {
-                source: source.clone(),
-                span: node.span(),
-            },
-            message: "child is required".into(),
-            severity: Severity::Error,
-        });
-    }
+    require_child(&child, node, source, errs);
     let b = Button {
         w: field_length("w", node, source, errs),
         h: field_length("h", node, source, errs),
@@ -1559,10 +1425,7 @@ pub(crate) fn build_button(
         style_active: field_id_ref("style:active", node, source, errs),
         style_disabled: field_id_ref("style:disabled", node, source, errs),
         child,
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
+        span: span_of_node(node, source),
     };
     Some((id, b))
 }
@@ -1576,22 +1439,12 @@ pub(crate) fn build_row(
 ) -> Option<(String, Row)> {
     let id = first_positional_string(node)?;
     let children = field_children(node, source, errs);
-    if children.is_none() {
-        let has_children_node = node
-            .children()
-            .map(|d| d.nodes().iter().any(|n| n.name().value() == "children"))
-            .unwrap_or(false);
-        if !has_children_node {
-            errs.push(ConfigError {
-                kind: ConfigErrorKind::MissingRequiredField,
-                span: Span {
-                    source: source.clone(),
-                    span: node.span(),
-                },
-                message: "children is required".into(),
-                severity: Severity::Error,
-            });
-        }
+    if children.is_none() && field_node(node, "children").is_none() {
+        errs.push(err_at(
+            span_of_node(node, source),
+            ConfigErrorKind::MissingRequiredField,
+            "children is required".into(),
+        ));
     }
     let r = Row {
         children,
@@ -1608,10 +1461,7 @@ pub(crate) fn build_row(
             parse_align_y,
             "one of: t, c, b, top, center, bottom",
         ),
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
+        span: span_of_node(node, source),
     };
     Some((id, r))
 }
@@ -1625,22 +1475,12 @@ pub(crate) fn build_column(
 ) -> Option<(String, Column)> {
     let id = first_positional_string(node)?;
     let children = field_children(node, source, errs);
-    if children.is_none() {
-        let has_children_node = node
-            .children()
-            .map(|d| d.nodes().iter().any(|n| n.name().value() == "children"))
-            .unwrap_or(false);
-        if !has_children_node {
-            errs.push(ConfigError {
-                kind: ConfigErrorKind::MissingRequiredField,
-                span: Span {
-                    source: source.clone(),
-                    span: node.span(),
-                },
-                message: "children is required".into(),
-                severity: Severity::Error,
-            });
-        }
+    if children.is_none() && field_node(node, "children").is_none() {
+        errs.push(err_at(
+            span_of_node(node, source),
+            ConfigErrorKind::MissingRequiredField,
+            "children is required".into(),
+        ));
     }
     let c = Column {
         children,
@@ -1657,10 +1497,7 @@ pub(crate) fn build_column(
             parse_align_x,
             "one of: l, c, r, left, center, right",
         ),
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
+        span: span_of_node(node, source),
     };
     Some((id, c))
 }
@@ -1672,7 +1509,32 @@ pub(crate) fn build_text(
     source: &SourceText,
     errs: &mut Vec<ConfigError>,
 ) -> Option<(String, TextEl)> {
-    let id = first_positional_string(node)?;
+    let positionals: Vec<&kdl::KdlEntry> = node
+        .entries()
+        .iter()
+        .filter(|e| e.name().is_none())
+        .collect();
+    let id = positionals
+        .first()
+        .and_then(|e| e.value().as_string().map(|s| s.to_string()))?;
+
+    let from_field = field_string("text", node, source, errs);
+    let from_arg = positionals
+        .get(1)
+        .and_then(|e| string_field_from_entry(e, "text", source, errs));
+    let content = match (from_arg, from_field) {
+        (Some(_), Some(f)) => {
+            errs.push(err_at(
+                span_of_node(node, source),
+                ConfigErrorKind::InvalidFieldType,
+                "text content is given twice, as an argument and as a `text` field".into(),
+            ));
+            Some(f)
+        }
+        (Some(a), None) => Some(a),
+        (None, f) => f,
+    };
+
     let t = TextEl {
         w: field_length("w", node, source, errs),
         h: field_length("h", node, source, errs),
@@ -1694,11 +1556,8 @@ pub(crate) fn build_text(
         ),
         color: field_color("color", node, source, errs),
         font: field_string("font", node, source, errs),
-        content: field_string("text", node, source, errs),
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
+        content,
+        span: span_of_node(node, source),
     };
     Some((id, t))
 }
@@ -1715,10 +1574,7 @@ pub(crate) fn build_shadow(
         color: field_color("color", node, source, errs),
         offset: field_offset("offset", node, source, errs),
         blur_radius: field_f32("blur_radius", node, source, errs),
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
+        span: span_of_node(node, source),
     };
     Some((id, s))
 }
@@ -1741,10 +1597,7 @@ pub(crate) fn build_apptray_settings(
         menu_bg: field_color("menu_bg", node, source, errs),
         menu_text: field_color("menu_text", node, source, errs),
         menu_disabled: field_color("menu_disabled", node, source, errs),
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
+        span: span_of_node(node, source),
     }
 }
 
@@ -1820,10 +1673,7 @@ pub(crate) fn build_notification(
         no_style_hover: field_id_ref("no:style:hover", node, source, errs),
         no_style_active: field_id_ref("no:style:active", node, source, errs),
         no_style_disabled: field_id_ref("no:style:disabled", node, source, errs),
-        span: Span {
-            source: source.clone(),
-            span: node.span(),
-        },
+        span: span_of_node(node, source),
     }
 }
 
@@ -2083,7 +1933,7 @@ mod tests {
             },
             Case {
                 label: "var with element str",
-                kdl: r#"var x="container box1 w=200.5 h=40.0 child=btn1""#,
+                kdl: r#"var x="container box1 { w 200.5; h 40.0; child btn1 }""#,
                 expect: Expect::Ok,
             },
             Case {
@@ -2104,139 +1954,139 @@ mod tests {
         run_cases(&[
             Case {
                 label: "expr in numeric field",
-                kdl: "var x=40\nwidget bar h=\"${x}\" child=box1",
+                kdl: "var x=40\nwidget bar { h \"${x}\"; child box1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "expr in string field (layer)",
-                kdl: "var s=\"top\"\nwidget bar layer=\"${s}\" child=box1",
+                kdl: "var s=\"top\"\nwidget bar { layer \"${s}\"; child box1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "layer top",
-                kdl: "widget bar layer=top child=box1",
+                kdl: "widget bar { layer top; child box1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "layer bottom",
-                kdl: "widget bar layer=bottom child=box1",
+                kdl: "widget bar { layer bottom; child box1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "layer background",
-                kdl: "widget bar layer=background child=box1",
+                kdl: "widget bar { layer background; child box1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "layer overlay",
-                kdl: "widget bar layer=overlay child=box1",
+                kdl: "widget bar { layer overlay; child box1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "layer invalid",
-                kdl: "widget bar layer=middle child=box1",
+                kdl: "widget bar { layer middle; child box1 }",
                 expect: Expect::Err(
                     "invalid `layer` \"middle\", expected one of: top, bottom, background, overlay",
                 ),
             },
             Case {
                 label: "anchor short t",
-                kdl: r#"widget bar anchor="t" child=box1"#,
+                kdl: r#"widget bar { anchor "t"; child box1 }"#,
                 expect: Expect::Ok,
             },
             Case {
                 label: "anchor long top",
-                kdl: r#"widget bar anchor="top" child=box1"#,
+                kdl: r#"widget bar { anchor "top"; child box1 }"#,
                 expect: Expect::Ok,
             },
             Case {
                 label: "anchor t|l",
-                kdl: r#"widget bar anchor="t | l" child=box1"#,
+                kdl: r#"widget bar { anchor "t | l"; child box1 }"#,
                 expect: Expect::Ok,
             },
             Case {
                 label: "anchor b|r",
-                kdl: r#"widget bar anchor="b | r" child=box1"#,
+                kdl: r#"widget bar { anchor "b | r"; child box1 }"#,
                 expect: Expect::Ok,
             },
             Case {
                 label: "anchor bottom|r",
-                kdl: r#"widget bar anchor="bottom | r" child=box1"#,
+                kdl: r#"widget bar { anchor "bottom | r"; child box1 }"#,
                 expect: Expect::Ok,
             },
             Case {
                 label: "anchor b|r no spaces",
-                kdl: r#"widget bar anchor="b|r" child=box1"#,
+                kdl: r#"widget bar { anchor "b|r"; child box1 }"#,
                 expect: Expect::Ok,
             },
             Case {
                 label: "anchor l|r stretch",
-                kdl: r#"widget bar anchor="l | r" child=box1"#,
+                kdl: r#"widget bar { anchor "l | r"; child box1 }"#,
                 expect: Expect::Ok,
             },
             Case {
                 label: "anchor t|b stretch",
-                kdl: r#"widget bar anchor="t | b" child=box1"#,
+                kdl: r#"widget bar { anchor "t | b"; child box1 }"#,
                 expect: Expect::Ok,
             },
             Case {
                 label: "anchor t|l|r full",
-                kdl: r#"widget bar anchor="t | l | r" child=box1"#,
+                kdl: r#"widget bar { anchor "t | l | r"; child box1 }"#,
                 expect: Expect::Ok,
             },
             Case {
                 label: "anchor invalid token",
-                kdl: r#"widget bar anchor="t | x" child=box1"#,
+                kdl: r#"widget bar { anchor "t | x"; child box1 }"#,
                 expect: Expect::Err("invalid anchor token \"x\""),
             },
             Case {
                 label: "margin 1 value",
-                kdl: "widget bar margin=5 child=box1",
+                kdl: "widget bar { margin 5; child box1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "margin 2 values",
-                kdl: "widget bar child=box1 {\n  margin 5 10\n}",
+                kdl: "widget bar {\n  child box1\n  margin 5 10\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "margin 4 values",
-                kdl: "widget bar child=box1 {\n  margin 5 10 5 10\n}",
+                kdl: "widget bar {\n  child box1\n  margin 5 10 5 10\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "margin 3 values",
-                kdl: "widget bar child=box1 {\n  margin 5 10 5\n}",
-                expect: Expect::Err("margin accepts 1, 2, or 4 values"),
+                kdl: "widget bar {\n  child box1\n  margin 5 10 5\n}",
+                expect: Expect::Err("margin accepts 1, 2, or 4 numbers"),
             },
             Case {
                 label: "bool exclusive true",
-                kdl: "widget bar exclusive=#true child=box1",
+                kdl: "widget bar { exclusive #true; child box1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "bool exclusive false",
-                kdl: "widget bar exclusive=#false child=box1",
+                kdl: "widget bar { exclusive #false; child box1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "bool invalid",
-                kdl: "widget bar exclusive=yes child=box1",
+                kdl: "widget bar { exclusive yes; child box1 }",
                 expect: Expect::Err("invalid bool, expected #true or #false"),
             },
             Case {
                 label: "output arbitrary",
-                kdl: r#"widget bar output="HDMI-A-1" child=box1"#,
+                kdl: r#"widget bar { output "HDMI-A-1"; child box1 }"#,
                 expect: Expect::Ok,
             },
             Case {
                 label: "output last keyword",
-                kdl: "widget bar output=last child=box1",
+                kdl: "widget bar { output last; child box1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "output invalid (int)",
-                kdl: "widget bar output=123 child=box1",
+                kdl: "widget bar { output 123; child box1 }",
                 expect: Expect::Err(
                     "field `output` expects a string, `last`, `active`, or `@widget`",
                 ),
@@ -2249,44 +2099,44 @@ mod tests {
         run_cases(&[
             Case {
                 label: "color rrggbb",
-                kdl: "style s1 text=ffffff",
+                kdl: "style s1 { text ffffff }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "color #rrggbb",
-                kdl: r##"style s1 text="#ffffff""##,
+                kdl: r##"style s1 { text "#ffffff" }"##,
                 expect: Expect::Ok,
             },
             Case {
                 label: "color rrggbbaa",
-                kdl: "style s1 text=ffffffff",
+                kdl: "style s1 { text ffffffff }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "color #rrggbbaa",
-                kdl: r##"style s1 text="#ffffffff""##,
+                kdl: r##"style s1 { text "#ffffffff" }"##,
                 expect: Expect::Ok,
             },
             Case {
                 label: "color transparent",
-                kdl: "style s1 text=transparent",
+                kdl: "style s1 { text transparent }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "color int-as-string",
-                kdl: "style s1 bg=000000",
+                kdl: "style s1 { bg 000000 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "color bad chars",
-                kdl: "style s1 text=xyz",
+                kdl: "style s1 { text xyz }",
                 expect: Expect::Err(
                     "invalid color format, expected rrggbb, rrggbbaa, #rrggbb, #rrggbbaa, transparent, or int",
                 ),
             },
             Case {
                 label: "color wrong length",
-                kdl: "style s1 text=fffff",
+                kdl: "style s1 { text fffff }",
                 expect: Expect::Err(
                     "invalid color format, expected rrggbb, rrggbbaa, #rrggbb, #rrggbbaa, transparent, or int",
                 ),
@@ -2299,144 +2149,144 @@ mod tests {
         run_cases(&[
             Case {
                 label: "minimal valid",
-                kdl: "container box1 child=btn1",
+                kdl: "container box1 { child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "missing child",
-                kdl: "container box1 w=200",
+                kdl: "container box1 { w 200 }",
                 expect: Expect::Err("child is required"),
             },
             Case {
                 label: "w/h int",
-                kdl: "container box1 w=200 h=40 child=btn1",
+                kdl: "container box1 { w 200; h 40; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "w/h float",
-                kdl: "container box1 w=200.5 h=40.0 child=btn1",
+                kdl: "container box1 { w 200.5; h 40.0; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "w fill",
-                kdl: "container box1 w=fill child=btn1",
+                kdl: "container box1 { w fill; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "w shrink",
-                kdl: "container box1 w=shrink child=btn1",
+                kdl: "container box1 { w shrink; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "w portion block",
-                kdl: "container box1 child=btn1 {\n  w portion=2\n}",
+                kdl: "container box1 {\n  child btn1\n  w portion 2\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "w portion bare",
-                kdl: "container box1 w=portion child=btn1",
+                kdl: "container box1 { w portion; child btn1 }",
                 expect: Expect::Err("portion requires an integer argument"),
             },
             Case {
                 label: "w portion zero",
-                kdl: "container box1 child=btn1 {\n  w portion=0\n}",
+                kdl: "container box1 {\n  child btn1\n  w portion 0\n}",
                 expect: Expect::Err("portion must be between 1 and 65535, got 0"),
             },
             Case {
                 label: "w portion too large",
-                kdl: "container box1 child=btn1 {\n  w portion=65536\n}",
+                kdl: "container box1 {\n  child btn1\n  w portion 65536\n}",
                 expect: Expect::Err("portion must be between 1 and 65535, got 65536"),
             },
             Case {
                 label: "padding 1",
-                kdl: "container box1 padding=5 child=btn1",
+                kdl: "container box1 { padding 5; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "padding 2",
-                kdl: "container box1 child=btn1 {\n  padding 5 10\n}",
+                kdl: "container box1 {\n  child btn1\n  padding 5 10\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "padding 4",
-                kdl: "container box1 child=btn1 {\n  padding 5 10 5 10\n}",
+                kdl: "container box1 {\n  child btn1\n  padding 5 10 5 10\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "padding 3 invalid",
-                kdl: "container box1 child=btn1 {\n  padding 5 10 5\n}",
-                expect: Expect::Err("padding accepts 1, 2, or 4 values"),
+                kdl: "container box1 {\n  child btn1\n  padding 5 10 5\n}",
+                expect: Expect::Err("padding accepts 1, 2, or 4 numbers"),
             },
             Case {
                 label: "align_x short l",
-                kdl: "container box1 align_x=l child=btn1",
+                kdl: "container box1 { align_x l; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align_x short c",
-                kdl: "container box1 align_x=c child=btn1",
+                kdl: "container box1 { align_x c; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align_x short r",
-                kdl: "container box1 align_x=r child=btn1",
+                kdl: "container box1 { align_x r; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align_x long left",
-                kdl: "container box1 align_x=left child=btn1",
+                kdl: "container box1 { align_x left; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align_x long center",
-                kdl: "container box1 align_x=center child=btn1",
+                kdl: "container box1 { align_x center; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align_x long right",
-                kdl: "container box1 align_x=right child=btn1",
+                kdl: "container box1 { align_x right; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align_x invalid",
-                kdl: "container box1 align_x=middle child=btn1",
+                kdl: "container box1 { align_x middle; child btn1 }",
                 expect: Expect::Err(
                     "invalid `align_x` \"middle\", expected one of: l, c, r, left, center, right",
                 ),
             },
             Case {
                 label: "align_y short t",
-                kdl: "container box1 align_y=t child=btn1",
+                kdl: "container box1 { align_y t; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align_y short c",
-                kdl: "container box1 align_y=c child=btn1",
+                kdl: "container box1 { align_y c; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align_y short b",
-                kdl: "container box1 align_y=b child=btn1",
+                kdl: "container box1 { align_y b; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align_y long top",
-                kdl: "container box1 align_y=top child=btn1",
+                kdl: "container box1 { align_y top; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align_y long center",
-                kdl: "container box1 align_y=center child=btn1",
+                kdl: "container box1 { align_y center; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align_y long bottom",
-                kdl: "container box1 align_y=bottom child=btn1",
+                kdl: "container box1 { align_y bottom; child btn1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align_y invalid",
-                kdl: "container box1 align_y=mid child=btn1",
+                kdl: "container box1 { align_y mid; child btn1 }",
                 expect: Expect::Err(
                     "invalid `align_y` \"mid\", expected one of: t, c, b, top, center, bottom",
                 ),
@@ -2448,7 +2298,7 @@ mod tests {
     fn revealer_cases() {
         run_cases(&[Case {
             label: "minimal revealer",
-            kdl: "widget bar child=rev\nrevealer rev child=t1\ntext t1",
+            kdl: "widget bar { child rev }\nrevealer rev { child t1 }\ntext t1",
             expect: Expect::Ok,
         }]);
     }
@@ -2463,18 +2313,18 @@ mod tests {
             },
             Case {
                 label: "w single",
-                kdl: "border b1 w=2.5",
+                kdl: "border b1 { w 2.5 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "radius 1",
-                kdl: "border b1 radius=5",
+                kdl: "border b1 { radius 5 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "radius 2",
                 kdl: "border b1 {\n  radius 5 10\n}",
-                expect: Expect::Err("radius accepts 1 or 4 values"),
+                expect: Expect::Err("radius accepts 1 or 4 numbers"),
             },
             Case {
                 label: "radius 4",
@@ -2484,7 +2334,7 @@ mod tests {
             Case {
                 label: "radius 3 invalid",
                 kdl: "border b1 {\n  radius 5 10 5\n}",
-                expect: Expect::Err("radius accepts 1 or 4 values"),
+                expect: Expect::Err("radius accepts 1 or 4 numbers"),
             },
         ]);
     }
@@ -2505,12 +2355,12 @@ mod tests {
             Case {
                 label: "offset 1",
                 kdl: "shadow s1 {\n  offset 1\n}",
-                expect: Expect::Err("offset requires exactly 2 values"),
+                expect: Expect::Err("offset requires exactly 2 numbers"),
             },
             Case {
                 label: "offset 3",
                 kdl: "shadow s1 {\n  offset 1 2 3\n}",
-                expect: Expect::Err("offset requires exactly 2 values"),
+                expect: Expect::Err("offset requires exactly 2 numbers"),
             },
         ]);
     }
@@ -2520,7 +2370,7 @@ mod tests {
         run_cases(&[
             Case {
                 label: "minimal with child",
-                kdl: "button btn1 child=t1",
+                kdl: "button btn1 { child t1 }",
                 expect: Expect::Ok,
             },
             Case {
@@ -2530,22 +2380,22 @@ mod tests {
             },
             Case {
                 label: "action string",
-                kdl: r#"button btn1 child=t1 action="echo hello""#,
+                kdl: r#"button btn1 { child t1; action "echo hello" }"#,
                 expect: Expect::Ok,
             },
             Case {
                 label: "style variants",
-                kdl: "button btn1 child=t1 style=s1 style:hover=s1 style:active=s1 style:disabled=s1",
+                kdl: "button btn1 { child t1; style s1; style:hover s1; style:active s1; style:disabled s1 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "padding 3 invalid",
-                kdl: "button btn1 child=t1 {\n  padding 5 10 5\n}",
-                expect: Expect::Err("padding accepts 1, 2, or 4 values"),
+                kdl: "button btn1 {\n  child t1\n  padding 5 10 5\n}",
+                expect: Expect::Err("padding accepts 1, 2, or 4 numbers"),
             },
             Case {
                 label: "action non-string",
-                kdl: "button btn1 child=t1 action=42",
+                kdl: "button btn1 { child t1; action 42 }",
                 expect: Expect::Err("field `action` expects a string"),
             },
         ]);
@@ -2561,7 +2411,7 @@ mod tests {
             },
             Case {
                 label: "missing children",
-                kdl: "row r1 w=40",
+                kdl: "row r1 { w 40 }",
                 expect: Expect::Err("children is required"),
             },
             Case {
@@ -2576,44 +2426,44 @@ mod tests {
             },
             Case {
                 label: "align t",
-                kdl: "row r1 align=t {\n  children btn1\n}",
+                kdl: "row r1 {\n  align t\n  children btn1\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align c",
-                kdl: "row r1 align=c {\n  children btn1\n}",
+                kdl: "row r1 {\n  align c\n  children btn1\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align b",
-                kdl: "row r1 align=b {\n  children btn1\n}",
+                kdl: "row r1 {\n  align b\n  children btn1\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align top",
-                kdl: "row r1 align=top {\n  children btn1\n}",
+                kdl: "row r1 {\n  align top\n  children btn1\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align bottom",
-                kdl: "row r1 align=bottom {\n  children btn1\n}",
+                kdl: "row r1 {\n  align bottom\n  children btn1\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align left invalid",
-                kdl: "row r1 align=left {\n  children btn1\n}",
+                kdl: "row r1 {\n  align left\n  children btn1\n}",
                 expect: Expect::Err(
                     "invalid `align` \"left\", expected one of: t, c, b, top, center, bottom",
                 ),
             },
             Case {
                 label: "spacing int",
-                kdl: "row r1 spacing=5 {\n  children btn1\n}",
+                kdl: "row r1 {\n  spacing 5\n  children btn1\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "spacing float",
-                kdl: "row r1 spacing=1.5 {\n  children btn1\n}",
+                kdl: "row r1 {\n  spacing 1.5\n  children btn1\n}",
                 expect: Expect::Ok,
             },
         ]);
@@ -2629,7 +2479,7 @@ mod tests {
             },
             Case {
                 label: "missing children",
-                kdl: "column c1 w=40",
+                kdl: "column c1 { w 40 }",
                 expect: Expect::Err("children is required"),
             },
             Case {
@@ -2639,32 +2489,32 @@ mod tests {
             },
             Case {
                 label: "align l",
-                kdl: "column c1 align=l {\n  children btn1\n}",
+                kdl: "column c1 {\n  align l\n  children btn1\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align c",
-                kdl: "column c1 align=c {\n  children btn1\n}",
+                kdl: "column c1 {\n  align c\n  children btn1\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align r",
-                kdl: "column c1 align=r {\n  children btn1\n}",
+                kdl: "column c1 {\n  align r\n  children btn1\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align left",
-                kdl: "column c1 align=left {\n  children btn1\n}",
+                kdl: "column c1 {\n  align left\n  children btn1\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align right",
-                kdl: "column c1 align=right {\n  children btn1\n}",
+                kdl: "column c1 {\n  align right\n  children btn1\n}",
                 expect: Expect::Ok,
             },
             Case {
                 label: "align top invalid",
-                kdl: "column c1 align=top {\n  children btn1\n}",
+                kdl: "column c1 {\n  align top\n  children btn1\n}",
                 expect: Expect::Err(
                     "invalid `align` \"top\", expected one of: l, c, r, left, center, right",
                 ),
@@ -2682,38 +2532,38 @@ mod tests {
             },
             Case {
                 label: "font string",
-                kdl: r#"text t1 font="Symbols Nerd Font""#,
+                kdl: r#"text t1 { font "Symbols Nerd Font" }"#,
                 expect: Expect::Ok,
             },
             Case {
                 label: "color field",
-                kdl: "text t1 color=ffffff",
+                kdl: "text t1 { color ffffff }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "color invalid",
-                kdl: "text t1 color=xyz",
+                kdl: "text t1 { color xyz }",
                 expect: Expect::Err(
                     "invalid color format, expected rrggbb, rrggbbaa, #rrggbb, #rrggbbaa, transparent, or int",
                 ),
             },
             Case {
                 label: "align_x invalid",
-                kdl: "text t1 align_x=middle",
+                kdl: "text t1 { align_x middle }",
                 expect: Expect::Err(
                     "invalid `align_x` \"middle\", expected one of: l, c, r, j, left, center, right, justified",
                 ),
             },
             Case {
                 label: "align_y invalid",
-                kdl: "text t1 align_y=mid",
+                kdl: "text t1 { align_y mid }",
                 expect: Expect::Err(
                     "invalid `align_y` \"mid\", expected one of: t, c, b, top, center, bottom",
                 ),
             },
             Case {
                 label: "text non-string",
-                kdl: "text t1 text=99",
+                kdl: "text t1 { text 99 }",
                 expect: Expect::Err("field `text` expects a string"),
             },
         ]);
@@ -2724,22 +2574,22 @@ mod tests {
         run_cases(&[
             Case {
                 label: "minimal",
-                kdl: "apptray icon_size=24 spacing=6",
+                kdl: "apptray { icon_size 24; spacing 6 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "ref as child",
-                kdl: "widget bar child=apptray\napptray icon_size=20",
+                kdl: "widget bar { child apptray }\napptray { icon_size 20 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "swap",
-                kdl: "apptray swap_buttons=#true",
+                kdl: "apptray { swap_buttons #true }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "reserved widget id",
-                kdl: "widget apptray child=t1\ntext t1",
+                kdl: "widget apptray { child t1 }\ntext t1",
                 expect: Expect::Err("\"apptray\" is a reserved id"),
             },
             Case {
@@ -2749,7 +2599,7 @@ mod tests {
             },
             Case {
                 label: "duplicate block",
-                kdl: "apptray icon_size=24\napptray icon_size=30",
+                kdl: "apptray { icon_size 24 }\napptray { icon_size 30 }",
                 expect: Expect::Warn("apptray block is defined twice, using first"),
             },
         ]);
@@ -2760,46 +2610,46 @@ mod tests {
         run_cases(&[
             Case {
                 label: "minimal",
-                kdl: "notification width=400",
+                kdl: "notification { width 400 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "colors",
-                kdl: "notification primary_text=ffffff secondary_text=cccccc bg=222222",
+                kdl: "notification { primary_text ffffff; secondary_text cccccc; bg 222222 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "anchor",
-                kdl: r#"notification anchor="t | r""#,
+                kdl: r#"notification { anchor "t | r" }"#,
                 expect: Expect::Ok,
             },
             Case {
                 label: "layer",
-                kdl: "notification layer=overlay",
+                kdl: "notification { layer overlay }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "border ref",
-                kdl: "notification border=nb\nborder nb color=444444 w=1 radius=8",
+                kdl: "notification { border nb }\nborder nb { color 444444; w 1; radius 8 }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "bad color",
-                kdl: "notification bg=xyz",
+                kdl: "notification { bg xyz }",
                 expect: Expect::Err(
                     "invalid color format, expected rrggbb, rrggbbaa, #rrggbb, #rrggbbaa, transparent, or int",
                 ),
             },
             Case {
                 label: "bad layer",
-                kdl: "notification layer=middle",
+                kdl: "notification { layer middle }",
                 expect: Expect::Err(
                     "invalid `layer` \"middle\", expected one of: top, bottom, background, overlay",
                 ),
             },
             Case {
                 label: "duplicate",
-                kdl: "notification width=400\nnotification width=500",
+                kdl: "notification { width 400 }\nnotification { width 500 }",
                 expect: Expect::Warn("notification block is defined twice, using first"),
             },
         ]);
@@ -2856,76 +2706,76 @@ mod tests {
         run_cases(&[
             Case {
                 label: "pointer event ok",
-                kdl: "widget bar child=e1\nevent e1 type=onhover action=\"true\" child=t1\ntext t1",
+                kdl: "widget bar { child e1 }\nevent e1 { type onhover; action \"true\"; child t1 }\ntext t1",
                 expect: Expect::Ok,
             },
             Case {
                 label: "watch event ok",
-                kdl: "var flag=#false\nevent e1 type=watchon var=flag action=\"true\"",
+                kdl: "var flag=#false\nevent e1 { type watchon; var flag; action \"true\" }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "timeout event ok",
-                kdl: "var flag=#false\nevent e1 type=timeout var=flag duration=\"1s\" action=\"true\"",
+                kdl: "var flag=#false\nevent e1 { type timeout; var flag; duration \"1s\"; action \"true\" }",
                 expect: Expect::Ok,
             },
             Case {
                 label: "type required",
-                kdl: "event e1 action=\"true\" child=t1\ntext t1",
+                kdl: "event e1 { action \"true\"; child t1 }\ntext t1",
                 expect: Expect::Err("event `type` is required"),
             },
             Case {
                 label: "action required",
-                kdl: "event e1 type=onhover child=t1\ntext t1",
+                kdl: "event e1 { type onhover; child t1 }\ntext t1",
                 expect: Expect::Err("event `action` is required"),
             },
             Case {
                 label: "pointer requires child",
-                kdl: "event e1 type=onhover action=\"true\"",
+                kdl: "event e1 { type onhover; action \"true\" }",
                 expect: Expect::Err("pointer event requires `child`"),
             },
             Case {
                 label: "pointer forbids var",
-                kdl: "var flag=#false\nevent e1 type=rightclick var=flag action=\"true\" child=t1\ntext t1",
+                kdl: "var flag=#false\nevent e1 { type rightclick; var flag; action \"true\"; child t1 }\ntext t1",
                 expect: Expect::Err("`var` is only valid for watchon, watchoff and timeout events"),
             },
             Case {
                 label: "watch requires var",
-                kdl: "event e1 type=watchoff action=\"true\"",
+                kdl: "event e1 { type watchoff; action \"true\" }",
                 expect: Expect::Err("watch event requires `var`"),
             },
             Case {
                 label: "var must be literal",
-                kdl: "var x=#false\nevent e1 type=watchon var=\"${x}\" action=\"true\"",
+                kdl: "var x=#false\nevent e1 { type watchon; var \"${x}\"; action \"true\" }",
                 expect: Expect::Err(
                     "event `var` must be a variable name literal, not an expression",
                 ),
             },
             Case {
                 label: "watch forbids child",
-                kdl: "var flag=#false\nevent e1 type=watchon var=flag action=\"true\" child=t1\ntext t1",
+                kdl: "var flag=#false\nevent e1 { type watchon; var flag; action \"true\"; child t1 }\ntext t1",
                 expect: Expect::Err(
                     "`child` is only valid for onhover, onhoverexit and rightclick events",
                 ),
             },
             Case {
                 label: "timeout requires duration",
-                kdl: "var flag=#false\nevent e1 type=timeout var=flag action=\"true\"",
+                kdl: "var flag=#false\nevent e1 { type timeout; var flag; action \"true\" }",
                 expect: Expect::Err("timeout event requires `duration`"),
             },
             Case {
                 label: "duration only for timeout",
-                kdl: "var flag=#false\nevent e1 type=watchon var=flag duration=\"1s\" action=\"true\"",
+                kdl: "var flag=#false\nevent e1 { type watchon; var flag; duration \"1s\"; action \"true\" }",
                 expect: Expect::Err("`duration` is only valid for timeout events"),
             },
             Case {
                 label: "type must be literal",
-                kdl: "event e1 type=\"${x}\" action=\"true\" child=t1\ntext t1",
+                kdl: "event e1 { type \"${x}\"; action \"true\"; child t1 }\ntext t1",
                 expect: Expect::Err("event `type` must be a literal, not an expression"),
             },
             Case {
                 label: "type unrecognized",
-                kdl: "event e1 type=bogus action=\"true\" child=t1\ntext t1",
+                kdl: "event e1 { type bogus; action \"true\"; child t1 }\ntext t1",
                 expect: Expect::Err(
                     "invalid `type` \"bogus\", expected onhover, onhoverexit, rightclick, watchon, watchoff or timeout",
                 ),

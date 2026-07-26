@@ -7,7 +7,10 @@ inherit the environment plus `$IWWC`, the path of the running iwwc binary - hand
 driving iwwc from itself:
 
 ```kdl
-button power child=power_txt action="$IWWC toggle powermenu"
+button power {
+  child power_txt
+  action "$IWWC toggle powermenu"
+}
 ```
 
 The simplest trigger is a `button`'s left click. Everything else goes through `event` declarations.
@@ -18,7 +21,11 @@ The simplest trigger is a `button`'s left click. Everything else goes through `e
 `action` when the pointer event happens over it:
 
 ```kdl
-event volume_scroll type="rightclick" child=sound action="pavucontrol"
+event volume_scroll {
+  type "rightclick"
+  child sound
+  action "pavucontrol"
+}
 row rightgrp {
   children volume_scroll mic battery
 }
@@ -33,9 +40,22 @@ They require `var` and `action`, and must not have `child`:
 
 ```kdl
 var actvar=#false
-event actvar_on  type="watchon"  var=actvar action="notify-send "watchon""
-event actvar_off type="watchoff" var=actvar action="notify-send "watchon""
-event actvar_end type="timeout"  var=actvar duration="30m" action="$IWWC update actvar toggle"
+event actvar_on {
+  type "watchon"
+  var actvar
+  action "notify-send \"watchon\""
+}
+event actvar_off {
+  type "watchoff"
+  var actvar
+  action "notify-send \"watchoff\""
+}
+event actvar_end {
+  type "timeout"
+  var actvar
+  duration "30m"
+  action "$IWWC update actvar toggle"
+}
 ```
 
 - `watchon` fires when the variable flips to `#true`
