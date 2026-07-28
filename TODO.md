@@ -32,7 +32,7 @@ Future:
 - [ ] iwwc.gpu.(load/temp/vram)(amd)
 - [ ] iwwc.temps.(*)
 - [ ] re-review all tests
-- [ ] better handling of attempt to create layer with 0 h or w (exwlshelleventloop patch)
+- [x] better handling of attempt to create layer with 0 h or w (exwlshelleventloop patch)
 - [ ] fix issue with conflicting anchors and 0 h or w should default to max available (exwlshelleventloop patch)
 - [ ] predefined widget calendar
 - [ ] iwwc.gpu.(load/temp/vram)(nvidia/intel)

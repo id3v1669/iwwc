@@ -1,5 +1,49 @@
 use crate::tray::menu_types::MenuItem;
 use iced::window::Id as WindowId;
+use iced_layershell::actions::IcedNewPopupSettings;
+use iced_layershell::reexport::{
+    PixelSize, PopupAnchor, PopupConstraintAdjustment, PopupGravity,
+};
+
+pub fn root_popup_settings(
+    anchor: MenuAnchor,
+    width: u32,
+    height: u32,
+) -> IcedNewPopupSettings {
+    let (cx, cy) = anchor.cursor;
+    IcedNewPopupSettings::at_position(
+        anchor.parent,
+        PixelSize::px(width.max(1), height.max(1)),
+        (cx as i32, cy as i32),
+    )
+    .anchor(PopupAnchor::BottomLeft)
+    .gravity(PopupGravity::BottomRight)
+    .constraint_adjustment(
+        PopupConstraintAdjustment::FlipX
+            | PopupConstraintAdjustment::FlipY
+            | PopupConstraintAdjustment::SlideX
+            | PopupConstraintAdjustment::SlideY,
+    )
+}
+
+pub fn submenu_popup_settings(
+    parent: WindowId,
+    width: u32,
+    height: u32,
+    top_offset: i32,
+    parent_width: u32,
+    row_height: f32,
+) -> IcedNewPopupSettings {
+    IcedNewPopupSettings::new(
+        parent,
+        PixelSize::px(width.max(1), height.max(1)),
+        (0, top_offset),
+        PixelSize::px(parent_width.max(1), (row_height as u32).max(1)),
+    )
+    .anchor(PopupAnchor::TopRight)
+    .gravity(PopupGravity::BottomRight)
+    .constraint_adjustment(PopupConstraintAdjustment::FlipX | PopupConstraintAdjustment::SlideY)
+}
 
 pub struct MenuLevel {
     pub window: WindowId,

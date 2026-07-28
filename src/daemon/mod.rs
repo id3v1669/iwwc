@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 
 use iced::window::Id as WindowId;
 use iced::{Element, Subscription, Task};
-use iced_layershell::reexport::{Anchor, KeyboardInteractivity, Layer};
+use iced_layershell::reexport::{Anchor, KeyboardInteractivity, Layer, LayerSize};
 use iced_layershell::settings::{LayerShellSettings, Settings, StartMode};
 use iced_layershell::to_layer_message;
 use indexmap::IndexMap;
@@ -87,6 +87,7 @@ pub struct App {
     notif_windows: HashMap<WindowId, u32>,
     tray_items: Vec<crate::tray::types::TrayItem>,
     menus: Vec<crate::daemon::menu::MenuLevel>,
+    menu_root_anchor: Option<crate::daemon::menu::MenuAnchor>,
     menu_windows: HashMap<WindowId, usize>,
     cursor: HashMap<WindowId, (f32, f32)>,
     menu_cache: HashMap<(String, String), crate::tray::menu_types::MenuItem>,
@@ -135,7 +136,7 @@ pub fn run(store: Store, config_path: std::path::PathBuf) -> iced_layershell::Re
 
 fn hidden_initial() -> LayerShellSettings {
     LayerShellSettings {
-        size: Some((1, 1)),
+        size: LayerSize::px(1, 1),
         layer: Layer::Background,
         anchor: Anchor::Top | Anchor::Left,
         exclusive_zone: 0,
@@ -158,6 +159,7 @@ impl App {
             notif_windows: HashMap::new(),
             tray_items: Vec::new(),
             menus: Vec::new(),
+            menu_root_anchor: None,
             menu_windows: HashMap::new(),
             cursor: HashMap::new(),
             menu_cache: HashMap::new(),
@@ -627,9 +629,10 @@ impl App {
             st.icon = icon;
             st.precalc = precalc;
             let resize = match st.window {
-                Some(wid) if st.height != height => Task::done(Message::SizeChange {
+                Some(wid) if st.height != height => Task::done(Message::LayoutChange {
                     id: wid,
-                    size: (settings.width as u32, height as u32),
+                    anchor: settings.anchor,
+                    size: crate::daemon::notification::notif_size(&settings, height),
                 }),
                 _ => Task::none(),
             };
@@ -828,28 +831,16 @@ impl App {
         root: crate::tray::menu_types::MenuItem,
         anchor: crate::daemon::menu::MenuAnchor,
     ) -> Task<Message> {
-        use iced_layershell::actions::IcedNewPopupSettings;
-        use iced_layershell::reexport::{PopupAnchor, PopupConstraintAdjustment, PopupGravity};
-
         let close = self.close_menus();
         let settings = self.store.resolved().apptray.clone();
         let items = crate::daemon::menu::visible_items(&root);
         let (w, h) = crate::render::menu::menu_pixel_wh(&items, &settings.menu);
         let (width, height) = (w as u32, h as u32);
-        let (cx, cy) = anchor.cursor;
 
-        let popup =
-            IcedNewPopupSettings::new(anchor.parent, (width, height), (cx as i32, cy as i32, 1, 1))
-                .anchor(PopupAnchor::BottomLeft)
-                .gravity(PopupGravity::BottomRight)
-                .constraint_adjustment(
-                    PopupConstraintAdjustment::FlipX
-                        | PopupConstraintAdjustment::FlipY
-                        | PopupConstraintAdjustment::SlideX
-                        | PopupConstraintAdjustment::SlideY,
-                );
+        let popup = crate::daemon::menu::root_popup_settings(anchor, width, height);
         let (wid, mtask) = Message::popup_open(popup);
         self.menu_windows.insert(wid, 0);
+        self.menu_root_anchor = Some(anchor);
         self.menus.push(crate::daemon::menu::MenuLevel {
             window: wid,
             bus_name,
@@ -864,12 +855,40 @@ impl App {
 
     fn close_menus(&mut self) -> Task<Message> {
         let mut tasks = Vec::new();
+        self.menu_root_anchor = None;
         let levels: Vec<_> = self.menus.drain(..).collect();
         for lvl in levels.into_iter().rev() {
             tasks.push(Task::done(Message::RemoveWindow(lvl.window)));
         }
         self.menu_windows.clear();
         Task::batch(tasks)
+    }
+
+    fn reposition_level(&mut self, level: usize, row_height: f32) -> Option<Task<Message>> {
+        let lvl = self.menus.get(level)?;
+        let settings = if level == 0 {
+            crate::daemon::menu::root_popup_settings(self.menu_root_anchor?, lvl.width, lvl.height)
+        } else {
+            let parent = self.menus.get(level - 1)?;
+            let visible: Vec<&crate::tray::menu_types::MenuItem> =
+                parent.items.iter().filter(|i| i.visible).collect();
+            let active = parent.active_child?;
+            let item_index = visible.iter().position(|i| i.id == active)?;
+            let top_offset =
+                crate::daemon::menu::row_top_offset(&parent.items, item_index, row_height);
+            crate::daemon::menu::submenu_popup_settings(
+                parent.window,
+                lvl.width,
+                lvl.height,
+                top_offset,
+                parent.width,
+                row_height,
+            )
+        };
+        Some(Task::done(Message::PopUpReposition {
+            id: lvl.window,
+            settings,
+        }))
     }
 
     fn sync_open_menus(&mut self, bus_name: &str, menu_path: &str) -> Task<Message> {
@@ -889,6 +908,7 @@ impl App {
             return Task::none();
         };
         let settings = self.store.resolved().apptray.clone();
+        let row_height = crate::render::menu::row_height(&settings.menu);
         let mut tasks = Vec::new();
         let mut items = crate::daemon::menu::visible_items(&root);
         let mut level = 0;
@@ -899,17 +919,13 @@ impl App {
                 };
                 lvl.items = items.clone();
                 let (w, h) = crate::render::menu::menu_pixel_wh(&lvl.items, &settings.menu);
-                let (w, h) = (w as u32, h as u32);
-                if (w, h) != (lvl.width, lvl.height) {
-                    lvl.width = w;
-                    lvl.height = h;
-                    tasks.push(Task::done(Message::SizeChange {
-                        id: lvl.window,
-                        size: (w, h),
-                    }));
-                }
+                lvl.width = w as u32;
+                lvl.height = h as u32;
                 lvl.active_child
             };
+            if let Some(task) = self.reposition_level(level, row_height) {
+                tasks.push(task);
+            }
             let Some(active) = active else {
                 break;
             };
@@ -999,9 +1015,6 @@ impl App {
     }
 
     fn open_submenu(&mut self, level: usize, id: i32) -> Task<Message> {
-        use iced_layershell::actions::IcedNewPopupSettings;
-        use iced_layershell::reexport::{PopupAnchor, PopupConstraintAdjustment, PopupGravity};
-
         let settings = self.store.resolved().apptray.clone();
         let extracted = {
             let Some(parent) = self.menus.get(level) else {
@@ -1046,20 +1059,13 @@ impl App {
         let (w, h) = crate::render::menu::menu_pixel_wh(&children, &settings.menu);
         let (width, height) = (w as u32, h as u32);
 
-        let popup = IcedNewPopupSettings::new(
+        let popup = crate::daemon::menu::submenu_popup_settings(
             parent_window,
-            (width, height),
-            (
-                0,
-                top_offset,
-                parent_width as i32,
-                crate::render::menu::row_height(&settings.menu) as i32,
-            ),
-        )
-        .anchor(PopupAnchor::TopRight)
-        .gravity(PopupGravity::BottomRight)
-        .constraint_adjustment(
-            PopupConstraintAdjustment::FlipX | PopupConstraintAdjustment::SlideY,
+            width,
+            height,
+            top_offset,
+            parent_width,
+            crate::render::menu::row_height(&settings.menu),
         );
         let (wid, mtask) = Message::popup_open(popup);
         let new_level = self.menus.len();

@@ -1,5 +1,7 @@
 use crate::config::resolved::ResolvedNotificationSettings;
-use iced_layershell::reexport::{Anchor, BlurOption, KeyboardInteractivity, NewLayerShellSettings};
+use iced_layershell::reexport::{
+    Anchor, BlurOption, Extent, KeyboardInteractivity, LayerSize, NewLayerShellSettings,
+};
 
 pub fn margin_offset(s: &ResolvedNotificationSettings, offset: f32) -> (i32, i32, i32, i32) {
     let base = s.margin;
@@ -14,13 +16,20 @@ pub fn margin_offset(s: &ResolvedNotificationSettings, offset: f32) -> (i32, i32
     (top, right, bottom, left)
 }
 
+pub fn notif_size(s: &ResolvedNotificationSettings, height: f32) -> LayerSize {
+    LayerSize {
+        width: Extent::try_px(s.width as u32).unwrap_or(Extent::Fill),
+        height: Extent::try_px(height as u32).unwrap_or(Extent::Fill),
+    }
+}
+
 pub fn notif_layer_settings(
     s: &ResolvedNotificationSettings,
     height: f32,
     offset: f32,
 ) -> NewLayerShellSettings {
     NewLayerShellSettings {
-        size: Some((s.width as u32, height as u32)),
+        size: notif_size(s, height),
         layer: s.layer,
         anchor: s.anchor,
         exclusive_zone: Some(0),

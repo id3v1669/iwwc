@@ -1,24 +1,24 @@
 use crate::config::resolved::ResolvedWidget;
 use iced_layershell::reexport::{
-    Anchor, BlurOption, KeyboardInteractivity, Layer, NewLayerShellSettings, OutputOption,
+    Anchor, BlurOption, Extent, KeyboardInteractivity, Layer, LayerSize, NewLayerShellSettings,
+    OutputOption,
 };
 use indexmap::IndexMap;
 use std::collections::{HashMap, HashSet};
 
 pub fn layer_settings_for(w: &ResolvedWidget, output: OutputOption) -> NewLayerShellSettings {
-    let width = w.w.map(|v| v as u32).unwrap_or(0);
-    let height = w.h.map(|v| v as u32).unwrap_or(0);
-    let mut anchor = w.anchor.unwrap_or(Anchor::Top | Anchor::Left);
-    if width == 0 {
-        anchor |= Anchor::Left | Anchor::Right;
-    }
-    if height == 0 {
-        anchor |= Anchor::Top | Anchor::Bottom;
-    }
+    let extent = |v: Option<f32>| {
+        v.and_then(|v| Extent::try_px(v as u32))
+            .unwrap_or(Extent::Fill)
+    };
+    let size = LayerSize {
+        width: extent(w.w),
+        height: extent(w.h),
+    };
     NewLayerShellSettings {
-        size: Some((width, height)),
+        size,
         layer: w.layer.unwrap_or(Layer::Top),
-        anchor,
+        anchor: size.resolve_anchor(w.anchor.unwrap_or(Anchor::Top | Anchor::Left)),
         exclusive_zone: Some(exclusive_zone(w)),
         margin: w
             .margin
@@ -113,7 +113,7 @@ mod tests {
             "bar",
         );
         let s = layer_settings_for(&w, OutputOption::LastOutput);
-        assert_eq!(s.size, Some((1920, 30)));
+        assert_eq!(s.size, LayerSize::px(1920, 30));
         assert_eq!(s.exclusive_zone, Some(30));
         assert!(matches!(s.layer, iced_layershell::reexport::Layer::Top));
     }
