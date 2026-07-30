@@ -241,6 +241,25 @@ apptray {
   swap_buttons #true
 }
 
+apptraymenu {
+  font ff
+  menu_bg "3c3836"
+  button_fg "bdae93"
+  button_bg "3c3836"
+}
+
+apptraymenu_advanced {
+  font ff
+  row_spacing 3.0
+  menu_container_padding 6.0
+  menu_container_style styleid1
+  button_padding 5.0 8.0
+  button_style styleid2
+  button_style_hover styleid3
+  button_style_active styleid4
+  button_style_disabled styleid5
+}
+
 text sound_txt "󰕾 ${soundvol}" {
   font ff
 }

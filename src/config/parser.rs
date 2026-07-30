@@ -165,8 +165,14 @@ fn node_spec(name: &str) -> Option<(usize, &'static str)> {
         "event" => (1, "type var action duration child"),
         "apptray" => (
             0,
-            "icon_size spacing padding bg border swap_buttons vertical
-             menu_bg menu_text menu_disabled",
+            "icon_size spacing padding bg border swap_buttons vertical",
+        ),
+        "apptraymenu" => (0, "font_size menu_bg button_fg button_bg"),
+        "apptraymenu_advanced" => (
+            0,
+            "font font_size icon_size row_spacing
+             menu_container_padding menu_container_style button_padding
+             button_style button_style_hover button_style_active button_style_disabled",
         ),
         "notification" => (
             0,
@@ -243,6 +249,26 @@ pub(crate) fn parse_document_into(
                     errs.push(dup_warning("apptray block".into(), node, source));
                 } else {
                     out.apptray = Some(a);
+                }
+            }
+            "apptraymenu" => {
+                let m = build_apptraymenu_settings(node, source, errs);
+                if out.apptraymenu.is_some() {
+                    errs.push(dup_warning("apptraymenu block".into(), node, source));
+                } else {
+                    out.apptraymenu = Some(m);
+                }
+            }
+            "apptraymenu_advanced" => {
+                let m = build_apptraymenu_advanced_settings(node, source, errs);
+                if out.apptraymenu_advanced.is_some() {
+                    errs.push(dup_warning(
+                        "apptraymenu_advanced block".into(),
+                        node,
+                        source,
+                    ));
+                } else {
+                    out.apptraymenu_advanced = Some(m);
                 }
             }
             "icon_theme" => match first_positional_string(node) {
@@ -1594,9 +1620,43 @@ pub(crate) fn build_apptray_settings(
         border: field_id_ref("border", node, source, errs),
         swap_buttons: field_bool("swap_buttons", node, source, errs),
         vertical: field_bool("vertical", node, source, errs),
+        span: span_of_node(node, source),
+    }
+}
+
+use crate::config::types::{ApptrayMenuAdvancedSettings, ApptrayMenuSettings};
+
+pub(crate) fn build_apptraymenu_settings(
+    node: &kdl::KdlNode,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) -> ApptrayMenuSettings {
+    ApptrayMenuSettings {
+        font_size: field_f32("font_size", node, source, errs),
         menu_bg: field_color("menu_bg", node, source, errs),
-        menu_text: field_color("menu_text", node, source, errs),
-        menu_disabled: field_color("menu_disabled", node, source, errs),
+        button_fg: field_color("button_fg", node, source, errs),
+        button_bg: field_color("button_bg", node, source, errs),
+        span: span_of_node(node, source),
+    }
+}
+
+pub(crate) fn build_apptraymenu_advanced_settings(
+    node: &kdl::KdlNode,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) -> ApptrayMenuAdvancedSettings {
+    ApptrayMenuAdvancedSettings {
+        font: field_id_ref("font", node, source, errs),
+        font_size: field_f32("font_size", node, source, errs),
+        icon_size: field_f32("icon_size", node, source, errs),
+        row_spacing: field_f32("row_spacing", node, source, errs),
+        menu_container_padding: field_padding("menu_container_padding", node, source, errs),
+        menu_container_style: field_id_ref("menu_container_style", node, source, errs),
+        button_padding: field_padding("button_padding", node, source, errs),
+        button_style: field_id_ref("button_style", node, source, errs),
+        button_style_hover: field_id_ref("button_style_hover", node, source, errs),
+        button_style_active: field_id_ref("button_style_active", node, source, errs),
+        button_style_disabled: field_id_ref("button_style_disabled", node, source, errs),
         span: span_of_node(node, source),
     }
 }

@@ -180,11 +180,37 @@ pub struct ResolvedMenu {
     pub button_style_disabled: Option<button::Style>,
 }
 
+pub const MENU_FONT_SIZE: f32 = 14.0;
+
+impl ResolvedMenu {
+    pub fn generate(
+        font_size: Option<f32>,
+        menu_bg: Option<Color>,
+        button_fg: Option<Color>,
+        button_bg: Option<Color>,
+    ) -> Self {
+        let mut out = ResolvedMenu {
+            font_size: font_size.unwrap_or(MENU_FONT_SIZE),
+            ..Self::default()
+        };
+        if let (Some(v), Some(s)) = (menu_bg, out.menu_container_style.as_mut()) {
+            s.background = Some(Background::Color(v));
+        }
+        if let (Some(v), Some(s)) = (button_fg, out.button_style.as_mut()) {
+            s.text_color = v;
+        }
+        if let (Some(v), Some(s)) = (button_bg, out.button_style.as_mut()) {
+            s.background = Some(Background::Color(v));
+        }
+        out
+    }
+}
+
 impl Default for ResolvedMenu {
     fn default() -> Self {
         ResolvedMenu {
             font: None,
-            font_size: 14.0,
+            font_size: MENU_FONT_SIZE,
             icon_size: 14.0,
             row_spacing: 3.0,
             menu_container_padding: Padding::from(6.0),

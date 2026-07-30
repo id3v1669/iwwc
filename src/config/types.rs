@@ -67,6 +67,8 @@ pub struct ParsedConfig {
     pub fonts: IndexMap<String, iced::Font>,
     pub notification: Option<NotificationSettings>,
     pub apptray: Option<ApptraySettings>,
+    pub apptraymenu: Option<ApptrayMenuSettings>,
+    pub apptraymenu_advanced: Option<ApptrayMenuAdvancedSettings>,
     pub pulls: IndexMap<String, PullDecl>,
     pub icon_theme: Option<String>,
 }
@@ -208,9 +210,31 @@ pub struct ApptraySettings {
     pub border: Option<FieldValue<String>>,
     pub swap_buttons: Option<FieldValue<bool>>,
     pub vertical: Option<FieldValue<bool>>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ApptrayMenuSettings {
+    pub font_size: Option<FieldValue<f32>>,
     pub menu_bg: Option<FieldValue<Color>>,
-    pub menu_text: Option<FieldValue<Color>>,
-    pub menu_disabled: Option<FieldValue<Color>>,
+    pub button_fg: Option<FieldValue<Color>>,
+    pub button_bg: Option<FieldValue<Color>>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ApptrayMenuAdvancedSettings {
+    pub font: Option<FieldValue<String>>,
+    pub font_size: Option<FieldValue<f32>>,
+    pub icon_size: Option<FieldValue<f32>>,
+    pub row_spacing: Option<FieldValue<f32>>,
+    pub menu_container_padding: Option<FieldValue<Padding>>,
+    pub menu_container_style: Option<FieldValue<String>>,
+    pub button_padding: Option<FieldValue<Padding>>,
+    pub button_style: Option<FieldValue<String>>,
+    pub button_style_hover: Option<FieldValue<String>>,
+    pub button_style_active: Option<FieldValue<String>>,
+    pub button_style_disabled: Option<FieldValue<String>>,
     pub span: Span,
 }
 

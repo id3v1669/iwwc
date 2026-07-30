@@ -26,7 +26,7 @@ Beta:
 
 Future:
 
-- [ ] expose tray menu options to config
+- [x] expose tray menu options to config
 - [ ] fix menu text pos for tray menu to depend on rounded corners. [formulas](#formulas)
 - [x] option for widgets to inherit output from another widet(useful for cases when first widget spawns via active)
 - [ ] iwwc.gpu.(load/temp/vram)(amd)
@@ -65,6 +65,7 @@ Future:
 - [ ] subscribtion to ext-workspace-v1. Where to implement, local, custom lib or exwlshelleventloop
 - [ ] predefined widget launcher
 - [ ] connect to base16x2-color-shemes
+- [ ] functionality to draw dialog(reuse of drawing notification). Refs: kdialog, yad, zenity
 
 ## formulas
 

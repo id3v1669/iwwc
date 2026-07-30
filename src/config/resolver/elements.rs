@@ -614,10 +614,14 @@ fn resolve_shadow_ref(
     })
 }
 
-use crate::config::resolved::ResolvedApptraySettings;
+use crate::config::resolved::{ResolvedApptraySettings, ResolvedMenu};
+use crate::config::types::ApptrayMenuAdvancedSettings;
 
 pub(crate) fn resolve_apptray_settings(ctx: &mut Ctx) -> ResolvedApptraySettings {
-    let mut out = ResolvedApptraySettings::default();
+    let mut out = ResolvedApptraySettings {
+        menu: resolve_apptray_menu(ctx),
+        ..Default::default()
+    };
     let Some(a) = ctx.config.apptray.clone() else {
         return out;
     };
@@ -643,32 +647,94 @@ pub(crate) fn resolve_apptray_settings(ctx: &mut Ctx) -> ResolvedApptraySettings
     if let Some(v) = resolve_field(&a.vertical, "vertical", &span, coerce::coerce_bool, ctx) {
         out.vertical = v;
     }
-    if let (Some(v), Some(s)) = (
-        resolve_field(&a.menu_bg, "menu_bg", &span, coerce::coerce_color, ctx),
-        out.menu.menu_container_style.as_mut(),
+    out
+}
+
+pub(crate) fn resolve_apptray_menu(ctx: &mut Ctx) -> ResolvedMenu {
+    match (
+        ctx.config.apptraymenu.clone(),
+        ctx.config.apptraymenu_advanced.clone(),
     ) {
-        s.background = Some(iced::Background::Color(v));
+        (plain, Some(adv)) => {
+            if let Some(p) = plain {
+                ctx.errs.push(ConfigError {
+                    kind: ConfigErrorKind::DuplicateElement,
+                    span: p.span.clone(),
+                    message: "apptraymenu is ignored because apptraymenu_advanced is defined"
+                        .into(),
+                    severity: Severity::Warning,
+                });
+            }
+            resolve_apptray_menu_advanced(&adv, ctx)
+        }
+        (Some(m), None) => {
+            let span = m.span.clone();
+            ResolvedMenu::generate(
+                resolve_field(&m.font_size, "font_size", &span, coerce::coerce_f32, ctx),
+                resolve_field(&m.menu_bg, "menu_bg", &span, coerce::coerce_color, ctx),
+                resolve_field(&m.button_fg, "button_fg", &span, coerce::coerce_color, ctx),
+                resolve_field(&m.button_bg, "button_bg", &span, coerce::coerce_color, ctx),
+            )
+        }
+        (None, None) => ResolvedMenu::generate(None, None, None, None),
     }
-    // Transitional: menu_text recolors only the normal button text; hover/active
-    // keep their defaults. (raw `menu_width` is intentionally no longer consumed.)
-    // Full per-state styling comes with the future style-block parser.
-    if let (Some(v), Some(s)) = (
-        resolve_field(&a.menu_text, "menu_text", &span, coerce::coerce_color, ctx),
-        out.menu.button_style.as_mut(),
-    ) {
-        s.text_color = v;
+}
+
+fn resolve_apptray_menu_advanced(m: &ApptrayMenuAdvancedSettings, ctx: &mut Ctx) -> ResolvedMenu {
+    let span = m.span.clone();
+    let mut out = ResolvedMenu::default();
+    if let Some(f) = resolve_font_ref(&m.font, &span, ctx) {
+        out.font = Some(f);
     }
-    if let (Some(v), Some(s)) = (
-        resolve_field(
-            &a.menu_disabled,
-            "menu_disabled",
-            &span,
-            coerce::coerce_color,
-            ctx,
-        ),
-        out.menu.button_style_disabled.as_mut(),
+    if let Some(v) = resolve_field(&m.font_size, "font_size", &span, coerce::coerce_f32, ctx) {
+        out.font_size = v;
+    }
+    if let Some(v) = resolve_field(&m.icon_size, "icon_size", &span, coerce::coerce_f32, ctx) {
+        out.icon_size = v;
+    }
+    if let Some(v) = resolve_field(
+        &m.row_spacing,
+        "row_spacing",
+        &span,
+        coerce::coerce_f32,
+        ctx,
     ) {
-        s.text_color = v;
+        out.row_spacing = v;
+    }
+    if let Some(v) = resolve_field(
+        &m.menu_container_padding,
+        "menu_container_padding",
+        &span,
+        coerce::coerce_padding,
+        ctx,
+    ) {
+        out.menu_container_padding = v;
+    }
+    if let Some(s) = resolve_style_ref(&m.menu_container_style, &span, ctx) {
+        out.menu_container_style = Some(s.to_container());
+    }
+    if let Some(v) = resolve_field(
+        &m.button_padding,
+        "button_padding",
+        &span,
+        coerce::coerce_padding,
+        ctx,
+    ) {
+        out.button_padding = v;
+    }
+    let button_style =
+        |field, ctx: &mut Ctx| resolve_style_ref(field, &span, ctx).map(|s| s.to_button());
+    if let Some(s) = button_style(&m.button_style, ctx) {
+        out.button_style = Some(s);
+    }
+    if let Some(s) = button_style(&m.button_style_hover, ctx) {
+        out.button_style_hover = Some(s);
+    }
+    if let Some(s) = button_style(&m.button_style_active, ctx) {
+        out.button_style_active = Some(s);
+    }
+    if let Some(s) = button_style(&m.button_style_disabled, ctx) {
+        out.button_style_disabled = Some(s);
     }
     out
 }
