@@ -723,7 +723,7 @@ checksum = "fe6d2e5af09e8c8ad56c969f2157a3d4238cebc7c55f0a517728c38f7b200f81"
 dependencies = [
  "serde",
  "termcolor",
- "unicode-width 0.2.2",
+ "unicode-width",
 ]
 
 [[package]]
@@ -1000,7 +1000,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1138,7 +1138,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1746,7 +1746,7 @@ dependencies = [
 [[package]]
 name = "iced_exdevtools"
 version = "0.19.1"
-source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#1082c010d64cc6a85896997132fe72054bd89a64"
+source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#5d28f6d66a6a1acaf37af5e3e7ef6053d5efed84"
 dependencies = [
  "iced_debug",
  "iced_devtools",
@@ -1795,7 +1795,7 @@ dependencies = [
 [[package]]
 name = "iced_layershell"
 version = "0.19.1"
-source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#1082c010d64cc6a85896997132fe72054bd89a64"
+source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#5d28f6d66a6a1acaf37af5e3e7ef6053d5efed84"
 dependencies = [
  "enumflags2",
  "futures",
@@ -1820,7 +1820,7 @@ dependencies = [
 [[package]]
 name = "iced_layershell_macros"
 version = "0.19.1"
-source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#1082c010d64cc6a85896997132fe72054bd89a64"
+source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#5d28f6d66a6a1acaf37af5e3e7ef6053d5efed84"
 dependencies = [
  "darling",
  "manyhow",
@@ -2237,7 +2237,7 @@ dependencies = [
 [[package]]
 name = "layershellev"
 version = "0.19.1"
-source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#1082c010d64cc6a85896997132fe72054bd89a64"
+source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#5d28f6d66a6a1acaf37af5e3e7ef6053d5efed84"
 dependencies = [
  "calloop 0.14.4",
  "calloop-wayland-source 0.4.1",
@@ -2458,7 +2458,7 @@ checksum = "5f98efec8807c63c752b5bd61f862c165c115b0a35685bdcfd9238c7aeb592b7"
 dependencies = [
  "cfg-if",
  "miette-derive",
- "unicode-width 0.1.14",
+ "unicode-width",
 ]
 
 [[package]]
@@ -3746,7 +3746,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4205,7 +4205,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4494,12 +4494,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7dd6e30e90baa6f72411720665d41d89b9a3d039dc45b8faea1ddd07f617f6af"
 
 [[package]]
-name = "unicode-width"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
-
-[[package]]
 name = "usvg"
 version = "0.45.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4657,7 +4651,7 @@ dependencies = [
 [[package]]
 name = "waycrate_xkbkeycode"
 version = "0.19.1"
-source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#1082c010d64cc6a85896997132fe72054bd89a64"
+source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#5d28f6d66a6a1acaf37af5e3e7ef6053d5efed84"
 dependencies = [
  "calloop 0.14.4",
  "log",
@@ -5003,7 +4997,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
