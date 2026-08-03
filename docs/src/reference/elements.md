@@ -103,7 +103,42 @@ An optional top-level `apptray` node tunes it (see [System Tray](../guide/tray.m
 | `border` | id of `border` | |
 | `vertical` | bool | stack icons vertically |
 | `swap_buttons` | bool | swap left/right click |
-| `menu_bg` / `menu_text` / `menu_disabled` | color | popup menu colors |
+
+## apptraymenu
+
+Styles the tray popup menu from a font size and three colors; every remaining value is
+derived from the font size. Use `apptraymenu_advanced` to pick the font.
+
+| Field | Type | Notes |
+|---|---|---|
+| `font_size` | number | default 14, drives every derived value |
+| `menu_bg` | color | menu surface background |
+| `button_fg` | color | menu row text |
+| `button_bg` | color | menu row background |
+
+`button_fg` / `button_bg` color the normal row; hover and active colors are derived from
+them (lightened or darkened depending on how bright `button_bg` is), and disabled rows
+dim the text.
+
+## apptraymenu_advanced
+
+Spells out every menu value by hand. Unset fields keep their defaults; they are *not*
+derived from `font_size`. If both this and `apptraymenu` are present, `apptraymenu` is
+ignored with a warning.
+
+| Field | Type | Notes |
+|---|---|---|
+| `font` | id of `font` | |
+| `font_size` | number | default 14 |
+| `icon_size` | number | default 14 |
+| `row_spacing` | number | default 3, gap between icon, label and submenu arrow |
+| `menu_container_padding` | 1, 2 or 4 numbers | menu inner padding, default 6 |
+| `menu_container_style` | id of `style` | menu surface (bg, border, shadow) |
+| `button_padding` | 1, 2 or 4 numbers | menu row padding, default 5 8 |
+| `button_style` | id of `style` | menu row, normal |
+| `button_style_hover` | id of `style` | |
+| `button_style_active` | id of `style` | pressed, and the parent of an open submenu |
+| `button_style_disabled` | id of `style` | |
 
 ## Durations
 

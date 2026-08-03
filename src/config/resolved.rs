@@ -182,6 +182,19 @@ pub struct ResolvedMenu {
 
 pub const MENU_FONT_SIZE: f32 = 14.0;
 
+fn scale(c: Color, f: f32) -> Color {
+    Color {
+        r: (c.r * f).min(1.0),
+        g: (c.g * f).min(1.0),
+        b: (c.b * f).min(1.0),
+        a: c.a,
+    }
+}
+
+fn luminance(c: Color) -> f32 {
+    0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+}
+
 impl ResolvedMenu {
     pub fn generate(
         font_size: Option<f32>,
@@ -189,20 +202,60 @@ impl ResolvedMenu {
         button_fg: Option<Color>,
         button_bg: Option<Color>,
     ) -> Self {
-        let mut out = ResolvedMenu {
-            font_size: font_size.unwrap_or(MENU_FONT_SIZE),
-            ..Self::default()
+        let font_size = font_size.unwrap_or(MENU_FONT_SIZE);
+        let menu_bg = menu_bg.unwrap_or(Color::from_str("3c3836").unwrap());
+        let menu_is_dark = luminance(menu_bg) < 0.5;
+        let button_fg = button_fg.unwrap_or(Color::from_str("bdae93").unwrap());
+        let button_bg = button_bg.unwrap_or(Color::from_str("3c3836").unwrap());
+        let btnbg_is_dark = luminance(button_bg) < 0.5;
+        let (active_f, hover_f) = if btnbg_is_dark {
+            ((0.8, 1.2), (0.9, 1.1))
+        } else {
+            ((0.8, 0.8), (0.9, 0.9))
         };
-        if let (Some(v), Some(s)) = (menu_bg, out.menu_container_style.as_mut()) {
-            s.background = Some(Background::Color(v));
+        let button_fg_disabled = Color {
+            a: button_fg.a * 0.5,
+            ..button_fg
+        };
+        let shadow = scale(menu_bg, if menu_is_dark { 1.5 } else { 0.5 });
+        let radius = font_size / 2.0;
+        let menu_padding = font_size / 2.5;
+        let rad_pad = radius - menu_padding;
+        let btn_radius = rad_pad.max(menu_padding).min(radius);
+        let rounded = |r: f32| Border {
+            width: 0.0,
+            radius: Radius::from(r),
+            ..Default::default()
+        };
+        let btn = |bg: Color, fg: Color| button::Style {
+            background: Some(Background::Color(bg)),
+            text_color: fg,
+            border: rounded(btn_radius),
+            ..Default::default()
+        };
+        let styled = |(bg_f, fg_f): (f32, f32)| btn(scale(button_bg, bg_f), scale(button_fg, fg_f));
+        ResolvedMenu {
+            font: None,
+            font_size,
+            icon_size: font_size,
+            row_spacing: font_size / 4.7,
+            menu_container_padding: Padding::from(menu_padding),
+            menu_container_style: Some(container::Style {
+                background: Some(Background::Color(menu_bg)),
+                border: rounded(radius),
+                shadow: Shadow {
+                    color: shadow,
+                    blur_radius: font_size / 10.0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+            button_padding: Padding::from([(rad_pad + 2.5).max(4.0), (rad_pad + 4.0).max(5.5)]),
+            button_style: Some(btn(button_bg, button_fg)),
+            button_style_hover: Some(styled(hover_f)),
+            button_style_active: Some(styled(active_f)),
+            button_style_disabled: Some(btn(button_bg, button_fg_disabled)),
         }
-        if let (Some(v), Some(s)) = (button_fg, out.button_style.as_mut()) {
-            s.text_color = v;
-        }
-        if let (Some(v), Some(s)) = (button_bg, out.button_style.as_mut()) {
-            s.background = Some(Background::Color(v));
-        }
-        out
     }
 }
 

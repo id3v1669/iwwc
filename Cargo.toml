@@ -7,7 +7,7 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 # base depsу
-clap = { version = "4.6.4", features = ["derive"] }
+clap = { version = "4.6.5", features = ["derive"] }
 log = "0.4.33"
 env_logger = "0.11.11"
 tokio = { version = "1.53.1", features = ["full"] }
@@ -31,7 +31,8 @@ iced = { version = "0.14.0", default-features = false, features = [
   "svg"
 ] }
 #iced_layershell = { path = "/home/user/myrepos/exwlshelleventloop/iced_layershell" }
-iced_layershell = { git = "https://github.com/id3v1669/exwlshelleventloop", branch = "repos" }
+iced_layershell = { git = "https://github.com/id3v1669/exwlshelleventloop", branch = "ext_workspace_manager_v1" }
+iced_wayland_subscriber = { git = "https://github.com/id3v1669/exwlshelleventloop", branch = "ext_workspace_manager_v1" }
 
 wayland-client = "0.31.15"
 wayland-protocols = { version = "0.32.13", features = ["client", "unstable"] }

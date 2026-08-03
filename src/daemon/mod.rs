@@ -31,7 +31,7 @@ pub enum Message {
         reply: Arc<Mutex<Option<oneshot::Sender<Response>>>>,
     },
     WindowClosed(WindowId),
-    OutputChanged(iced_layershell::output::OutputEvent),
+    OutputChanged(iced_wayland_subscriber::shell::ShellEvent),
     Notify(crate::notification::types::Notification),
     NotifClose(u32),
     NotifTimeout {
@@ -81,6 +81,7 @@ pub enum Message {
 pub struct App {
     store: Store,
     config_path: std::path::PathBuf,
+    shell_events: iced_wayland_subscriber::shell::ShellReceiver,
     windows: HashMap<WindowId, String>,
     window_outputs: HashMap<WindowId, String>,
     notifications: IndexMap<u32, NotifState>,
@@ -108,9 +109,10 @@ struct NotifState {
 }
 
 pub fn run(store: Store, config_path: std::path::PathBuf) -> iced_layershell::Result {
+    let (shell_broadcast, shell_events) = iced_wayland_subscriber::shell::channel();
     iced_layershell::daemon(
         move || {
-            let app = App::new(store.clone(), config_path.clone());
+            let app = App::new(store.clone(), config_path.clone(), shell_events.clone());
             let init: Vec<Task<Message>> = app
                 .store
                 .pulls()
@@ -129,6 +131,7 @@ pub fn run(store: Store, config_path: std::path::PathBuf) -> iced_layershell::Re
     .style(App::style)
     .settings(Settings {
         layer_settings: hidden_initial(),
+        shell_broadcast,
         ..Default::default()
     })
     .run()
@@ -147,12 +150,17 @@ fn hidden_initial() -> LayerShellSettings {
 }
 
 impl App {
-    fn new(store: Store, config_path: std::path::PathBuf) -> Self {
+    fn new(
+        store: Store,
+        config_path: std::path::PathBuf,
+        shell_events: iced_wayland_subscriber::shell::ShellReceiver,
+    ) -> Self {
         let dnd = store.resolved().notification.dnd;
         App {
             store,
             dnd,
             config_path,
+            shell_events,
             windows: HashMap::new(),
             window_outputs: HashMap::new(),
             notifications: IndexMap::new(),
@@ -190,7 +198,7 @@ impl App {
                 self.store.resolved().apptray.icon_size as u16,
             ),
             iced::window::close_events().map(Message::WindowClosed),
-            iced_layershell::output::listen().map(Message::OutputChanged),
+            self.shell_events.listen().map(Message::OutputChanged),
             iced::window::open_events().map(Message::SurfaceOpened),
             iced::keyboard::listen().map(|ev| match ev {
                 iced::keyboard::Event::KeyPressed {
@@ -234,10 +242,16 @@ impl App {
                 Task::batch([emit, close])
             }
             Message::OutputChanged(event) => {
-                match event.output {
-                    Some(info) => self.window_outputs.insert(event.window, info.name),
-                    None => self.window_outputs.remove(&event.window),
-                };
+                if let iced_wayland_subscriber::shell::ShellEvent::WindowOutputChanged {
+                    window,
+                    output,
+                } = event
+                {
+                    match output.and_then(|info| info.name) {
+                        Some(name) => self.window_outputs.insert(window, name),
+                        None => self.window_outputs.remove(&window),
+                    };
+                }
                 Task::none()
             }
             Message::WindowClosed(id) => {
