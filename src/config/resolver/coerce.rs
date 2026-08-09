@@ -155,6 +155,17 @@ pub fn coerce_output_spec(
     }
 }
 
+pub fn coerce_migrate_spec(
+    v: Value,
+    field: &str,
+    span: &Span,
+) -> Result<primitives::MigrateSpec, ConfigError> {
+    match v {
+        Value::Str(s) => Ok(primitives::parse_migrate_spec(&s)),
+        _ => Err(type_err(field, "an output string", span)),
+    }
+}
+
 pub fn coerce_row_align(v: Value, field: &str, span: &Span) -> Result<Vertical, ConfigError> {
     match v {
         Value::Str(s) => {

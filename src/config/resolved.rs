@@ -25,6 +25,7 @@ pub struct ResolvedWidget {
     pub exclusive: Option<bool>,
     pub margin: Option<(f32, f32, f32, f32)>,
     pub output: crate::config::primitives::OutputSpec,
+    pub migrate: crate::config::primitives::MigrateSpec,
     pub keyboard: Option<bool>,
     pub transparent: Option<bool>,
     pub child: Option<Box<ResolvedElement>>,

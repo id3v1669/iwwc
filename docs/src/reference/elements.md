@@ -16,6 +16,7 @@ Length, color, and style-id types are described in [Style Properties](./style-pr
 | `exclusive` | bool | reserves screen space |
 | `margin` | 1, 2 or 4 numbers | offset from anchored edges |
 | `output` | `active`, `last`, output name, `"@widget"` | monitor to open on, default `last` |
+| `migrate` | `active`, `last`, output name, `none` | where to reopen when its monitor disconnects, default `active` |
 | `keyboard` | bool | exclusive keyboard focus while open |
 | `transparent` | bool | pointer events pass through |
 

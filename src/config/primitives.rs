@@ -134,6 +134,25 @@ pub fn parse_output_spec(s: &str) -> OutputSpec {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum MigrateSpec {
+    None,
+    To(OutputOption),
+}
+
+impl Default for MigrateSpec {
+    fn default() -> Self {
+        MigrateSpec::To(OutputOption::Active)
+    }
+}
+
+pub fn parse_migrate_spec(s: &str) -> MigrateSpec {
+    match s {
+        "none" => MigrateSpec::None,
+        _ => MigrateSpec::To(parse_output(s)),
+    }
+}
+
 pub fn parse_output(s: &str) -> OutputOption {
     if s == "last" {
         OutputOption::LastOutput

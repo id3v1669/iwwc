@@ -148,7 +148,7 @@ fn node_spec(name: &str) -> Option<(usize, &'static str)> {
     Some(match name {
         "widget" => (
             1,
-            "h w layer anchor exclusive margin output keyboard transparent child",
+            "h w layer anchor exclusive margin output migrate keyboard transparent child",
         ),
         "container" => (1, "w h padding align_x align_y clip style child"),
         "button" => (
@@ -989,6 +989,14 @@ pub(crate) fn build_widget(
             errs,
             |s| Some(crate::config::primitives::parse_output_spec(s)),
             "a string, `last`, `active`, or `@widget`",
+        ),
+        migrate: field_parsed(
+            "migrate",
+            node,
+            source,
+            errs,
+            |s| Some(crate::config::primitives::parse_migrate_spec(s)),
+            "a string, `last`, `active`, or `none`",
         ),
         keyboard: field_bool("keyboard", node, source, errs),
         transparent: field_bool("transparent", node, source, errs),

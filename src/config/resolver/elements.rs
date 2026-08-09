@@ -93,6 +93,14 @@ pub(crate) fn resolve_widget(_name: &str, w: &Widget, ctx: &mut Ctx) -> Resolved
         .unwrap_or(crate::config::primitives::OutputSpec::Direct(
             iced_layershell::reexport::OutputOption::LastOutput,
         )),
+        migrate: resolve_field(
+            &w.migrate,
+            "migrate",
+            &w.span,
+            coerce::coerce_migrate_spec,
+            ctx,
+        )
+        .unwrap_or_default(),
         keyboard: resolve_field(&w.keyboard, "keyboard", &w.span, coerce::coerce_bool, ctx),
         transparent: resolve_field(
             &w.transparent,

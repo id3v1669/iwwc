@@ -44,5 +44,7 @@ right, other anchor combinations reserve nothing.
 
 - `output` picks the monitor: `active`, `last` (default), an output name like `"HDMI-A-1"`, or
   `"@other-widget"` to open on whatever monitor another widget is currently on.
+- `migrate` picks where the widget reopens when the monitor it was on disconnects: `active`(default),
+  `last`, an output name, or `none` to leave it closed.
 - `keyboard #true` grabs keyboard focus exclusively while the widget is open (for popup-style widgets).
 - `transparent #true` makes the surface ignore pointer events - clicks pass through to whatever is underneath.

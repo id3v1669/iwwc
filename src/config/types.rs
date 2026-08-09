@@ -96,6 +96,7 @@ pub struct Widget {
     pub exclusive: Option<FieldValue<bool>>,
     pub margin: Option<FieldValue<(f32, f32, f32, f32)>>,
     pub output: Option<FieldValue<crate::config::primitives::OutputSpec>>,
+    pub migrate: Option<FieldValue<crate::config::primitives::MigrateSpec>>,
     pub keyboard: Option<FieldValue<bool>>,
     pub transparent: Option<FieldValue<bool>>,
     pub child: Option<FieldValue<String>>,

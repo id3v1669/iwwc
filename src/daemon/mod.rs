@@ -84,6 +84,7 @@ pub struct App {
     shell_events: iced_wayland_subscriber::shell::ShellReceiver,
     windows: HashMap<WindowId, String>,
     window_outputs: HashMap<WindowId, String>,
+    pending_migrate: HashMap<WindowId, String>,
     notifications: IndexMap<u32, NotifState>,
     notif_windows: HashMap<WindowId, u32>,
     tray_items: Vec<crate::tray::types::TrayItem>,
@@ -163,6 +164,7 @@ impl App {
             shell_events,
             windows: HashMap::new(),
             window_outputs: HashMap::new(),
+            pending_migrate: HashMap::new(),
             notifications: IndexMap::new(),
             notif_windows: HashMap::new(),
             tray_items: Vec::new(),
@@ -242,15 +244,21 @@ impl App {
                 Task::batch([emit, close])
             }
             Message::OutputChanged(event) => {
-                if let iced_wayland_subscriber::shell::ShellEvent::WindowOutputChanged {
-                    window,
-                    output,
-                } = event
-                {
-                    match output.and_then(|info| info.name) {
-                        Some(name) => self.window_outputs.insert(window, name),
-                        None => self.window_outputs.remove(&window),
-                    };
+                use iced_wayland_subscriber::shell::ShellEvent;
+                match event {
+                    ShellEvent::WindowOutputChanged { window, output } => {
+                        self.pending_migrate.remove(&window);
+                        match output.and_then(|info| info.name) {
+                            Some(name) => self.window_outputs.insert(window, name),
+                            None => self.window_outputs.remove(&window),
+                        };
+                    }
+                    ShellEvent::OutputRemoved(info) => {
+                        if let Some(gone) = info.name {
+                            self.mark_migrations(&gone);
+                        }
+                    }
+                    _ => {}
                 }
                 Task::none()
             }
@@ -265,7 +273,7 @@ impl App {
                 if self.menu_windows.contains_key(&id) {
                     return self.close_menus();
                 }
-                Task::none()
+                self.migrate_window(id)
             }
             Message::Notify(n) => {
                 if dnd_blocks(self.dnd, n.urgency) {
@@ -971,6 +979,31 @@ impl App {
             })
             .collect();
         window::resolve_output(&self.store.resolved().widgets, &live, name)
+    }
+
+    fn mark_migrations(&mut self, gone: &str) {
+        for (id, widget) in &self.windows {
+            if self.window_outputs.get(id).is_some_and(|on| on == gone) {
+                self.pending_migrate.insert(*id, widget.clone());
+            }
+        }
+    }
+
+    fn migrate_window(&mut self, id: WindowId) -> Task<Message> {
+        use crate::config::primitives::MigrateSpec;
+        let Some(name) = self.pending_migrate.remove(&id) else {
+            return Task::none();
+        };
+        let Some(widget) = self.store.resolved().widgets.get(&name) else {
+            return Task::none();
+        };
+        let MigrateSpec::To(output) = widget.migrate.clone() else {
+            return Task::none();
+        };
+        let settings = window::layer_settings_for(widget, output);
+        let (new_id, task) = Message::layershell_open(settings);
+        self.windows.insert(new_id, name);
+        task
     }
 
     fn reapply(&mut self) -> Task<Message> {
