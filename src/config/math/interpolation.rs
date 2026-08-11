@@ -44,6 +44,15 @@ pub fn segments(input: &str) -> Result<Vec<Segment<'_>>, InterpError> {
                     });
                 }
                 match bytes[i] {
+                    b'\'' => {
+                        i += 1;
+                        while i < bytes.len() && bytes[i] != b'\'' {
+                            i += 1;
+                        }
+                        if i < bytes.len() {
+                            i += 1;
+                        }
+                    }
                     b'{' => {
                         depth += 1;
                         i += 1;

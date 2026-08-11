@@ -5,11 +5,10 @@ font notiffont {
   family "JetBrains Mono"
 }
 var lang="󰇧 en"
-var wss="1 2 3"
 var recsym="󰑊"
 var iwwc.activesong=none
 
-pull datetime="date '+%a, %d. %b  %H:%M'" i="1s" default="…"
+pull datetime="date '+%a, %d. %b  %H:%M'" i="1s" default="..."
 pull battery="cat /sys/class/power_supply/BAT0/capacity" i="30s" default="?"
 pull cputemp="awk '{printf \"%d\", $1/1000}' /sys/class/thermal/thermal_zone0/temp" i="5s" default="?"
 pull disk="df -h / | awk 'NR==2{print $4}'" i="60s" default="?"
@@ -104,13 +103,52 @@ button usageinfo {
   style:hover pillhover
   padding 5 15
 }
-text workspaces_txt "${wss}" {
+// ===================== WORKSPACES =====================
+style wsactive {
+  bg "d79921"
+  text "282828"
+  border round20
+}
+style wsplain {
+  bg "3c3836"
+  text "e3cd92"
+  border round20
+}
+style wsurgent {
+  bg "cc241d"
+  text "e3cd92"
+  border round20
+}
+style wsgap {
+  bg "1d2021"
+  text "504945"
+  border round20
+}
+text wslabel "${w.exists ? w.name : '·'}" {
   font ff
 }
-button workspaces {
-  child workspaces_txt
-  style pill
-  padding 5 18
+button wsslot {
+  child wslabel
+  action "${w.exists && w.can_switch ? '$IWWC ws switch ' + w.id : ''}"
+  style "${w.exists ? (w.urgent ? 'wsurgent' : (w.active ? 'wsactive' : 'wsplain')) : 'wsgap'}"
+  style:hover pillhover
+  padding 4 10
+}
+repeat wsrow {
+  over "iwwc.ws.all.slot"
+  from "${iwwc.ws.all.first}"
+  to "${iwwc.ws.all.last}"
+  as w
+  child wsslot
+}
+row wsbar {
+  spacing 4
+  align c
+  children wsrow
+}
+container workspaces {
+  child wsbar
+  padding 0 4
 }
 row leftgrp {
   spacing 6
@@ -242,22 +280,10 @@ apptray {
 }
 
 apptraymenu {
-  font ff
+  font_size 14
   menu_bg "3c3836"
   button_fg "bdae93"
   button_bg "3c3836"
-}
-
-apptraymenu_advanced {
-  font ff
-  row_spacing 3.0
-  menu_container_padding 6.0
-  menu_container_style styleid1
-  button_padding 5.0 8.0
-  button_style styleid2
-  button_style_hover styleid3
-  button_style_active styleid4
-  button_style_disabled styleid5
 }
 
 text sound_txt "󰕾 ${soundvol}" {

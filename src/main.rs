@@ -6,6 +6,7 @@ pub mod mpris;
 pub mod notification;
 pub mod render;
 pub mod tray;
+pub mod workspace;
 
 use crate::ipc::{Command, IpcClient, IpcError, Response};
 use clap::{Parser, Subcommand};
@@ -51,8 +52,19 @@ enum Cmd {
         #[arg(required = true)]
         windows: Vec<String>,
     },
+    /// Workspace control: iwwc ws switch <id>
+    Ws {
+        #[command(subcommand)]
+        action: WsCmd,
+    },
     /// Reload the daemon's config: iwwc reload
     Reload,
+}
+
+#[derive(Subcommand)]
+enum WsCmd {
+    /// Move to an existing workspace: iwwc ws switch <id>
+    Switch { id: String },
 }
 
 pub fn main() {
@@ -80,6 +92,9 @@ pub fn main() {
                 client_dispatch(Command::Toggle { window });
             }
         }
+        Some(Cmd::Ws { action }) => match action {
+            WsCmd::Switch { id } => client_dispatch(Command::WsSwitch { id }),
+        },
         Some(Cmd::Reload) => client_dispatch(Command::Reload),
         None => {
             use clap::CommandFactory;

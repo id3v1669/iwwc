@@ -187,9 +187,16 @@ impl Store {
         let (resolved, msgs) = resolve(&candidate);
         match resolved {
             Some(r) => {
-                self.config = candidate;
-                self.resolved = r;
-                self.warnings = msgs;
+                let candidate = Store {
+                    config: candidate,
+                    resolved: r,
+                    warnings: msgs,
+                };
+                let serrs = candidate.validate_surfaces();
+                if !serrs.is_empty() {
+                    return Err(UpdateError::Invalid(serrs));
+                }
+                *self = candidate;
                 Ok(())
             }
             None => Err(UpdateError::Invalid(msgs)),

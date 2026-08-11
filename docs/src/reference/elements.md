@@ -1,6 +1,6 @@
 # Element Reference
 
-Every element is declared at the top level as `<node> <id> { … }`, with one child node per
+Every element is declared at the top level as `<node> <id> { ... }`, with one child node per
 field, and composed via a `child` field (single child) or a `children` field (see
 [Elements](../guide/elements.md)).
 Length, color, and style-id types are described in [Style Properties](./style-properties.md).
@@ -44,6 +44,35 @@ See [Windows & Surfaces](../guide/widgets.md) for how anchors, sizes, and exclus
 | `spacing` | number | gap between children |
 | `align` | row: `t` `c` `b`; column: `l` `c` `r` | cross-axis alignment |
 | `clip` | bool | |
+
+## repeat
+
+Instantiates `child` once per index in `from..=to` and splices the copies into the
+[row or column](#row-and-column) `children` list that references direction,
+spacing and alignment come from that. A repeat is only valid inside a `children` list,
+referencing one where a single element is expected (`widget`/`container`/`button` `child`, ...)
+is an error. Inside each instance the alias names one slice of the `over`
+namespace: with `as w`, `${w.name}` resolves to `<over>.<index>.name`, and `${w.index}`
+to the index itself. Repeats may nest; an inner alias shadows an outer one of the same
+name.
+
+| Field | Type | Notes |
+|---|---|---|
+| `over` | variable namespace prefix | required; base namespace each instance aliases |
+| `from` / `to` | number or expression | required; inclusive range, `to < from` yields nothing, non-finite values are an error |
+| `as` | identifier | required; the alias |
+| `child` | id of element | required; body, instantiated once per index |
+
+```kdl
+row bar { children logo wsrow clock; spacing 6 }
+repeat wsrow {
+  over "iwwc.ws.all.slot"
+  from "${iwwc.ws.all.first}"
+  to   "${iwwc.ws.all.last}"
+  as w
+  child wsslot
+}
+```
 
 ## text
 

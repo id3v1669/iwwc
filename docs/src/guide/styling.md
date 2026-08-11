@@ -81,7 +81,7 @@ Named font definitions, referenced from `text` elements and the `notification` b
 `expanded`, `extra-expanded`, `ultra-expanded`
 - `style`: `normal`, `italic`, `oblique`
 
-Values are case-insensitive and the hyphens are optional (`extralight`, `semi-bold`, …).
+Values are case-insensitive and the hyphens are optional (`extralight`, `semi-bold`, ...).
 
 ```kdl
 font ff {

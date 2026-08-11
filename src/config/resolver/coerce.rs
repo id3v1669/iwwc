@@ -19,10 +19,19 @@ fn type_err(field: &str, expected: &str, span: &Span) -> ConfigError {
     }
 }
 
+fn finite_f32(v: f64, field: &str, span: &Span) -> Result<f32, ConfigError> {
+    let f = v as f32;
+    if f.is_finite() {
+        Ok(f)
+    } else {
+        Err(type_err(field, "a finite number", span))
+    }
+}
+
 pub fn coerce_f32(v: Value, field: &str, span: &Span) -> Result<f32, ConfigError> {
     match v {
         Value::Int(i) => Ok(i as f32),
-        Value::Float(d) => Ok(d.value as f32),
+        Value::Float(d) => finite_f32(d.value, field, span),
         _ => Err(type_err(field, "a number", span)),
     }
 }
@@ -30,7 +39,7 @@ pub fn coerce_f32(v: Value, field: &str, span: &Span) -> Result<f32, ConfigError
 pub fn coerce_length(v: Value, field: &str, span: &Span) -> Result<iced::Length, ConfigError> {
     match v {
         Value::Int(i) => Ok(iced::Length::Fixed(i as f32)),
-        Value::Float(d) => Ok(iced::Length::Fixed(d.value as f32)),
+        Value::Float(d) => Ok(iced::Length::Fixed(finite_f32(d.value, field, span)?)),
         _ => Err(type_err(field, "a number", span)),
     }
 }
@@ -46,7 +55,7 @@ pub fn coerce_margin(
             Ok((f, f, f, f))
         }
         Value::Float(d) => {
-            let f = d.value as f32;
+            let f = finite_f32(d.value, field, span)?;
             Ok((f, f, f, f))
         }
         _ => Err(type_err(field, "a number", span)),
@@ -56,7 +65,7 @@ pub fn coerce_margin(
 pub fn coerce_padding(v: Value, field: &str, span: &Span) -> Result<iced::Padding, ConfigError> {
     match v {
         Value::Int(i) => Ok(iced::Padding::from(i as f32)),
-        Value::Float(d) => Ok(iced::Padding::from(d.value as f32)),
+        Value::Float(d) => Ok(iced::Padding::from(finite_f32(d.value, field, span)?)),
         _ => Err(type_err(field, "a number", span)),
     }
 }
@@ -68,7 +77,9 @@ pub fn coerce_radius(
 ) -> Result<iced::border::Radius, ConfigError> {
     match v {
         Value::Int(i) => Ok(iced::border::Radius::from(i as f32)),
-        Value::Float(d) => Ok(iced::border::Radius::from(d.value as f32)),
+        Value::Float(d) => Ok(iced::border::Radius::from(finite_f32(
+            d.value, field, span,
+        )?)),
         _ => Err(type_err(field, "a number", span)),
     }
 }

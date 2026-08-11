@@ -17,7 +17,7 @@ pub struct ParseError {
 
 pub fn parse(tokens: &[(Token, Range<usize>)]) -> Result<Expr, ParseError> {
     let mut p = Parser { tokens, pos: 0 };
-    let expr = p.parse_bp(0)?;
+    let expr = p.parse_prec(Prec::Ternary)?;
     if p.pos < tokens.len() {
         return Err(ParseError {
             kind: ParseErrorKind::Generic,
@@ -26,6 +26,19 @@ pub fn parse(tokens: &[(Token, Range<usize>)]) -> Result<Expr, ParseError> {
         });
     }
     Ok(expr)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Prec {
+    Ternary,
+    Or,
+    And,
+    Equality,
+    Comparison,
+    Additive,
+    Multiplicative,
+    Power,
+    Unary,
 }
 
 struct Parser<'a> {
@@ -58,7 +71,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_bp(&mut self, min_bp: u8) -> Result<Expr, ParseError> {
+    fn parse_prec(&mut self, min_prec: Prec) -> Result<Expr, ParseError> {
         let mut lhs = match self.peek() {
             Some(Token::Int(n)) => {
                 let n = *n;
@@ -69,6 +82,16 @@ impl<'a> Parser<'a> {
                 let f = *f;
                 self.advance();
                 Expr::Float(f)
+            }
+            Some(Token::Str(s)) => {
+                let s = s.clone();
+                self.advance();
+                Expr::Str(s)
+            }
+            Some(Token::Bool(b)) => {
+                let b = *b;
+                self.advance();
+                Expr::Bool(b)
             }
             Some(Token::Ident(name)) => {
                 let name = name.clone();
@@ -97,12 +120,17 @@ impl<'a> Parser<'a> {
             }
             Some(Token::Minus) => {
                 self.advance();
-                let rhs = self.parse_bp(80)?;
+                let rhs = self.parse_prec(Prec::Unary)?;
                 Expr::Unary(UnaryOp::Neg, Box::new(rhs))
+            }
+            Some(Token::Not) => {
+                self.advance();
+                let rhs = self.parse_prec(Prec::Unary)?;
+                Expr::Unary(UnaryOp::Not, Box::new(rhs))
             }
             Some(Token::LParen) => {
                 self.advance();
-                let e = self.parse_bp(0)?;
+                let e = self.parse_prec(Prec::Ternary)?;
                 match self.peek() {
                     Some(Token::RParen) => {
                         self.advance();
@@ -115,23 +143,43 @@ impl<'a> Parser<'a> {
         };
 
         loop {
+            if self.peek() == Some(&Token::Question) {
+                if min_prec > Prec::Ternary {
+                    break;
+                }
+                self.advance();
+                let then_branch = self.parse_prec(Prec::Ternary)?;
+                match self.peek() {
+                    Some(Token::Colon) => {
+                        self.advance();
+                    }
+                    _ => return Err(self.err("expected `:` in conditional expression")),
+                }
+                let else_branch = self.parse_prec(Prec::Ternary)?;
+                lhs = Expr::Ternary(Box::new(lhs), Box::new(then_branch), Box::new(else_branch));
+                continue;
+            }
+
             let op = match self.peek() {
-                Some(Token::Plus) => Some((BinaryOp::Add, 50, 51)),
-                Some(Token::Minus) => Some((BinaryOp::Sub, 50, 51)),
-                Some(Token::Star) => Some((BinaryOp::Mul, 60, 61)),
-                Some(Token::Slash) => Some((BinaryOp::Div, 60, 61)),
-                Some(Token::Percent) => Some((BinaryOp::Mod, 60, 61)),
-                Some(Token::Caret) => Some((BinaryOp::Pow, 71, 70)),
-                Some(Token::Lt) => Some((BinaryOp::Lt, 40, 41)),
-                Some(Token::Gt) => Some((BinaryOp::Gt, 40, 41)),
-                Some(Token::Le) => Some((BinaryOp::Le, 40, 41)),
-                Some(Token::Ge) => Some((BinaryOp::Ge, 40, 41)),
-                Some(Token::Eq) => Some((BinaryOp::Eq, 30, 31)),
-                Some(Token::Ne) => Some((BinaryOp::Ne, 30, 31)),
+                Some(Token::Plus) => Some((BinaryOp::Add, Prec::Additive)),
+                Some(Token::Minus) => Some((BinaryOp::Sub, Prec::Additive)),
+                Some(Token::Star) => Some((BinaryOp::Mul, Prec::Multiplicative)),
+                Some(Token::Slash) => Some((BinaryOp::Div, Prec::Multiplicative)),
+                Some(Token::Percent) => Some((BinaryOp::Mod, Prec::Multiplicative)),
+                Some(Token::Caret) => Some((BinaryOp::Pow, Prec::Power)),
+                Some(Token::Lt) => Some((BinaryOp::Lt, Prec::Comparison)),
+                Some(Token::Gt) => Some((BinaryOp::Gt, Prec::Comparison)),
+                Some(Token::Le) => Some((BinaryOp::Le, Prec::Comparison)),
+                Some(Token::Ge) => Some((BinaryOp::Ge, Prec::Comparison)),
+                Some(Token::Eq) => Some((BinaryOp::Eq, Prec::Equality)),
+                Some(Token::Ne) => Some((BinaryOp::Ne, Prec::Equality)),
+                Some(Token::AndAnd) => Some((BinaryOp::And, Prec::And)),
+                Some(Token::OrOr) => Some((BinaryOp::Or, Prec::Or)),
                 _ => None,
             };
-            let Some((op, lbp, rbp)) = op else { break };
-            if lbp < min_bp {
+            let Some((op, prec)) = op else { break };
+            let right_assoc = op == BinaryOp::Pow;
+            if prec < min_prec || (prec == min_prec && !right_assoc) {
                 break;
             }
 
@@ -151,7 +199,7 @@ impl<'a> Parser<'a> {
             }
 
             self.advance();
-            let rhs = self.parse_bp(rbp)?;
+            let rhs = self.parse_prec(prec)?;
             lhs = Expr::Binary(op, Box::new(lhs), Box::new(rhs));
         }
 
@@ -178,7 +226,7 @@ impl<'a> Parser<'a> {
         let mut args = Vec::new();
         if self.peek() != Some(&Token::RParen) {
             loop {
-                args.push(self.parse_bp(0)?);
+                args.push(self.parse_prec(Prec::Ternary)?);
                 match self.peek() {
                     Some(Token::Comma) => {
                         self.advance();

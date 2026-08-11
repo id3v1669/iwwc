@@ -25,38 +25,93 @@ pub fn test_lock() -> std::sync::MutexGuard<'static, ()> {
     LOCK.lock().unwrap_or_else(|e| e.into_inner())
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Namespace {
+    Activesong,
+    Ram,
+    Cpu,
+    Ws,
+}
+
+impl Namespace {
+    pub const ALL: [Namespace; 4] = [Self::Activesong, Self::Ram, Self::Cpu, Self::Ws];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Activesong => "iwwc.activesong",
+            Self::Ram => "iwwc.ram",
+            Self::Cpu => "iwwc.cpu",
+            Self::Ws => "iwwc.ws",
+        }
+    }
+
+    pub fn of(var: &str) -> Option<Namespace> {
+        Self::ALL.into_iter().find(|ns| match ns {
+            Self::Activesong => var == ns.name(),
+            _ => var
+                .strip_prefix(ns.name())
+                .is_some_and(|rest| rest.starts_with('.')),
+        })
+    }
+
+    pub fn sample(self) -> Vec<(String, VarValue)> {
+        match self {
+            Self::Activesong => vec![(
+                self.name().to_string(),
+                VarValue::Str(ACTIVESONG.lock().unwrap().clone().unwrap_or_default()),
+            )],
+            Self::Ram => {
+                let mut out = Vec::new();
+                if let Ok(text) = std::fs::read_to_string("/proc/meminfo")
+                    && let Some((total, used)) = read_meminfo(&text)
+                {
+                    out.push(("iwwc.ram.total".to_string(), VarValue::Int(total)));
+                    out.push(("iwwc.ram.used".to_string(), VarValue::Int(used)));
+                }
+                out
+            }
+            Self::Cpu => {
+                let mut out = Vec::new();
+                let mut sys = SYS
+                    .get_or_init(|| Mutex::new(System::new()))
+                    .lock()
+                    .unwrap();
+                sys.refresh_cpu_specifics(
+                    CpuRefreshKind::nothing().with_cpu_usage().with_frequency(),
+                );
+                for (i, cpu) in sys.cpus().iter().enumerate() {
+                    out.push((
+                        format!("iwwc.cpu.{i}.usage"),
+                        VarValue::Float(round2(cpu.cpu_usage())),
+                    ));
+                    out.push((
+                        format!("iwwc.cpu.{i}.frequency"),
+                        VarValue::Int(cpu.frequency() as i128),
+                    ));
+                }
+                out.push((
+                    "iwwc.cpu.avg.usage".to_string(),
+                    VarValue::Float(round2(sys.global_cpu_usage())),
+                ));
+                out
+            }
+            Self::Ws => crate::workspace::values(),
+        }
+    }
+
+    pub fn poll_interval(self) -> Option<Duration> {
+        match self {
+            Self::Ram | Self::Cpu => Some(Duration::from_secs(1)),
+            Self::Activesong | Self::Ws => None,
+        }
+    }
+}
+
 pub fn values() -> Vec<(String, VarValue)> {
-    let mut out = Vec::new();
-    out.push((
-        "iwwc.activesong".to_string(),
-        VarValue::Str(ACTIVESONG.lock().unwrap().clone().unwrap_or_default()),
-    ));
-    if let Ok(text) = std::fs::read_to_string("/proc/meminfo")
-        && let Some((total, used)) = read_meminfo(&text)
-    {
-        out.push(("iwwc.ram.total".to_string(), VarValue::Int(total)));
-        out.push(("iwwc.ram.used".to_string(), VarValue::Int(used)));
-    }
-    let mut sys = SYS
-        .get_or_init(|| Mutex::new(System::new()))
-        .lock()
-        .unwrap();
-    sys.refresh_cpu_specifics(CpuRefreshKind::nothing().with_cpu_usage().with_frequency());
-    for (i, cpu) in sys.cpus().iter().enumerate() {
-        out.push((
-            format!("iwwc.cpu.{i}.usage"),
-            VarValue::Float(round2(cpu.cpu_usage())),
-        ));
-        out.push((
-            format!("iwwc.cpu.{i}.frequency"),
-            VarValue::Int(cpu.frequency() as i128),
-        ));
-    }
-    out.push((
-        "iwwc.cpu.avg.usage".to_string(),
-        VarValue::Float(round2(sys.global_cpu_usage())),
-    ));
-    out
+    Namespace::ALL
+        .into_iter()
+        .flat_map(Namespace::sample)
+        .collect()
 }
 
 fn round2(v: f32) -> f64 {
@@ -75,23 +130,6 @@ pub fn children(values: &[(String, VarValue)], prefix: &str) -> Vec<String> {
         }
     }
     out
-}
-
-pub fn namespace_of(name: &str) -> Option<&'static str> {
-    if name == "iwwc.activesong" {
-        return Some("iwwc.activesong");
-    }
-    ["iwwc.ram", "iwwc.cpu"].into_iter().find(|ns| {
-        name.strip_prefix(ns)
-            .is_some_and(|rest| rest.starts_with('.'))
-    })
-}
-
-pub fn poll_interval(namespace: &str) -> Option<Duration> {
-    match namespace {
-        "iwwc.ram" | "iwwc.cpu" => Some(Duration::from_secs(1)),
-        _ => None,
-    }
 }
 
 fn read_meminfo(text: &str) -> Option<(i128, i128)> {
@@ -131,12 +169,14 @@ mod tests {
 
     #[test]
     fn namespace_and_interval() {
-        assert_eq!(namespace_of("iwwc.ram.used"), Some("iwwc.ram"));
-        assert_eq!(namespace_of("iwwc.ram"), None);
-        assert_eq!(namespace_of("x"), None);
-        assert_eq!(poll_interval("iwwc.ram"), Some(Duration::from_secs(1)));
-        assert_eq!(poll_interval("iwwc.disk"), None);
-        assert_eq!(namespace_of("iwwc.activesong"), Some("iwwc.activesong"));
-        assert_eq!(poll_interval("iwwc.activesong"), None);
+        assert_eq!(Namespace::of("iwwc.ram.used"), Some(Namespace::Ram));
+        assert_eq!(Namespace::of("iwwc.ram"), None);
+        assert_eq!(Namespace::of("x"), None);
+        assert_eq!(Namespace::Ram.poll_interval(), Some(Duration::from_secs(1)));
+        assert_eq!(
+            Namespace::of("iwwc.activesong"),
+            Some(Namespace::Activesong)
+        );
+        assert_eq!(Namespace::Activesong.poll_interval(), None);
     }
 }

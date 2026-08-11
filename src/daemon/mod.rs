@@ -32,6 +32,7 @@ pub enum Message {
     },
     WindowClosed(WindowId),
     OutputChanged(iced_wayland_subscriber::shell::ShellEvent),
+    Workspaces(Option<Arc<iced_wayland_subscriber::workspace::WorkspaceSnapshot>>),
     Notify(crate::notification::types::Notification),
     NotifClose(u32),
     NotifTimeout {
@@ -82,6 +83,7 @@ pub struct App {
     store: Store,
     config_path: std::path::PathBuf,
     shell_events: iced_wayland_subscriber::shell::ShellReceiver,
+    ws_connection: Option<wayland_client::Connection>,
     windows: HashMap<WindowId, String>,
     window_outputs: HashMap<WindowId, String>,
     pending_migrate: HashMap<WindowId, String>,
@@ -111,9 +113,18 @@ struct NotifState {
 
 pub fn run(store: Store, config_path: std::path::PathBuf) -> iced_layershell::Result {
     let (shell_broadcast, shell_events) = iced_wayland_subscriber::shell::channel();
+    let connection = wayland_client::Connection::connect_to_env()
+        .inspect_err(|e| log::warn!("could not connect to the wayland compositor: {e}"))
+        .ok();
+    let subscriber_connection = connection.clone();
     iced_layershell::daemon(
         move || {
-            let app = App::new(store.clone(), config_path.clone(), shell_events.clone());
+            let app = App::new(
+                store.clone(),
+                config_path.clone(),
+                shell_events.clone(),
+                subscriber_connection.clone(),
+            );
             let init: Vec<Task<Message>> = app
                 .store
                 .pulls()
@@ -133,6 +144,7 @@ pub fn run(store: Store, config_path: std::path::PathBuf) -> iced_layershell::Re
     .settings(Settings {
         layer_settings: hidden_initial(),
         shell_broadcast,
+        with_connection: connection.map(Into::into),
         ..Default::default()
     })
     .run()
@@ -155,6 +167,7 @@ impl App {
         store: Store,
         config_path: std::path::PathBuf,
         shell_events: iced_wayland_subscriber::shell::ShellReceiver,
+        ws_connection: Option<wayland_client::Connection>,
     ) -> Self {
         let dnd = store.resolved().notification.dnd;
         App {
@@ -162,6 +175,7 @@ impl App {
             dnd,
             config_path,
             shell_events,
+            ws_connection,
             windows: HashMap::new(),
             window_outputs: HashMap::new(),
             pending_migrate: HashMap::new(),
@@ -211,6 +225,9 @@ impl App {
             }),
             iced::event::listen_with(pointer_event),
         ];
+        if let Some(connection) = &self.ws_connection {
+            subs.push(crate::workspace::subscription(connection.clone()));
+        }
         for (name, decl) in self.store.pulls() {
             subs.push(
                 iced::time::every(decl.interval)
@@ -460,6 +477,11 @@ impl App {
                 self.store.refresh();
                 Task::none()
             }
+            Message::Workspaces(snapshot) => {
+                crate::workspace::store(snapshot);
+                self.store.refresh();
+                Task::none()
+            }
             Message::Ipc { command, reply } => {
                 let (response, task) = self.dispatch_command(command);
                 if let Some(tx) = reply.lock().unwrap().take() {
@@ -559,6 +581,7 @@ impl App {
                 {
                     Some(id) => {
                         self.windows.remove(&id);
+                        self.pending_migrate.remove(&id);
                         (Response::Ok, Task::done(Message::RemoveWindow(id)))
                     }
                     None => (
@@ -576,11 +599,16 @@ impl App {
                 match open_id {
                     Some(id) => {
                         self.windows.remove(&id);
+                        self.pending_migrate.remove(&id);
                         (Response::Ok, Task::done(Message::RemoveWindow(id)))
                     }
                     None => self.dispatch_command(Command::Open { window }),
                 }
             }
+            Command::WsSwitch { id } => match crate::workspace::switch(&id) {
+                Ok(()) => (Response::Ok, Task::none()),
+                Err(e) => (Response::Error(e), Task::none()),
+            },
             Command::Reload => match self.store.reload(&self.config_path) {
                 Ok(warns) => {
                     self.watch_timers.clear();
@@ -1007,6 +1035,7 @@ impl App {
     }
 
     fn reapply(&mut self) -> Task<Message> {
+        self.pending_migrate.clear();
         let mut tasks = vec![self.close_menus()];
         for (old_id, name) in std::mem::take(&mut self.windows) {
             tasks.push(Task::done(Message::RemoveWindow(old_id)));

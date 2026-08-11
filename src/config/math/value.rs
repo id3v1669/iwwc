@@ -30,11 +30,11 @@ impl Decimal {
 }
 
 pub trait VarStore {
-    fn lookup(&self, name: &str) -> Option<&VarValue>;
+    fn lookup(&self, name: &str) -> Option<VarValue>;
 }
 
 impl VarStore for indexmap::IndexMap<String, crate::config::types::VarDecl> {
-    fn lookup(&self, name: &str) -> Option<&VarValue> {
-        self.get(name).map(|d| &d.value)
+    fn lookup(&self, name: &str) -> Option<VarValue> {
+        self.get(name).map(|d| d.value.clone())
     }
 }

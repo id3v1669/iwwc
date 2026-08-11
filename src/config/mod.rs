@@ -40,6 +40,7 @@ pub enum ConfigErrorKind {
     DuplicateElement,
     InvalidBool,
     InvalidFieldType,
+    RangeClamped,
     PortionMissingInt,
     VariableMissingValue,
     Expression,

@@ -30,7 +30,9 @@ on the socket, a second `iwwc daemon` refuses to start. A stale socket is remove
 ### `iwwc update <name> <value>`
 
 Sets a [variable](../guide/variables.md). Booleans accept `toggle` beside explicit
-`#true`/`#false`. Unresolved values are rejected and nothing changes. The reserved name `dnd` sets
+`#true`/`#false` (bare `true`/`false` also parse). A value the config can't resolve
+with, or that would leave a widget's anchor/size constraints invalid, is rejected
+like on reload and nothing changes. The reserved name `dnd` sets
 the daemon's do-not-disturb level (`0`, `1` or `2`, see [Notifications](../guide/notifications.md#do-not-disturb)).
 
 ### `iwwc get <name>`
@@ -39,13 +41,18 @@ Prints a variable's current value to stdout. `iwwc get dnd` reads the do-not-dis
 For the built-in namespace, `iwwc get iwwc` lists the available namespaces and
 `iwwc get iwwc.cpu` the entries under one. An unknown name is an error.
 
-### `iwwc open <window>…` / `iwwc close <window>…` / `iwwc toggle <window>…`
+### `iwwc open <window>...` / `iwwc close <window>...` / `iwwc toggle <window>...`
 
 Open, close, or toggle [widgets](../guide/widgets.md) by name. Each command takes one or more
 names, handled in order. On the first failure the command exits and the remaining names are
 skipped. Opening an already-open widget succeeds without doing anything. Naming a widget the
 config doesn't declare is a `no such widget` error, and closing a widget that isn't open is a
 `window is not open` error.
+
+### `iwwc ws switch <id>`
+
+Switches to an existing workspace. `<id>` is the opaque token from `iwwc.ws....slot.<M>.id`.
+Errors if no workspace data is available, the token doesn't name a current workspace, or the compositor doesn't allow switching to it. iwwc never creates workspaces.
 
 ### `iwwc reload`
 

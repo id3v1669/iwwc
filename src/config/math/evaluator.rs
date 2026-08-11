@@ -13,7 +13,7 @@ pub fn eval(expr: &Expr, vars: &dyn VarStore) -> Result<Value, EvalError> {
                 EvalErrorKind::UnknownVariable,
                 format!("variable \"{}\" is not defined", name),
             )),
-            Some(v) => Ok(value_from_var(v)),
+            Some(v) => Ok(value_from_var(&v)),
         },
         Expr::Unary(UnaryOp::Neg, inner) => {
             let v = eval(inner, vars)?;
@@ -24,6 +24,30 @@ pub fn eval(expr: &Expr, vars: &dyn VarStore) -> Result<Value, EvalError> {
                     precision: d.precision,
                 })),
                 Value::Bool(_) | Value::Str(_) => Err(type_mismatch_for(&v)),
+            }
+        }
+        Expr::Str(s) => Ok(Value::Str(s.clone())),
+        Expr::Bool(b) => Ok(Value::Bool(*b)),
+        Expr::Unary(UnaryOp::Not, inner) => Ok(Value::Bool(!as_condition(eval(inner, vars)?)?)),
+        Expr::Ternary(cond, then_branch, else_branch) => {
+            if as_condition(eval(cond, vars)?)? {
+                eval(then_branch, vars)
+            } else {
+                eval(else_branch, vars)
+            }
+        }
+        Expr::Binary(BinaryOp::And, a, b) => {
+            if as_condition(eval(a, vars)?)? {
+                Ok(Value::Bool(as_condition(eval(b, vars)?)?))
+            } else {
+                Ok(Value::Bool(false))
+            }
+        }
+        Expr::Binary(BinaryOp::Or, a, b) => {
+            if as_condition(eval(a, vars)?)? {
+                Ok(Value::Bool(true))
+            } else {
+                Ok(Value::Bool(as_condition(eval(b, vars)?)?))
             }
         }
         Expr::Binary(op, a, b) => {
@@ -140,9 +164,18 @@ fn eval_binop(op: BinaryOp, lhs: Value, rhs: Value) -> Result<Value, EvalError> 
         if let (Value::Bool(a), Value::Bool(b)) = (&lhs, &rhs) {
             return Ok(Value::Bool(if op == Eq { a == b } else { a != b }));
         }
-        if std::mem::discriminant(&lhs) != std::mem::discriminant(&rhs) {
+        let numeric = |v: &Value| matches!(v, Value::Int(_) | Value::Float(_));
+        if std::mem::discriminant(&lhs) != std::mem::discriminant(&rhs)
+            && !(numeric(&lhs) && numeric(&rhs))
+        {
             return Ok(Value::Bool(op == Ne));
         }
+    }
+
+    if op == Add
+        && let (Value::Str(a), Value::Str(b)) = (&lhs, &rhs)
+    {
+        return Ok(Value::Str(format!("{a}{b}")));
     }
 
     match op {
@@ -175,6 +208,7 @@ fn eval_binop(op: BinaryOp, lhs: Value, rhs: Value) -> Result<Value, EvalError> 
             }
         }
         Eq | Ne => {}
+        And | Or => return Err(bool_op_leak()),
     }
 
     match (lhs, rhs) {
@@ -210,6 +244,7 @@ fn eval_binop(op: BinaryOp, lhs: Value, rhs: Value) -> Result<Value, EvalError> 
             Ge => Ok(Value::Bool(a >= b)),
             Eq => Ok(Value::Bool(a == b)),
             Ne => Ok(Value::Bool(a != b)),
+            And | Or => Err(bool_op_leak()),
         },
         (l, r) => {
             // At least one is Float (Str/Bool ruled out for these ops above).
@@ -256,6 +291,7 @@ fn eval_binop(op: BinaryOp, lhs: Value, rhs: Value) -> Result<Value, EvalError> 
                 Ge => Value::Bool(la >= ra),
                 Eq => Value::Bool(la == ra),
                 Ne => Value::Bool(la != ra),
+                And | Or => return Err(bool_op_leak()),
             };
             Ok(result)
         }
@@ -276,6 +312,23 @@ fn max_prec(a: Option<u8>, b: Option<u8>) -> Option<u8> {
         (Some(x), None) | (None, Some(x)) => Some(x),
         (None, None) => None,
     }
+}
+
+fn as_condition(v: Value) -> Result<bool, EvalError> {
+    match v {
+        Value::Bool(b) => Ok(b),
+        _ => Err(eval_err(
+            EvalErrorKind::TypeMismatch,
+            "expected a boolean condition".into(),
+        )),
+    }
+}
+
+fn bool_op_leak() -> EvalError {
+    eval_err(
+        EvalErrorKind::TypeMismatch,
+        "boolean operators are evaluated lazily and must not reach eval_binop".into(),
+    )
 }
 
 fn type_mismatch_for(v: &Value) -> EvalError {

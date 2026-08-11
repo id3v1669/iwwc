@@ -22,9 +22,9 @@ The type comes from the literal: integer, float, `#true`/`#false` bool, quoted o
 Several pairs may share one node (`var a=1 b=2`). Declaring the same name twice is a warning, the first
 declaration wins.
 
-## Using variables: `${…}`
+## Using variables: `${...}`
 
-Reference a variable inside any quoted field value. Text around and between `${…}` blocks passes through:
+Reference a variable inside any quoted field value. Text around and between `${...}` blocks passes through:
 
 ```kdl
 widget bar {
@@ -34,9 +34,12 @@ widget bar {
 text t1 "${round(iwwc.ram.used / 1073741824).1}G used, height ${myintvar / 2 + 10}"
 ```
 
-Inside `${…}` full math is available: `+ - * / % ^`, comparisons (`< > <= >= == !=`), and the functions
-`min(a, b)`, `max(a, b)`, and `round(x)` - the suffix `round(x).N` keeps `N` decimals. Referencing an
-unknown variable is a config error at load time.
+Inside `${...}` a full expression language is available: `+ - * / % ^`, comparisons
+(`< > <= >= == !=`), booleans (`&& || !`, `#true`/`#false`), a ternary
+(`cond ? a : b`), single-quoted string literals with `+` concatenation, and the functions
+`min(a, b)`, `max(a, b)`, and `round(x)` - the suffix `round(x).N` keeps `N` decimals.
+See [Interpolation & Math](./math.md). Referencing an unknown variable is a config error
+at load time.
 
 ## Runtime updates
 
@@ -47,7 +50,7 @@ iwwc get myintvar
 ```
 
 Every update re-resolves the config and re-renders open widgets. A value the config can't resolve with
-is rejected and nothing changes.
+- or that would break a widget's anchor/size constraints - is rejected and nothing changes.
 
 `iwwc reload` resets all variables to their declared values. The name `dnd` is reserved - it is daemon
 state, not a variable (see [Notifications](./notifications.md#do-not-disturb)).
@@ -73,6 +76,7 @@ TODO will be rewritten after more added and functionality established.
 - `iwwc.cpu.<n>.frequency` - freq in MHz.
 - `iwwc.cpu.avg.usage` - avg usage percent across all cores.
 - `iwwc.activesong` - title of the currently playing MPRIS song, updated as it changes (requires `playerctld`
-running). Empty when nothing plays. Declare `var iwwc.activesong="…"` to substitute a fallback.
+running). Empty when nothing plays. Declare `var iwwc.activesong="..."` to substitute a fallback.
+- `iwwc.ws.*` - workspaces from the compositor's `ext-workspace-v1` protocol.
 
 `iwwc get iwwc` lists the available namespaces, `iwwc get iwwc.cpu` the entries under one.

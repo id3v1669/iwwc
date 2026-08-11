@@ -42,7 +42,7 @@ pub enum FieldValue<T> {
     Expr(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum VarValue {
     Int(i128),
     Float(f64),
@@ -60,6 +60,7 @@ pub struct ParsedConfig {
     pub buttons: IndexMap<String, Button>,
     pub rows: IndexMap<String, Row>,
     pub columns: IndexMap<String, Column>,
+    pub repeats: IndexMap<String, Repeat>,
     pub texts: IndexMap<String, TextEl>,
     pub styles: IndexMap<String, Style>,
     pub borders: IndexMap<String, Border>,
@@ -154,6 +155,15 @@ pub struct Row {
     pub spacing: Option<FieldValue<f32>>,
     pub clip: Option<FieldValue<bool>>,
     pub align: Option<FieldValue<Vertical>>,
+    pub span: Span,
+}
+#[derive(Debug, Clone)]
+pub struct Repeat {
+    pub over: Option<FieldValue<String>>,
+    pub from: Option<FieldValue<f32>>,
+    pub to: Option<FieldValue<f32>>,
+    pub alias: Option<FieldValue<String>>,
+    pub child: Option<FieldValue<String>>,
     pub span: Span,
 }
 #[derive(Debug, Clone)]

@@ -62,8 +62,8 @@ Future:
 - [ ] hint support - reuse xdg popup
 - [-] integration with hyprland as build feature with default to false/// for now task replaced with [protocols implementation](https://github.com/waycrate/exwlshelleventloop/pull/407), other protocols support too?
 - [ ] update nix module to support config
-- [x] subscribtion to ext-workspace-v1. Where to implement, local, custom lib or exwlshelleventloop
+- [x] subscription to ext-workspace-v1. Where to implement, local, custom lib or exwlshelleventloop
 - [ ] predefined widget launcher
-- [ ] connect to base16x2-color-shemes
+- [ ] connect to base16x2-color-schemes
 - [ ] functionality to draw dialog(reuse of drawing notification). Refs: kdialog, yad, zenity
 - [ ] submit to nixpkgs if/after 100+ stars

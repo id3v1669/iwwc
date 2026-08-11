@@ -17,10 +17,49 @@ pub(crate) struct Ctx<'a> {
     pub env: &'a FlatEnv,
     pub errs: &'a mut Vec<ConfigError>,
     pub used: &'a mut HashSet<String>,
+    pub aliases: Vec<crate::config::resolver::vars::AliasBinding>,
+}
+
+impl Ctx<'_> {
+    fn eval(&self, s: &str, span: &Span) -> Result<Value, crate::config::math::EvalError> {
+        let vars = crate::config::resolver::vars::AliasEnv::new(self.env, self.aliases.clone());
+        math::evaluate(s, &vars, &span.source, 0)
+    }
+}
+
+fn mark_expr_id_literals_used(s: &str, ctx: &mut Ctx) {
+    use crate::config::math::interpolation::{Segment, segments};
+    use crate::config::math::lexer::{Lexer, Token};
+
+    let Ok(parts) = segments(s) else { return };
+    for part in parts {
+        let Segment::Expr { text, .. } = part else {
+            continue;
+        };
+        let Ok(tokens) = Lexer::new(text).tokenize() else {
+            continue;
+        };
+        for (token, _) in tokens {
+            if let Token::Str(literal) = token {
+                ctx.used.insert(literal);
+            }
+        }
+    }
 }
 
 fn mark_expr_vars_used(s: &str, ctx: &mut Ctx) {
-    for name in crate::config::resolver::vars::referenced_vars(s) {
+    'names: for name in crate::config::resolver::vars::referenced_vars(s) {
+        for binding in ctx.aliases.iter().rev() {
+            if let Some(rest) = name.strip_prefix(binding.name.as_str())
+                && let Some(rest) = rest.strip_prefix('.')
+            {
+                let resolved = format!("{}.{}", binding.prefix, rest);
+                if ctx.config.vars.contains_key(&resolved) {
+                    ctx.used.insert(resolved);
+                }
+                continue 'names;
+            }
+        }
         if ctx.config.vars.contains_key(&name) {
             ctx.used.insert(name);
         }
@@ -39,7 +78,7 @@ pub(crate) fn resolve_field<T: Clone>(
         Some(FieldValue::Literal(t)) => Some(t.clone()),
         Some(FieldValue::Expr(s)) => {
             mark_expr_vars_used(s, ctx);
-            match math::evaluate(s, ctx.env, &span.source, 0) {
+            match ctx.eval(s, span) {
                 Ok(value) => match coerce_fn(value, field_name, span) {
                     Ok(t) => Some(t),
                     Err(e) => {
@@ -114,12 +153,40 @@ pub(crate) fn resolve_widget(_name: &str, w: &Widget, ctx: &mut Ctx) -> Resolved
     }
 }
 
+enum Resolved {
+    One(ResolvedElement),
+    Many(Vec<ResolvedElement>),
+}
+
 pub(crate) fn resolve_ref(
     reference: &str,
     span: &Span,
     ctx: &mut Ctx,
     visited: &mut HashSet<String>,
 ) -> Option<ResolvedElement> {
+    match resolve_ref_multi(reference, span, ctx, visited)? {
+        Resolved::One(el) => Some(el),
+        Resolved::Many(_) => {
+            ctx.errs.push(ConfigError {
+                kind: ConfigErrorKind::InvalidFieldType,
+                span: span.clone(),
+                message: format!(
+                    "repeat \"{}\" must be referenced from a row or column children list",
+                    reference
+                ),
+                severity: Severity::Error,
+            });
+            None
+        }
+    }
+}
+
+fn resolve_ref_multi(
+    reference: &str,
+    span: &Span,
+    ctx: &mut Ctx,
+    visited: &mut HashSet<String>,
+) -> Option<Resolved> {
     if visited.contains(reference) {
         ctx.errs.push(ConfigError {
             kind: ConfigErrorKind::CircularReference,
@@ -131,9 +198,9 @@ pub(crate) fn resolve_ref(
     }
 
     if reference == "apptray" {
-        return Some(ResolvedElement::Apptray(Box::new(
+        return Some(Resolved::One(ResolvedElement::Apptray(Box::new(
             resolve_apptray_settings(ctx),
-        )));
+        ))));
     }
 
     let owned = ctx
@@ -176,6 +243,12 @@ pub(crate) fn resolve_ref(
                 .columns
                 .get(reference)
                 .map(|c| OwnedEl::Column(c.clone()))
+        })
+        .or_else(|| {
+            ctx.config
+                .repeats
+                .get(reference)
+                .map(|r| OwnedEl::Repeat(r.clone()))
         });
     if let Some(el) = owned {
         ctx.used.insert(reference.to_string());
@@ -186,7 +259,6 @@ pub(crate) fn resolve_ref(
     }
 
     if let Some(crate::config::types::VarValue::Str(s)) = ctx.env.lookup_value(reference) {
-        let s = s.clone();
         ctx.used.insert(reference.to_string());
         if visited.contains(reference) {
             ctx.errs.push(ConfigError {
@@ -198,7 +270,7 @@ pub(crate) fn resolve_ref(
             return None;
         }
         visited.insert(reference.to_string());
-        let out = resolve_ref(&s, span, ctx, visited);
+        let out = resolve_ref_multi(&s, span, ctx, visited);
         visited.remove(reference);
         return out;
     }
@@ -228,6 +300,7 @@ enum OwnedEl {
     Button(Button),
     Row(Row),
     Column(Column),
+    Repeat(crate::config::types::Repeat),
     Text(TextEl),
 }
 
@@ -238,6 +311,7 @@ fn single_element_owned(frag: &ParsedConfig) -> Option<OwnedEl> {
         + frag.buttons.len()
         + frag.rows.len()
         + frag.columns.len()
+        + frag.repeats.len()
         + frag.texts.len();
     if count != 1 {
         return None;
@@ -260,6 +334,9 @@ fn single_element_owned(frag: &ParsedConfig) -> Option<OwnedEl> {
     if let Some((_, c)) = frag.columns.iter().next() {
         return Some(OwnedEl::Column(c.clone()));
     }
+    if let Some((_, r)) = frag.repeats.iter().next() {
+        return Some(OwnedEl::Repeat(r.clone()));
+    }
     if let Some((_, t)) = frag.texts.iter().next() {
         return Some(OwnedEl::Text(t.clone()));
     }
@@ -270,7 +347,7 @@ fn resolve_fragment_element(
     el: OwnedEl,
     ctx: &mut Ctx,
     visited: &mut HashSet<String>,
-) -> Option<ResolvedElement> {
+) -> Option<Resolved> {
     match el {
         OwnedEl::Container(c) => {
             resolve_container(&c, ctx, visited).map(|c| ResolvedElement::Container(Box::new(c)))
@@ -286,8 +363,10 @@ fn resolve_fragment_element(
         }
         OwnedEl::Row(r) => Some(ResolvedElement::Row(resolve_row(&r, ctx, visited))),
         OwnedEl::Column(c) => Some(ResolvedElement::Column(resolve_column(&c, ctx, visited))),
+        OwnedEl::Repeat(r) => return Some(Resolved::Many(resolve_repeat(&r, ctx, visited))),
         OwnedEl::Text(t) => Some(ResolvedElement::Text(resolve_text(&t, ctx))),
     }
+    .map(Resolved::One)
 }
 
 fn resolve_child(
@@ -415,8 +494,10 @@ fn resolve_children(
     };
     let mut out = Vec::new();
     for id in &ids {
-        if let Some(el) = resolve_ref(id, span, ctx, visited) {
-            out.push(el);
+        match resolve_ref_multi(id, span, ctx, visited) {
+            Some(Resolved::One(el)) => out.push(el),
+            Some(Resolved::Many(els)) => out.extend(els),
+            None => {}
         }
     }
     out
@@ -434,6 +515,81 @@ fn resolve_row(r: &Row, ctx: &mut Ctx, visited: &mut HashSet<String>) -> Resolve
         align: resolve_field(&r.align, "align", &r.span, coerce::coerce_row_align, ctx),
         span: r.span.clone(),
     }
+}
+
+fn resolve_repeat(
+    r: &crate::config::types::Repeat,
+    ctx: &mut Ctx,
+    visited: &mut HashSet<String>,
+) -> Vec<ResolvedElement> {
+    let over = literal_or_eval_id(&r.over, &r.span, ctx).unwrap_or_default();
+    let alias = literal_or_eval_id(&r.alias, &r.span, ctx).unwrap_or_default();
+    let child = literal_or_eval_id(&r.child, &r.span, ctx).unwrap_or_default();
+    let from = resolve_field(&r.from, "from", &r.span, coerce::coerce_f32, ctx).unwrap_or(0.0);
+    let to = resolve_field(&r.to, "to", &r.span, coerce::coerce_f32, ctx).unwrap_or(-1.0);
+
+    let from = from.round().clamp(-1e18, 1e18) as i128;
+    let to = to.round().clamp(-1e18, 1e18) as i128;
+
+    let binding_for = |index: i128| crate::config::resolver::vars::AliasBinding {
+        name: alias.clone(),
+        prefix: format!("{over}.{index}"),
+        index: crate::config::types::VarValue::Int(index),
+    };
+
+    let mut children = Vec::new();
+    if to < from && !alias.is_empty() && !child.is_empty() {
+        let mut discarded = Vec::new();
+        let mut aliases = ctx.aliases.clone();
+        aliases.push(binding_for(from));
+        let mut scratch = Ctx {
+            config: ctx.config,
+            env: ctx.env,
+            errs: &mut discarded,
+            used: ctx.used,
+            aliases,
+        };
+        let _ = resolve_ref(&child, &r.span, &mut scratch, visited);
+    }
+    if to >= from && !alias.is_empty() && !child.is_empty() {
+        let count = to - from + 1;
+        let capped = count.min(crate::workspace::MAX_SLOTS);
+        if count > crate::workspace::MAX_SLOTS {
+            ctx.errs.push(ConfigError {
+                kind: ConfigErrorKind::RangeClamped,
+                span: r.span.clone(),
+                message: format!(
+                    "repeat range spans {count} instances, clamping to {}",
+                    crate::workspace::MAX_SLOTS
+                ),
+                severity: Severity::Warning,
+            });
+        }
+        let mut seen_raw = HashSet::new();
+        for offset in 0..capped {
+            let index = from + offset;
+            ctx.aliases.push(binding_for(index));
+            let before = ctx.errs.len();
+            if let Some(el) = resolve_ref(&child, &r.span, ctx, visited) {
+                children.push(el);
+            }
+            ctx.aliases.pop();
+            let mut i = before;
+            while i < ctx.errs.len() {
+                if seen_raw.insert(ctx.errs[i].message.clone()) {
+                    ctx.errs[i].message = format!(
+                        "{} (repeat \"{alias}\" at index {index}, resolving \"{over}.{index}\")",
+                        ctx.errs[i].message
+                    );
+                    i += 1;
+                } else {
+                    ctx.errs.remove(i);
+                }
+            }
+        }
+    }
+
+    children
 }
 
 fn resolve_column(c: &Column, ctx: &mut Ctx, visited: &mut HashSet<String>) -> ResolvedColumn {
@@ -457,7 +613,8 @@ fn resolve_string_ref(
     visited: &mut HashSet<String>,
 ) -> Option<ResolvedElement> {
     mark_expr_vars_used(s, ctx);
-    match math::evaluate(s, ctx.env, &span.source, 0) {
+    mark_expr_id_literals_used(s, ctx);
+    match ctx.eval(s, span) {
         Ok(value) => match coerce::coerce_string(value, "child", span) {
             Ok(id) => resolve_ref(&id, span, ctx, visited),
             Err(e) => {
@@ -488,7 +645,8 @@ fn literal_or_eval_id(
         Some(FieldValue::Expr(s)) => {
             let s = s.clone();
             mark_expr_vars_used(&s, ctx);
-            match math::evaluate(&s, ctx.env, &span.source, 0) {
+            mark_expr_id_literals_used(&s, ctx);
+            match ctx.eval(&s, span) {
                 Ok(v) => coerce::coerce_string(v, "ref", span).ok(),
                 Err(e) => {
                     ctx.errs.push(ConfigError {

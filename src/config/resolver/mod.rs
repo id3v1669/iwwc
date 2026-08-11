@@ -21,6 +21,7 @@ pub fn resolve(config: &ParsedConfig) -> (Option<ResolvedConfig>, Vec<ConfigErro
             env: &env,
             errs: &mut errs,
             used: &mut used,
+            aliases: Vec::new(),
         };
         let rw = elements::resolve_widget(name, w, &mut ctx);
         widgets.insert(name.clone(), rw);
@@ -35,6 +36,7 @@ pub fn resolve(config: &ParsedConfig) -> (Option<ResolvedConfig>, Vec<ConfigErro
             env: &env,
             errs: &mut errs,
             used: &mut used,
+            aliases: Vec::new(),
         };
         elements::resolve_apptray_settings(&mut ctx)
     };
@@ -77,6 +79,7 @@ pub fn resolve(config: &ParsedConfig) -> (Option<ResolvedConfig>, Vec<ConfigErro
             env: &env,
             errs: &mut errs,
             used: &mut used,
+            aliases: Vec::new(),
         };
         let action = elements::resolve_field(
             &e.action,
@@ -211,6 +214,7 @@ fn resolve_notification(
         env,
         errs,
         used,
+        aliases: Vec::new(),
     };
     let span = &ns.span;
     if let Some(v) = elements::resolve_field(&ns.width, "width", span, coerce::coerce_f32, &mut ctx)

@@ -29,10 +29,10 @@ button greeting {
 
 The pieces of a declaration:
 
-- **Node name** (`var`, `text`, `button`, `widget`, …) says what is being declared.
+- **Node name** (`var`, `text`, `button`, `widget`, ...) says what is being declared.
 Unknown node names are an error.
 - **First bare argument** is the declaration's *id* that will be used to call that element.
-- **A block `{ … }`** holds the fields, one child node per field: `child greeting_txt`,
+- **A block `{ ... }`** holds the fields, one child node per field: `child greeting_txt`,
 `action "notify-send hi"`, `padding 5 13`, `margin 5 8 0 8`, `radius 10 10 0 0`, `offset 2 2`,
 and `children a b c`.
 

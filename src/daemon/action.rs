@@ -8,7 +8,11 @@ pub fn run_action(action: &str) {
         )
         .spawn()
     {
-        Ok(_child) => {}
+        Ok(mut child) => {
+            std::thread::spawn(move || {
+                let _ = child.wait();
+            });
+        }
         Err(e) => log::warn!("failed to run action `{action}`: {e}"),
     }
 }

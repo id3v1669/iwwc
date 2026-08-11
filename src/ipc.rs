@@ -5,6 +5,7 @@ pub enum Command {
     Open { window: String },
     Close { window: String },
     Toggle { window: String },
+    WsSwitch { id: String },
     Reload,
 }
 
@@ -39,6 +40,7 @@ impl Command {
             Command::Open { window } => format!("open {}", window),
             Command::Close { window } => format!("close {}", window),
             Command::Toggle { window } => format!("toggle {}", window),
+            Command::WsSwitch { id } => format!("ws-switch {}", id),
             Command::Reload => "reload".to_string(),
         }
     }
@@ -86,6 +88,13 @@ impl Command {
                     "close" => Command::Close { window },
                     _ => Command::Toggle { window },
                 })
+            }
+            "ws-switch" => {
+                let id = rest.trim();
+                if id.is_empty() {
+                    return Err(ParseError::MissingArgument("workspace id"));
+                }
+                Ok(Command::WsSwitch { id: id.to_string() })
             }
             other => Err(ParseError::UnknownCommand(other.to_string())),
         }

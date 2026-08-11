@@ -4,6 +4,8 @@ use std::ops::Range;
 pub enum Token {
     Int(i128),
     Float(f64),
+    Str(String),
+    Bool(bool),
     Ident(String),
     LParen,
     RParen,
@@ -21,6 +23,11 @@ pub enum Token {
     Ge,
     Eq,
     Ne,
+    Question,
+    Colon,
+    AndAnd,
+    OrOr,
+    Not,
 }
 
 #[derive(Debug, Clone)]
@@ -120,9 +127,36 @@ impl<'src> Lexer<'src> {
                         self.pos += 2;
                         Token::Ne
                     } else {
-                        return Err(unexpected_char(self.pos, '!'));
+                        self.pos += 1;
+                        Token::Not
                     }
                 }
+                b'#' => self.lex_bool(start)?,
+                b'?' => {
+                    self.pos += 1;
+                    Token::Question
+                }
+                b':' => {
+                    self.pos += 1;
+                    Token::Colon
+                }
+                b'&' => {
+                    if self.bytes.get(self.pos + 1) == Some(&b'&') {
+                        self.pos += 2;
+                        Token::AndAnd
+                    } else {
+                        return Err(unexpected_char(self.pos, '&'));
+                    }
+                }
+                b'|' => {
+                    if self.bytes.get(self.pos + 1) == Some(&b'|') {
+                        self.pos += 2;
+                        Token::OrOr
+                    } else {
+                        return Err(unexpected_char(self.pos, '|'));
+                    }
+                }
+                b'\'' => self.lex_string(start)?,
                 b'.' => {
                     self.pos += 1;
                     Token::Dot
@@ -158,6 +192,45 @@ impl<'src> Lexer<'src> {
                 offset: start,
                 message: format!("integer literal \"{}\" is too large", s),
             })
+        }
+    }
+
+    fn lex_string(&mut self, start: usize) -> Result<Token, LexError> {
+        self.pos += 1;
+        let content_start = self.pos;
+        loop {
+            match self.bytes.get(self.pos) {
+                None => {
+                    return Err(LexError {
+                        offset: start,
+                        message: "unterminated string literal".to_string(),
+                    });
+                }
+                Some(b'\'') => {
+                    let s = self.src[content_start..self.pos].to_string();
+                    self.pos += 1;
+                    return Ok(Token::Str(s));
+                }
+                Some(_) => self.pos += 1,
+            }
+        }
+    }
+
+    fn lex_bool(&mut self, start: usize) -> Result<Token, LexError> {
+        self.pos += 1;
+        let word_start = self.pos;
+        while matches!(self.bytes.get(self.pos),
+            Some(b) if b.is_ascii_alphanumeric() || *b == b'_')
+        {
+            self.pos += 1;
+        }
+        match &self.src[word_start..self.pos] {
+            "true" => Ok(Token::Bool(true)),
+            "false" => Ok(Token::Bool(false)),
+            other => Err(LexError {
+                offset: start,
+                message: format!("expected #true or #false, got \"#{}\"", other),
+            }),
         }
     }
 

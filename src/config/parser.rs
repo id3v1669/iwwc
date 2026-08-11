@@ -156,6 +156,7 @@ fn node_spec(name: &str) -> Option<(usize, &'static str)> {
             "w h padding action clip style style:hover style:active style:disabled child",
         ),
         "row" | "column" => (1, "children w h padding spacing clip align"),
+        "repeat" => (1, "over from to as child"),
         "text" => (2, "w h align_x align_y color font text"),
         "style" => (1, "text bg border shadow snap"),
         "border" => (1, "color w radius"),
@@ -234,6 +235,7 @@ pub(crate) fn parse_document_into(
             "button" => insert!(out.buttons, build_button),
             "row" => insert!(out.rows, build_row),
             "column" => insert!(out.columns, build_column),
+            "repeat" => insert!(out.repeats, build_repeat),
             "text" => insert!(out.texts, build_text),
             "notification" => {
                 let ns = build_notification(node, source, errs);
@@ -1500,6 +1502,40 @@ pub(crate) fn build_row(
     Some((id, r))
 }
 
+use crate::config::types::Repeat;
+
+pub(crate) fn build_repeat(
+    node: &kdl::KdlNode,
+    source: &SourceText,
+    errs: &mut Vec<ConfigError>,
+) -> Option<(String, Repeat)> {
+    let id = first_positional_string(node)?;
+    let r = Repeat {
+        over: field_id_ref("over", node, source, errs),
+        from: field_f32("from", node, source, errs),
+        to: field_f32("to", node, source, errs),
+        alias: field_id_ref("as", node, source, errs),
+        child: field_id_ref("child", node, source, errs),
+        span: span_of_node(node, source),
+    };
+    for (missing, name) in [
+        (r.over.is_none(), "over"),
+        (r.alias.is_none(), "as"),
+        (r.child.is_none(), "child"),
+        (r.from.is_none(), "from"),
+        (r.to.is_none(), "to"),
+    ] {
+        if missing {
+            errs.push(err_at(
+                span_of_node(node, source),
+                ConfigErrorKind::MissingRequiredField,
+                format!("{name} is required"),
+            ));
+        }
+    }
+    Some((id, r))
+}
+
 use crate::config::types::Column;
 
 pub(crate) fn build_column(
@@ -2738,7 +2774,7 @@ mod tests {
             },
             Case {
                 label: "with default",
-                kdl: r#"pull dt="date" i="1s" default="…""#,
+                kdl: r#"pull dt="date" i="1s" default="...""#,
                 expect: Expect::Ok,
             },
             Case {

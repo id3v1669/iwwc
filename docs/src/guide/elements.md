@@ -37,6 +37,32 @@ Lay out `children` horizontally (`row`) or vertically (`column`), with `spacing`
 them. `align` positions children on the cross axis: `t`/`c`/`b` for rows, `l`/`c`/`r`
 for columns. Also `w`, `h`, `padding`, `clip`.
 
+## repeat
+
+Generates children instead of listing them: `child` is instantiated once per index from
+`from` to `to`, and the instances are spliced into the row or column `children` list
+that references the repeat. The container decides direction, spacing and alignment,
+and generated instances can sit between static children (`children logo wsrow clock`).
+The `as` alias gives each instance its slice of the `over` variable namespace - the
+canonical use is a workspace bar over `iwwc.ws.*`:
+
+```kdl
+row bar { children wsrow; spacing 6 }
+repeat wsrow {
+  over "iwwc.ws.all.slot"
+  from "${iwwc.ws.all.first}"
+  to   "${iwwc.ws.all.last}"
+  as w
+  child wsslot
+}
+button wsslot {
+  action "${w.exists && w.can_switch ? '$IWWC ws switch ' + w.id : ''}"
+  child wslabel
+  style "${w.exists ? (w.active ? 'wsactive' : 'wsplain') : 'wsdot'}"
+}
+text wslabel "${w.exists ? w.name : ''}"
+```
+
 ## container
 
 Wraps a single `child` to give it size, padding, alignment (`align_x`, `align_y`) and a
