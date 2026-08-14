@@ -31,6 +31,7 @@ iced = { version = "0.14.0", default-features = false, features = [
   "svg"
 ] }
 #iced_layershell = { path = "/home/user/myrepos/exwlshelleventloop/iced_layershell" }
+#iced_wayland_subscriber = { path = "/home/user/myrepos/exwlshelleventloop/iced_wayland_subscriber", features = ["workspace"] }
 iced_layershell = { git = "https://github.com/waycrate/exwlshelleventloop", branch = "master" }
 iced_wayland_subscriber = { git = "https://github.com/waycrate/exwlshelleventloop", branch = "master", features = ["workspace"] }
 

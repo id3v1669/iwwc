@@ -10,7 +10,6 @@ use std::sync::{Arc, Mutex};
 
 use iced::window::Id as WindowId;
 use iced::{Element, Subscription, Task};
-use iced_layershell::reexport::{Anchor, KeyboardInteractivity, Layer, LayerSize};
 use iced_layershell::settings::{LayerShellSettings, Settings, StartMode};
 use iced_layershell::to_layer_message;
 use indexmap::IndexMap;
@@ -142,24 +141,15 @@ pub fn run(store: Store, config_path: std::path::PathBuf) -> iced_layershell::Re
     .subscription(App::subscription)
     .style(App::style)
     .settings(Settings {
-        layer_settings: hidden_initial(),
+        layer_settings: LayerShellSettings {
+            start_mode: StartMode::Background,
+            ..Default::default()
+        },
         shell_broadcast,
         with_connection: connection.map(Into::into),
         ..Default::default()
     })
     .run()
-}
-
-fn hidden_initial() -> LayerShellSettings {
-    LayerShellSettings {
-        size: LayerSize::px(1, 1),
-        layer: Layer::Background,
-        anchor: Anchor::Top | Anchor::Left,
-        exclusive_zone: 0,
-        keyboard_interactivity: KeyboardInteractivity::None,
-        start_mode: StartMode::Active,
-        ..Default::default()
-    }
 }
 
 impl App {

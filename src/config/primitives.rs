@@ -171,10 +171,9 @@ pub fn parse_interval(s: &str) -> Option<std::time::Duration> {
         (n, 1000)
     } else if let Some(n) = s.strip_suffix('m') {
         (n, 60_000)
-    } else if let Some(n) = s.strip_suffix('h') {
-        (n, 3_600_000)
     } else {
-        return None;
+        let n = s.strip_suffix('h')?;
+        (n, 3_600_000)
     };
     let val: u64 = num.trim().parse().ok()?;
     Some(std::time::Duration::from_millis(
