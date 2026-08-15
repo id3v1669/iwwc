@@ -29,6 +29,7 @@ pkgs.mkShell {
 
     # Tools
     mdbook
+    cargo-flamegraph
     cargo-audit
     cargo-deny
     clippy
