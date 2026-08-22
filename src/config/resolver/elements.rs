@@ -130,7 +130,7 @@ pub(crate) fn resolve_widget(_name: &str, w: &Widget, ctx: &mut Ctx) -> Resolved
             ctx,
         )
         .unwrap_or(crate::config::primitives::OutputSpec::Direct(
-            iced_layershell::reexport::OutputOption::LastOutput,
+            iced_exwlshell::reexport::OutputOption::LastOutput,
         )),
         migrate: resolve_field(
             &w.migrate,

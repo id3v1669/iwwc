@@ -614,9 +614,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.4.3"
+version = "1.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "509591b7bcd67f4ef775afad7662703b4935daaa6ec0e5605cfb1090b32a2b6d"
+checksum = "0ad534f4357a5264cce5019c989cf66a4f0dc4e0d1b1d15f8aacec0ff7360273"
 dependencies = [
  "find-msvc-tools",
  "jobserver",
@@ -912,9 +912,9 @@ checksum = "f27ae1dd37df86211c42e150270f82743308803d90a6f6e6651cd730d5e1732f"
 
 [[package]]
 name = "darling"
-version = "0.24.0"
+version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88490bf1b990d87eaaa7ac8aa887f629a08e7359765b4911faf63c3763347d23"
+checksum = "ed17f5901b6630b993ca003def43f2f8ef4014fc13b047b57aad617ff32bc2ec"
 dependencies = [
  "darling_core",
  "darling_macro",
@@ -922,9 +922,9 @@ dependencies = [
 
 [[package]]
 name = "darling_core"
-version = "0.24.0"
+version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "084e274f91c482280130e1e34e0b8d6e66776a060d7b6de7b84289ca778868c4"
+checksum = "6837e2cf7485aaae18f86181d2f0e9a7ed297a025e220aeabf63fdebd3a2ddff"
 dependencies = [
  "ident_case",
  "proc-macro2",
@@ -935,9 +935,9 @@ dependencies = [
 
 [[package]]
 name = "darling_macro"
-version = "0.24.0"
+version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68f5792fa0d41cd2325ce0ffa64f0a340eaebd4971a3a0c5e1ffd2cc488a355e"
+checksum = "2ac7135c3ef02b2f7833bbeb1be5ba7f966dcde8a87c6b87f65a778d71a02785"
 dependencies = [
  "darling_core",
  "quote",
@@ -1050,9 +1050,9 @@ checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
 
 [[package]]
 name = "either"
-version = "1.17.0"
+version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e5e8f6c15a24b9a3ee5efec809ccd006d3b30e8b3bb63c39af737c7f87daa1d"
+checksum = "252afb9ae5eaa683babdc6a068b3f5726eb19e05070c731f9b2a23a7c3e8ed34"
 
 [[package]]
 name = "endi"
@@ -1142,9 +1142,9 @@ dependencies = [
 
 [[package]]
 name = "error-code"
-version = "3.3.2"
+version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dea2df4cf52843e0452895c455a1a2cfbb842a1e7329671acf418fdc53ed4c59"
+checksum = "0b5343afd4a8365a643ac588dab4cf234a190c7f6c88c9f6dd6ffe00837661b7"
 
 [[package]]
 name = "etagere"
@@ -1200,6 +1200,27 @@ dependencies = [
  "rayon-core",
  "smallvec",
  "zune-inflate",
+]
+
+[[package]]
+name = "exwlshellev"
+version = "0.19.1"
+source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#287b9c30e784ad18d20dd4fc1935cb975f229142"
+dependencies = [
+ "calloop 0.14.4",
+ "calloop-wayland-source 0.4.1",
+ "log",
+ "raw-window-handle",
+ "smithay-client-toolkit 0.21.1",
+ "tempfile",
+ "thiserror 2.0.20",
+ "waycrate_xkbkeycode",
+ "wayland-backend",
+ "wayland-client",
+ "wayland-cursor",
+ "wayland-protocols",
+ "wayland-protocols-misc",
+ "wayland-protocols-wlr",
 ]
 
 [[package]]
@@ -1268,9 +1289,9 @@ dependencies = [
 
 [[package]]
 name = "font-types"
-version = "0.12.3"
+version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75382bc7392ef10aad10935f92fc3db36d2d4dad0e5d96d8d65e04f89a07ec39"
+checksum = "e64eb721ca85a34323425f4041adc5d82704d3782d5f8f03793bc012419dce23"
 dependencies = [
  "bytemuck",
 ]
@@ -1738,7 +1759,7 @@ dependencies = [
 [[package]]
 name = "iced_exdevtools"
 version = "0.19.1"
-source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#26a318d714a6324ba014110b8fb5086fdf667169"
+source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#287b9c30e784ad18d20dd4fc1935cb975f229142"
 dependencies = [
  "iced_debug",
  "iced_devtools",
@@ -1746,6 +1767,44 @@ dependencies = [
  "iced_widget",
  "log",
  "winit-core",
+]
+
+[[package]]
+name = "iced_exwlshell"
+version = "0.19.1"
+source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#287b9c30e784ad18d20dd4fc1935cb975f229142"
+dependencies = [
+ "enumflags2",
+ "exwlshellev",
+ "futures",
+ "iced_core",
+ "iced_debug",
+ "iced_devtools",
+ "iced_exdevtools",
+ "iced_exwlshell_macros",
+ "iced_futures",
+ "iced_graphics",
+ "iced_program",
+ "iced_renderer",
+ "iced_runtime",
+ "iced_wayland_subscriber",
+ "log",
+ "mundy",
+ "thiserror 2.0.20",
+ "tracing",
+ "window_clipboard",
+]
+
+[[package]]
+name = "iced_exwlshell_macros"
+version = "0.19.1"
+source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#287b9c30e784ad18d20dd4fc1935cb975f229142"
+dependencies = [
+ "darling",
+ "manyhow",
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
 ]
 
 [[package]]
@@ -1782,44 +1841,6 @@ dependencies = [
  "rustc-hash 2.1.3",
  "thiserror 2.0.20",
  "unicode-segmentation",
-]
-
-[[package]]
-name = "iced_layershell"
-version = "0.19.1"
-source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#26a318d714a6324ba014110b8fb5086fdf667169"
-dependencies = [
- "enumflags2",
- "futures",
- "iced_core",
- "iced_debug",
- "iced_devtools",
- "iced_exdevtools",
- "iced_futures",
- "iced_graphics",
- "iced_layershell_macros",
- "iced_program",
- "iced_renderer",
- "iced_runtime",
- "iced_wayland_subscriber",
- "layershellev",
- "log",
- "mundy",
- "thiserror 2.0.20",
- "tracing",
- "window_clipboard",
-]
-
-[[package]]
-name = "iced_layershell_macros"
-version = "0.19.1"
-source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#26a318d714a6324ba014110b8fb5086fdf667169"
-dependencies = [
- "darling",
- "manyhow",
- "proc-macro2",
- "quote",
- "syn 3.0.3",
 ]
 
 [[package]]
@@ -1879,7 +1900,7 @@ dependencies = [
 [[package]]
 name = "iced_wayland_subscriber"
 version = "0.19.1"
-source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#26a318d714a6324ba014110b8fb5086fdf667169"
+source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#287b9c30e784ad18d20dd4fc1935cb975f229142"
 dependencies = [
  "futures",
  "iced_core",
@@ -2041,7 +2062,7 @@ dependencies = [
  "freedesktop-icons",
  "futures",
  "iced",
- "iced_layershell",
+ "iced_exwlshell",
  "iced_wayland_subscriber",
  "indexmap",
  "kdl",
@@ -2244,27 +2265,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "layershellev"
-version = "0.19.1"
-source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#26a318d714a6324ba014110b8fb5086fdf667169"
-dependencies = [
- "calloop 0.14.4",
- "calloop-wayland-source 0.4.1",
- "log",
- "raw-window-handle",
- "smithay-client-toolkit 0.21.1",
- "tempfile",
- "thiserror 2.0.20",
- "waycrate_xkbkeycode",
- "wayland-backend",
- "wayland-client",
- "wayland-cursor",
- "wayland-protocols",
- "wayland-protocols-misc",
- "wayland-protocols-wlr",
-]
-
-[[package]]
 name = "lebe"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2358,9 +2358,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.33"
+version = "0.4.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
+checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 
 [[package]]
 name = "loop9"
@@ -3132,9 +3132,9 @@ dependencies = [
 
 [[package]]
 name = "ordered-float"
-version = "5.3.0"
+version = "5.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7d950ca161dc355eaf28f82b11345ed76c6e1f6eb1f4f4479e0323b9e2fbd0e"
+checksum = "8c7c9e0d9b23589f26070720bac724174bfec1083e82f7854cdd0267518343c0"
 dependencies = [
  "num-traits",
 ]
@@ -3596,7 +3596,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "046a7d674daf459825b32f5062056d6882db0d2f5a479fbd76ccfc870ac18709"
 dependencies = [
  "bytemuck",
- "font-types 0.12.3",
+ "font-types 0.12.4",
  "once_cell",
 ]
 
@@ -4568,9 +4568,9 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uuid"
-version = "1.24.1"
+version = "1.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cefc03fd367c0c6d4305de1b312cf00248c4114f4a0418ce6a6af769e3b0bd9"
+checksum = "f053576934f05a761a402421fbbe3d425d9366f75f978806a037b3ca481abecc"
 dependencies = [
  "js-sys",
  "serde_core",
@@ -4691,7 +4691,7 @@ dependencies = [
 [[package]]
 name = "waycrate_xkbkeycode"
 version = "0.19.1"
-source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#26a318d714a6324ba014110b8fb5086fdf667169"
+source = "git+https://github.com/waycrate/exwlshelleventloop?branch=master#287b9c30e784ad18d20dd4fc1935cb975f229142"
 dependencies = [
  "calloop 0.14.4",
  "log",
@@ -5661,9 +5661,9 @@ dependencies = [
 
 [[package]]
 name = "zvariant"
-version = "5.14.0"
+version = "5.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5e28c25bd8bb8da5a1f3e7065d0c156b9ee9a7973adf78b0e35eaefdf3b1b5c"
+checksum = "c1d34c27cc6cdd1f458427519dd6b8612f7b7e3f7b9a0b2355d041dda9869147"
 dependencies = [
  "endi",
  "enumflags2",
@@ -5676,9 +5676,9 @@ dependencies = [
 
 [[package]]
 name = "zvariant_derive"
-version = "5.14.0"
+version = "5.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d496a145685283b67e232bd9e47377f6b60ad9d51e3601b23867f77c42477f96"
+checksum = "864155e69b4352db0c7f374917bf45d1e0c8d17659c8b3dbf9795f3673f8c497"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -5689,9 +5689,9 @@ dependencies = [
 
 [[package]]
 name = "zvariant_utils"
-version = "4.0.0"
+version = "4.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "629d80ece222cad20fe0e8741be493c4ab166acf3b85341bdc2cdbcfd8f3c2d6"
+checksum = "bad0294361a320b694a328460dc73add56c306150f5cb6bfafc44446120008a3"
 dependencies = [
  "proc-macro2",
  "quote",

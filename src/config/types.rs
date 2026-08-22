@@ -1,6 +1,6 @@
 use iced::alignment::{Horizontal, Vertical};
 use iced::{Color, Padding, border::Radius};
-use iced_layershell::reexport::{Anchor, Layer, OutputOption};
+use iced_exwlshell::reexport::{Anchor, Layer, OutputOption};
 use indexmap::IndexMap;
 use miette::SourceSpan;
 use std::sync::Arc;

@@ -1,7 +1,7 @@
 use crate::tray::menu_types::MenuItem;
 use iced::window::Id as WindowId;
-use iced_layershell::actions::IcedNewPopupSettings;
-use iced_layershell::reexport::{PixelSize, PopupAnchor, PopupConstraintAdjustment, PopupGravity};
+use iced_exwlshell::actions::IcedNewPopupSettings;
+use iced_exwlshell::reexport::{PixelSize, PopupAnchor, PopupConstraintAdjustment, PopupGravity};
 
 pub fn root_popup_settings(anchor: MenuAnchor, width: u32, height: u32) -> IcedNewPopupSettings {
     let (cx, cy) = anchor.cursor;

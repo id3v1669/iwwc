@@ -9,7 +9,7 @@ use crate::config::types::{VarDecl, VarValue};
 use crate::config::{ConfigError, ConfigErrorKind, Severity};
 use iced::Padding;
 use iced::border::Radius;
-use iced_layershell::reexport::Anchor;
+use iced_exwlshell::reexport::Anchor;
 
 pub(crate) fn build_var(
     node: &kdl::KdlNode,
@@ -1785,7 +1785,7 @@ pub(crate) fn build_notification(
 mod tests {
     use crate::config::{Severity, parse_str};
     use iced::alignment::{Horizontal, Vertical};
-    use iced_layershell::reexport::{Layer, OutputOption};
+    use iced_exwlshell::reexport::{Layer, OutputOption};
 
     pub(crate) enum Expect {
         Ok,
@@ -1890,7 +1890,7 @@ mod tests {
         assert_eq!(span_at("ab", 999, 0).line_col(), (1, 3));
     }
 
-    use iced_layershell::reexport::Anchor;
+    use iced_exwlshell::reexport::Anchor;
 
     #[test]
     fn length_keyword_parsing() {

@@ -2,7 +2,7 @@ use iced::Color;
 use iced::advanced::text::Alignment as TextAlignment;
 use iced::alignment::{Horizontal, Vertical};
 use iced::font::{Stretch, Style as FontStyle, Weight};
-use iced_layershell::reexport::{Anchor, Layer, OutputOption};
+use iced_exwlshell::reexport::{Anchor, Layer, OutputOption};
 use std::str::FromStr;
 
 pub fn parse_font_weight(s: &str) -> Option<Weight> {

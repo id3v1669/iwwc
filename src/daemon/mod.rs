@@ -10,8 +10,8 @@ use std::sync::{Arc, Mutex};
 
 use iced::window::Id as WindowId;
 use iced::{Element, Subscription, Task};
-use iced_layershell::settings::{LayerShellSettings, Settings, StartMode};
-use iced_layershell::to_layer_message;
+use iced_exwlshell::settings::{LayerShellSettings, Settings, StartMode};
+use iced_exwlshell::to_layer_message;
 use indexmap::IndexMap;
 use tokio::sync::oneshot;
 
@@ -110,13 +110,13 @@ struct NotifState {
     timer_gen: u64,
 }
 
-pub fn run(store: Store, config_path: std::path::PathBuf) -> iced_layershell::Result {
+pub fn run(store: Store, config_path: std::path::PathBuf) -> iced_exwlshell::Result {
     let (shell_broadcast, shell_events) = iced_wayland_subscriber::shell::channel();
     let connection = wayland_client::Connection::connect_to_env()
         .inspect_err(|e| log::warn!("could not connect to the wayland compositor: {e}"))
         .ok();
     let subscriber_connection = connection.clone();
-    iced_layershell::daemon(
+    iced_exwlshell::daemon(
         move || {
             let app = App::new(
                 store.clone(),
@@ -986,7 +986,7 @@ impl App {
         Task::batch(tasks)
     }
 
-    fn output_for(&self, name: &str) -> iced_layershell::reexport::OutputOption {
+    fn output_for(&self, name: &str) -> iced_exwlshell::reexport::OutputOption {
         let live: HashMap<String, String> = self
             .windows
             .iter()
@@ -1265,7 +1265,7 @@ fn menu_layout_task(bus: String, path: String, notify: bool, icon_size: u16) -> 
 }
 
 fn region_task(id: WindowId, transparent: bool) -> Task<Message> {
-    let callback = iced_layershell::actions::ActionCallback::new(move |region| {
+    let callback = iced_exwlshell::actions::ActionCallback::new(move |region| {
         if !transparent {
             region.add(0, 0, i32::MAX, i32::MAX);
         }

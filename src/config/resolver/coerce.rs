@@ -5,7 +5,7 @@ use crate::config::{ConfigError, ConfigErrorKind, Severity};
 use iced::Color;
 use iced::advanced::text::Alignment as TextAlignment;
 use iced::alignment::{Horizontal, Vertical};
-use iced_layershell::reexport::{Anchor, Layer, OutputOption};
+use iced_exwlshell::reexport::{Anchor, Layer, OutputOption};
 
 fn type_err(field: &str, expected: &str, span: &Span) -> ConfigError {
     ConfigError {

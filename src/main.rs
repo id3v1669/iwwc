@@ -150,9 +150,9 @@ fn check_config(path: Option<PathBuf>) -> ! {
 fn init_logger(debug: bool) {
     //let level = if debug { "debug" } else { "warn" };
     let level = if debug {
-        "debug, sctk=off, iced_layershell=off, naga=off, zbus=off, iced_wgpu=off, cosmic_text=off, wgpu_core=off, wgpu_hal=off"
+        "debug, sctk=off, iced_exwlshell=off, naga=off, zbus=off, iced_wgpu=off, cosmic_text=off, wgpu_core=off, wgpu_hal=off"
     } else {
-        "info, sctk=off, iced_layershell=off, naga=off, zbus=off, iced_wgpu=off, cosmic_text=off, wgpu_core=off, wgpu_hal=off"
+        "info, sctk=off, iced_exwlshell=off, naga=off, zbus=off, iced_wgpu=off, cosmic_text=off, wgpu_core=off, wgpu_hal=off"
     };
     env_logger::Builder::from_env(env_logger::Env::default().filter_or("RUST_LOG", level)).init();
     log::debug!("Logger initialized");

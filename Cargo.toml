@@ -8,7 +8,7 @@ license = "GPL-3.0-or-later"
 [dependencies]
 # base depsу
 clap = { version = "4.6.6", features = ["derive"] }
-log = "0.4.33"
+log = "0.4.34"
 env_logger = "0.11.11"
 tokio = { version = "1.53.1", features = ["full"] }
 tokio-stream = "0.1.19"
@@ -30,9 +30,9 @@ iced = { version = "0.14.0", default-features = false, features = [
   "image",
   "svg"
 ] }
-#iced_layershell = { path = "/home/user/myrepos/exwlshelleventloop/iced_layershell" }
+#iced_exwlshell = { path = "/home/user/myrepos/exwlshelleventloop/iced_exwlshell" }
 #iced_wayland_subscriber = { path = "/home/user/myrepos/exwlshelleventloop/iced_wayland_subscriber", features = ["workspace"] }
-iced_layershell = { git = "https://github.com/waycrate/exwlshelleventloop", branch = "master" }
+iced_exwlshell = { git = "https://github.com/waycrate/exwlshelleventloop", branch = "master" }
 iced_wayland_subscriber = { git = "https://github.com/waycrate/exwlshelleventloop", branch = "master", features = ["workspace"] }
 
 wayland-client = "0.31.15"

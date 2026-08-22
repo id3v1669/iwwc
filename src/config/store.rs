@@ -1,5 +1,5 @@
 use crate::config::types::VarValue;
-use iced_layershell::reexport::Anchor;
+use iced_exwlshell::reexport::Anchor;
 
 fn parse_value(raw: &str) -> VarValue {
     if let Ok(i) = raw.parse::<i128>() {

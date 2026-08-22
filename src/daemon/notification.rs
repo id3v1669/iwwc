@@ -1,5 +1,5 @@
 use crate::config::resolved::ResolvedNotificationSettings;
-use iced_layershell::reexport::{
+use iced_exwlshell::reexport::{
     Anchor, BlurOption, Extent, KeyboardInteractivity, LayerSize, NewLayerShellSettings,
 };
 

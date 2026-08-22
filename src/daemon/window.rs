@@ -1,5 +1,5 @@
 use crate::config::resolved::ResolvedWidget;
-use iced_layershell::reexport::{
+use iced_exwlshell::reexport::{
     Anchor, BlurOption, Extent, KeyboardInteractivity, Layer, LayerSize, NewLayerShellSettings,
     OutputOption,
 };
@@ -115,7 +115,7 @@ mod tests {
         let s = layer_settings_for(&w, OutputOption::LastOutput);
         assert_eq!(s.size, LayerSize::px(1920, 30));
         assert_eq!(s.exclusive_zone, Some(30));
-        assert!(matches!(s.layer, iced_layershell::reexport::Layer::Top));
+        assert!(matches!(s.layer, iced_exwlshell::reexport::Layer::Top));
     }
 
     #[test]
@@ -174,9 +174,9 @@ mod tests {
             "bar",
         );
         assert!(matches!(
-            layer_settings_for(&w, iced_layershell::reexport::OutputOption::LastOutput)
+            layer_settings_for(&w, iced_exwlshell::reexport::OutputOption::LastOutput)
                 .output_option,
-            iced_layershell::reexport::OutputOption::LastOutput
+            iced_exwlshell::reexport::OutputOption::LastOutput
         ));
     }
 
@@ -187,8 +187,8 @@ mod tests {
             "bar",
         );
         assert!(matches!(
-            layer_settings_for(&w, iced_layershell::reexport::OutputOption::Active).output_option,
-            iced_layershell::reexport::OutputOption::Active
+            layer_settings_for(&w, iced_exwlshell::reexport::OutputOption::Active).output_option,
+            iced_exwlshell::reexport::OutputOption::Active
         ));
     }
 }

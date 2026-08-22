@@ -506,7 +506,7 @@ mod tests {
         assert_eq!(n.timeout_ms, [10000, 5000, 0]);
         assert!(matches!(
             n.output,
-            iced_layershell::reexport::OutputOption::Active
+            iced_exwlshell::reexport::OutputOption::Active
         ));
 
         let (cfg, _) = parse_str(
@@ -528,7 +528,7 @@ mod tests {
         assert_eq!(n.border.unwrap().width, 2.0);
         assert!(matches!(
             n.output,
-            iced_layershell::reexport::OutputOption::OutputName(ref o) if o == "HDMI-A-1"
+            iced_exwlshell::reexport::OutputOption::OutputName(ref o) if o == "HDMI-A-1"
         ));
     }
 
