@@ -30,10 +30,8 @@ iced = { version = "0.14.0", default-features = false, features = [
   "image",
   "svg"
 ] }
-#iced_exwlshell = { path = "/home/user/myrepos/exwlshelleventloop/iced_exwlshell" }
-#iced_wayland_subscriber = { path = "/home/user/myrepos/exwlshelleventloop/iced_wayland_subscriber", features = ["workspace"] }
-iced_exwlshell = { git = "https://github.com/waycrate/exwlshelleventloop", branch = "master" }
-iced_wayland_subscriber = { git = "https://github.com/waycrate/exwlshelleventloop", branch = "master", features = ["workspace"] }
+iced_exwlshell = "0.20.0"
+iced_wayland_subscriber = { version = "0.20.0", features = ["workspace"] }
 
 wayland-client = "0.31.15"
 wayland-protocols = { version = "0.32.13", features = ["client", "unstable"] }

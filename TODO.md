@@ -16,6 +16,7 @@ Before Beta:
 - [x] Rm bunch of leftover structures in favor of orig iced structs (old code from iced fork and when layershell lib wasn't used.) #oldmigration
 - [x] add action support to have actions on hover enter, exit, rightclick
 - [x] update defaults
+- [ ] rework config to have css support. Blocked by lib https://github.com/id3v1669/iced-css
 
 Beta:
 
