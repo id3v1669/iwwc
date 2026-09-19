@@ -1904,9 +1904,9 @@ dependencies = [
 
 [[package]]
 name = "iced_wayland_subscriber"
-version = "0.20.0"
+version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91652a0726781ecbd2566c44a3aab09dcedcf77b673ed90a15a512a2b896707a"
+checksum = "5c0cd54cedfab3230ff5487cbeec868c2afc552def98bf2ebb469af1b6f84a39"
 dependencies = [
  "futures",
  "iced_core",
