@@ -391,7 +391,12 @@ impl App {
                 }
             }
             Message::Ui(UiMessage::MenuHover { level, id }) => self.menu_hover(level, id),
-            Message::Ui(UiMessage::MenuLeave { level }) => self.close_from(level),
+            Message::Ui(UiMessage::MenuLeave { level }) => {
+                match self.menus.get(level).map(|l| l.active_child) {
+                    Some(None) => self.close_from(level),
+                    _ => Task::none(),
+                }
+            }
             Message::MenuOpen {
                 bus_name,
                 menu_path,
